@@ -61,7 +61,7 @@ export async function verifyPassword(password: string, record: string): Promise<
   }
 }
 
-// German message when the new password is not acceptable, otherwise null
+// Message when the new password is not acceptable, otherwise null
 export function validateNewPassword(password: string): string | null {
   if (password.length < PASSWORD_MIN_LENGTH) return `The password must be at least ${PASSWORD_MIN_LENGTH} characters long.`;
   if (password.length > PASSWORD_MAX_LENGTH) return `The password must be at most ${PASSWORD_MAX_LENGTH} characters long.`;

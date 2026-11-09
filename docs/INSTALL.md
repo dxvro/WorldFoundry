@@ -1,6 +1,6 @@
 # WorldFoundry: Step-by-step installation
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 WorldFoundry runs several Minecraft server instances on one computer. You operate it in a web browser from your local network (LAN).

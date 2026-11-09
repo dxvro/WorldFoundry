@@ -1,6 +1,6 @@
 # WorldFoundry: API reference
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 Errors always have the form `{ "error": { "code", "message", "details?" } }`. `POST` requests without a body are also allowed with `Content-Type: application/json`.

@@ -67,7 +67,7 @@ describe('filter helpers', () => {
     expect(matchesFilter({ enabled: true }, 'disabled')).toBe(false);
   });
 
-  it('recognises the dependency warning in English (current backend) and in the older German wording', () => {
+  it('recognises the dependency warning of the backend', () => {
     expect(isDependencyWarning('“Gamma” was disabled and was also enabled as a required dependency.')).toBe(true);
     expect(isDependencyWarning('“Gamma” was disabled and is enabled again because “Alpha” needs it.')).toBe(false);
     expect(isDependencyWarning('trotzdem')).toBe(false);

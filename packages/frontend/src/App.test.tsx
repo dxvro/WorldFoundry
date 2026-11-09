@@ -59,7 +59,7 @@ describe('App authentication', () => {
     expect(await screen.findByRole('heading', { name: 'Sign-in required' })).toBeInTheDocument();
   });
 
-  it('shows the German error for a wrong token and enters the app with the right one', async () => {
+  it('shows the error for a wrong token and enters the app with the right one', async () => {
     installFetch({ authRequired: true, authenticated: false });
     const user = userEvent.setup();
     render(<App />);

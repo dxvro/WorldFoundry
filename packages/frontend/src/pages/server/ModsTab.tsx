@@ -25,8 +25,7 @@ export function isLocked(status: Pick<RuntimeStatus, 'state'>): boolean {
   return status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
 }
 
-// The backend's warning for a dependency that was switched on together with a mod (mods/toggle.ts). Its text is English;
-// the older German wording is still matched. Those dependencies are listed on their own, so the warning is not repeated.
+// The backend's warning for a dependency that was switched on together with a mod (mods/toggle.ts). Those dependencies are listed on their own, so the warning is not repeated.
 const DEPENDENCY_WARNING = /as a required dependency/i;
 // With the warning's reference the key decides (MOD_DEPENDENCY_ENABLED); the text is matched only when there is no reference
 export const isDependencyWarning = (warning: string, ref?: MessageRef | null): boolean =>

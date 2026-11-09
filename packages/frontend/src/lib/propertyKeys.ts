@@ -1,4 +1,4 @@
-// Every key of the backend's property catalog (packages/backend/src/properties/catalog.ts). The German dictionary is typed against this
+// Every key of the backend's property catalog (packages/backend/src/properties/catalog.ts). The dictionary (locales/en/world.ts) is typed against this
 // list, so a key that is added here without a label and description is a compile error. A test compares it with the backend's catalog.
 export const KNOWN_PROPERTY_KEYS = [
   // world

@@ -90,7 +90,7 @@ describe('checking for updates', () => {
     expect(await env.services.update.checkNow()).toMatchObject({ updateAvailable: false, canApply: false, canApplyReason: 'There is no newer release.', canApplyReasonRef: { key: 'UPDATE_NO_NEWER' } });
   });
 
-  it('reports a failing check with a German message and keeps the previous result', async () => {
+  it('reports a failing check with a message and keeps the previous result', async () => {
     release('0.2.0');
     await env.services.update.checkNow();
     github.apiStatus = 500;

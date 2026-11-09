@@ -144,7 +144,7 @@ describe('import wizard', () => {
     const { container } = render(<App />);
     await screen.findByRole('heading', { name: 'Server from an existing world' });
     await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, new File(['x'], 'gross.zip'));
-    // the German text comes from the dictionary of the error code, not from the backend message
+    // the text comes from the dictionary of the error code, not from the backend message
     expect(await screen.findByText('The file is too large. The limit can be changed with IMPORT_MAX_MB.')).toBeInTheDocument();
     expect(screen.getByText('The archive was not accepted')).toBeInTheDocument();
   });

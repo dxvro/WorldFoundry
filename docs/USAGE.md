@@ -1,6 +1,6 @@
 # WorldFoundry: Using the web interface
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 This page describes the web interface and how servers are created, installed and started. Installation of WorldFoundry itself is in [INSTALL.md](INSTALL.md), settings are in [CONFIGURATION.md](CONFIGURATION.md), and the HTTP interface is in [API.md](API.md).

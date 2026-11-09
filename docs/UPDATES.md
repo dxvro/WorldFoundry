@@ -1,6 +1,6 @@
 # WorldFoundry: Updates
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 Installed clients update themselves when the owner publishes a new GitHub release. **Nothing is installed automatically:** WorldFoundry reports the new version with its release notes in a banner on every page, and the update runs only after an administrator has clicked **Jetzt aktualisieren** (Update now) in the interface and confirmed.

@@ -57,7 +57,7 @@ export function installMajorFor(required: number, requiredMax: number | null): n
 }
 
 // The Java major the server status waits for. The status carries a reference (messageRef, params.major) that is read
-// first. Without it, the English text ("Installing Java 21 ...") or an older German text ("Java 21 wird installiert ...")
+// first. Without it, the text ("Installing Java 21 ...")
 // is searched for the major; the text is only a fallback for statuses written before references existed.
 export function preparingMajor(message: string | null, ref?: MessageRef | null): number | null {
   const major = ref?.params?.major;

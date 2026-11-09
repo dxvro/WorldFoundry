@@ -1,3 +1,5 @@
+import type { KnownPropertyKey } from '../../../lib/propertyKeys';
+
 // Must mirror locales/de/world.ts exactly (a missing or extra key is a type error).
 export const world = {
   loading: 'Loading world settings …',
@@ -107,6 +109,7 @@ export const world = {
     fixErrors: 'Please fix the marked errors before saving.',
   },
 
+  // label and one-line description for every key of the property catalog; the `satisfies` makes a missing key a compile error
   props: {
     // world
     'level-name': { label: 'World name', help: 'Name of the world folder. A new name creates a new world on the next start.' },
@@ -171,5 +174,5 @@ export const world = {
     'use-native-transport': { label: 'Native networking (Linux)', help: 'Uses optimised networking code on Linux.' },
     'region-file-compression': { label: 'Region file compression', help: 'Method used to store the world.' },
     'text-filtering-config': { label: 'Text filter configuration', help: 'Path or name of a configuration for the chat filter.' },
-  },
+  } satisfies Record<KnownPropertyKey, { label: string; help: string }>,
 };

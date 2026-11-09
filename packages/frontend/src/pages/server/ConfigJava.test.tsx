@@ -121,7 +121,7 @@ describe('runtime list', () => {
     expect(within(section).getByText('Installed by WorldFoundry')).toBeInTheDocument();
   });
 
-  it('shows the German text of the error code when the installation fails', async () => {
+  it('shows the text of the error code when the installation fails', async () => {
     setup(systemFixture({ javaRuntimes: [] }));
     api.set('POST /api/java/runtimes/8/install', () => ({ status: 422, body: { error: { code: 'JAVA_NOT_AVAILABLE', message: 'Eclipse Temurin does not offer Java 8 for Windows (arm64).', details: { major: 8, platform: 'Windows (arm64)' } } } }));
     const user = userEvent.setup();

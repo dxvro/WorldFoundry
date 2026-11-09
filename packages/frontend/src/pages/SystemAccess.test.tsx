@@ -91,7 +91,7 @@ describe('password section', () => {
     expect(screen.getByLabelText('New password')).toHaveValue('');
   });
 
-  it('shows the German reason for a wrong current password', async () => {
+  it('shows the reason for a wrong current password', async () => {
     setup();
     api.set('POST /api/auth/password', () => ({ status: 403, body: { error: { code: 'CURRENT_PASSWORD_WRONG', message: 'The current password is wrong.' } } }));
     const user = userEvent.setup();

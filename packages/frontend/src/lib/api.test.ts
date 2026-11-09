@@ -5,13 +5,13 @@ import { authApi, serversApi } from './endpoints';
 const respond = (status: number, body: string): Response => new Response(body, { status });
 
 describe('error mapping', () => {
-  it('keeps code, German message and details of the backend error body', () => {
+  it('keeps code, message and details of the backend error body', () => {
     const error = errorFromResponse(409, JSON.stringify({ error: { code: 'MOD_REQUIRED_BY_OTHERS', message: 'Is required.', details: { dependents: [{ id: '1', name: 'A' }] } } }));
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 409, code: 'MOD_REQUIRED_BY_OTHERS', message: 'Is required.', details: { dependents: [{ id: '1', name: 'A' }] } });
   });
 
-  it('falls back to a German message for bodies that are not the error shape', () => {
+  it('falls back to a message for bodies that are not the error shape', () => {
     expect(errorFromResponse(502, '<html>Bad Gateway</html>')).toMatchObject({ status: 502, code: 'HTTP_502', message: expect.stringContaining('502') });
     expect(errorFromResponse(500, JSON.stringify({ error: 'x' }))).toMatchObject({ code: 'HTTP_500' });
     expect(errorFromResponse(500, '')).toMatchObject({ code: 'HTTP_500' });
@@ -34,7 +34,7 @@ describe('request', () => {
     await expect(request('/api/servers/x')).rejects.toMatchObject({ status: 404, code: 'SERVER_NOT_FOUND', message: 'The server was not found.' });
   });
 
-  it('maps a network failure to NETWORK_ERROR with a German message', async () => {
+  it('maps a network failure to NETWORK_ERROR with a message', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(request('/api/health')).rejects.toMatchObject({ status: 0, code: 'NETWORK_ERROR', message: expect.stringContaining('cannot be reached') });
   });

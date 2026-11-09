@@ -31,7 +31,7 @@ describe('platform mapping', () => {
     expect(temurinTarget('darwin', 'x64')).toMatchObject({ os: 'mac', arch: 'x64' });
   });
 
-  it('refuses platforms Temurin does not build for, in German', () => {
+  it('refuses platforms Temurin does not build for', () => {
     expect(() => temurinTarget('freebsd', 'x64')).toThrowError(expect.objectContaining({ code: 'JAVA_PLATFORM_UNSUPPORTED', message: expect.stringContaining('does not offer a Java runtime') }) as Error);
     expect(() => temurinTarget('linux', 'ia32')).toThrow();
   });
@@ -91,7 +91,7 @@ describe('installing a managed runtime (Windows branch, zip)', () => {
     expect((await kit.managed.ensure(25)).image).toBe('jdk');
   });
 
-  it('reports a missing combination in German and leaves nothing behind', async () => {
+  it('reports a missing combination and leaves nothing behind', async () => {
     const kit = windowsKit(new FakeAdoptium(), { arch: 'arm64' });
     kit.adoptium.add({ major: 21, os: 'windows', arch: 'aarch64', image: 'jre' });
     await expect(kit.managed.ensure(8)).rejects.toMatchObject({

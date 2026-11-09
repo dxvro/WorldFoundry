@@ -1,6 +1,6 @@
 # WorldFoundry: Development and building
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 This page is for running WorldFoundry from source, developing it and building the installation packages. To simply use WorldFoundry, see [INSTALL.md](INSTALL.md).

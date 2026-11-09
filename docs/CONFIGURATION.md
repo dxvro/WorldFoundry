@@ -1,6 +1,6 @@
 # WorldFoundry: Configuration, network and security
 
-> **Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.**
+> **WorldFoundry is not an official product of any game publisher.** The disclaimer of each game is in [TRADEMARKS.md](../TRADEMARKS.md).
 > NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 > **Security notice:** The API can start processes and run console commands. Without `AUTH_TOKEN` (the default, so that LAN access stays open), **anyone** who can reach the port has full access, and a warning appears in the log at start. Run it only in trusted networks and never expose it to the internet. For a login, set `AUTH_TOKEN` (see below) or set a password in the web interface under **System**.

@@ -1,108 +1,79 @@
 # WorldFoundry
 
-> **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+> **WorldFoundry is an independent, free and open-source project. It is not an official product of any game publisher and is not approved by or associated with Mojang, Microsoft, The Indie Stone, Coffee Stain, Studio Wildcard, Snail Games or Valve.** The disclaimer of each game is in [TRADEMARKS.md](TRADEMARKS.md).
 
-## What is it?
+WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
-WorldFoundry manages several Minecraft servers on one computer and is operated conveniently in the browser on your local network (LAN), from a PC, tablet or phone. Creating, starting, monitoring and backing up servers works without a command line.
+**Status: early development.** No release has been published yet. Minecraft works; the other games are being built. To try WorldFoundry, run it from source (see below).
 
-- **Several servers** side by side: Vanilla, Fabric, Paper, NeoForge and Forge
+## Games
+
+| Game | Status | Server files | Mods |
+| --- | --- | --- | --- |
+| Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge planned (needs your own API key) |
+| Project Zomboid | Planned | SteamCMD, anonymous login | Steam Workshop |
+| Satisfactory | Planned | SteamCMD, anonymous login | ficsit.app |
+| ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
+
+- **Minecraft:** NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+- **Project Zomboid:** Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.
+- **Satisfactory:** Not an official Satisfactory product. Not approved by or associated with Coffee Stain Studios or Coffee Stain Publishing.
+- **ARK:** Not an official ARK product. Not approved by or associated with Studio Wildcard or Snail Games.
+
+WorldFoundry ships no game files, logos or artwork. Every server is downloaded on your machine at installation, and you accept the license of each game yourself. WorldFoundry never accepts one for you.
+
+## What it does today
+
+- **Several servers** side by side, grouped by game
 - **Live console** with command input and history
-- **Mods and plugins** from Modrinth: install, enable and disable, and update
-- **Players:** whitelist, operators (OPs) and ban lists
+- **Mods and plugins** from Modrinth: install, enable and disable, update, with dependencies
+- **Players:** whitelist, operators and ban lists
 - **World settings:** all values of `server.properties` in an editor
-- **World backups** by hand or on a schedule, with restore
-- **Import and export worlds**, with or without mods
-- **Automatic Java installation:** if the matching Java version is missing, WorldFoundry downloads it itself (Eclipse Temurin)
-- **Autostart** of individual servers when WorldFoundry starts
-- **German and English** in the interface (switchable; the German labels quoted below, such as "System > Passwort", are what you see in the German interface)
-- **Update notice** for new versions; nothing is installed until an administrator confirms
+- **Backups** by hand or on a schedule, with restore
+- **Import and export** of worlds, with or without mods
+- **Automatic Java installation** when the matching version is missing (Eclipse Temurin)
+- **Autostart** of individual servers
 
-## How does it work?
+## How it works
 
-WorldFoundry runs as a service (Windows service, or systemd on Linux) on a computer or in a VM and starts with the system. From any device on your home network you open `http://<IP address>:3000` in the browser and sign in with the password. Servers, worlds and data stay on that computer. Each Minecraft server gets its own port (default 25565) that players connect to.
+WorldFoundry is one program with a web interface. It runs on the computer that hosts the servers; you open `http://<IP address>:3000` from any device on your network and sign in with the password. Servers, worlds and data stay on that computer. Game servers run as ordinary processes of that computer, without containers.
 
-> **Security notice:** The web interface can start programs and is unencrypted (HTTP). Run it only on a home network or other trusted networks, and never expose the web port (3000) to the internet.
+> **Security notice:** The web interface can start programs and is unencrypted (HTTP). Run it only on a home network or another trusted network, and never expose the web port to the internet.
 
-## Installation
+## Running from source
 
-All packages are on the **Releases** page: <https://github.com/dxvro/WorldFoundry/releases>
+Needs Node.js 22 or newer.
 
-Neither Git, Node.js nor Java has to be installed on the target computer.
+```
+git clone https://github.com/dxvro/WorldFoundry.git
+cd WorldFoundry
+npm install
+npm run build
+npm start
+```
 
-**System requirements:** Windows 10/11 or Windows Server 2016 and newer (x64), or Linux with systemd, glibc 2.28 or newer, and x86_64 or arm64. Internet access is needed for Java, Minecraft and mod downloads.
-
-### Windows
-
-1. Download `worldfoundry-<version>-setup.exe` and `SHA256SUMS.txt` from the Releases page.
-2. Double-click the file. It is **not signed**, so Windows SmartScreen shows the message "Windows protected your PC" (German: "Der Computer wurde durch Windows geschützt"). Click **More info** and then **Run anyway**. If you want to be sure, compare the checksum first: `Get-FileHash .\worldfoundry-<version>-setup.exe` (compare the value with `SHA256SUMS.txt`). The administrator confirmation (UAC) is needed because a service is set up.
-3. Choose the installer language (English or German) and then the optional tasks: **Windows Firewall** (rules for private networks only: web port 3000 and Minecraft ports 25565-25575; without them other devices cannot reach the computer) and **Start menu shortcut**.
-4. The installer copies the program files to `C:\Program Files\WorldFoundry`, sets up the Windows service `worldfoundry` (starts with Windows) and starts it.
-5. **First sign-in:** At the end, the installer shows the address (`http://<computer name>:3000`) and the **access token**. Both are also in `C:\ProgramData\WorldFoundry\credentials.txt` (only administrators can read it; you may delete it after noting them down). Open the address in the browser and sign in with the token. It is also the first password; you can set your own in the interface under **System > Passwort** (System > Password).
-6. Forgot the password? Start menu, **Reset Password** (German installer: "Passwort zurücksetzen"; asks for administrator rights).
-
-Program data, servers and backups are in `C:\ProgramData\WorldFoundry`.
-
-### Linux (systemd)
-
-1. From the Releases page, download `worldfoundry-<version>-linux-x64.tar.gz` (Intel/AMD) or `worldfoundry-<version>-linux-arm64.tar.gz` (ARM 64 bit, e.g. Raspberry Pi 4/5 with a 64-bit system), plus `SHA256SUMS.txt`, into the same folder.
-2. Check the checksum:
-
-   ```
-   sha256sum -c SHA256SUMS.txt --ignore-missing
-   ```
-
-3. Extract and install (with `root` rights):
-
-   ```
-   tar -xzf worldfoundry-<version>-linux-x64.tar.gz
-   cd worldfoundry-<version>-linux-x64
-   sudo ./install.sh
-   ```
-
-   Options: `--open-firewall` (with an active ufw or firewalld, opens TCP 3000 and 25565-25575) and `--port 8080` (a different web port on first installation).
-4. `install.sh` creates the system user `worldfoundry`, installs to `/opt/worldfoundry`, creates `/etc/worldfoundry/worldfoundry.env` with a random access token, sets up the service `worldfoundry` and starts it. Data and servers are in `/var/lib/worldfoundry`.
-5. **First sign-in:** At the end, `install.sh` prints the addresses on the home network and the **access token**. Open the address in the browser and sign in with the token; it is also the first password (set your own under **System > Passwort**). You can show the token later with:
-
-   ```
-   sudo grep AUTH_TOKEN /etc/worldfoundry/worldfoundry.env
-   ```
-
-6. Forgot the password? `sudo worldfoundry reset-password` creates a new one.
-
-A detailed guide with all supported Linux distributions, firewall, troubleshooting and configuration: [docs/INSTALL.md](docs/INSTALL.md)
-
-### Updating and uninstalling
-
-- **Updating:** WorldFoundry reports new versions in the interface; an administrator confirms the update. Alternatively, run the new `setup.exe` (Windows), or `sudo ./install.sh` again from the new archive (Linux), over the existing installation. Servers, data and configuration are kept.
-- **Uninstalling (Windows):** Settings > Apps > WorldFoundry > Uninstall. The data folder `C:\ProgramData\WorldFoundry` is kept.
-- **Uninstalling (Linux):** `sudo /opt/worldfoundry/uninstall.sh` (keeps `/var/lib/worldfoundry` and `/etc/worldfoundry`; with `--purge` everything is deleted).
+Then open `http://localhost:3000`. Started this way there is no sign-in until you set one: put `AUTH_TOKEN=<at least 8 characters>` into a `.env` file (see [.env.example](.env.example)) before the first start, or set a password under **System** right after it. Without either, everyone who can reach the port has full access. For development (`npm run dev`), tests and building packages see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Documentation
 
-- [docs/INSTALL.md](docs/INSTALL.md): step-by-step installation on Windows and Linux, firewall, troubleshooting
+The pages below were written for the Minecraft part and are being extended as games are added.
+
 - [docs/USAGE.md](docs/USAGE.md): the web interface, creating and starting servers, loaders, Java
 - [docs/CONFIGURATION.md](docs/CONFIGURATION.md): environment variables, network access, password, security
-- [docs/UPDATES.md](docs/UPDATES.md): self-update, signatures and publishing releases
 - [docs/API.md](docs/API.md): HTTP API, backups, world import and export, WebSockets
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): running from source, tests and building the packages
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): running from source, tests and building packages
+- [docs/INSTALL.md](docs/INSTALL.md) and [docs/UPDATES.md](docs/UPDATES.md): the installation packages and self-update. These describe packages that are not published yet.
+
+## Adding a game
+
+A game is an adapter behind one interface, [`packages/backend/src/games/types.ts`](packages/backend/src/games/types.ts). The core owns what is the same for every game (process, console, ports, backups, import and export, sign-in); the adapter supplies installation, the start command, readiness detection, configuration files and mod sources. The facts and the disclaimer of each game are in [`packages/backend/src/games/registry.ts`](packages/backend/src/games/registry.ts).
 
 ## License
 
-WorldFoundry is free software, licensed under the **GNU General Public License, version 3** (GPL-3.0-only). See [LICENSE](LICENSE) for the full text. Copyright (C) 2026 dxvro.
-
-The release packages contain the license as `LICENSE.txt` and the licenses of all bundled third-party components (Node.js, WinSW, npm packages, fonts) in `THIRD-PARTY-NOTICES.txt`.
+WorldFoundry is free software, licensed under the **GNU General Public License, version 3** (GPL-3.0-only). See [LICENSE](LICENSE) for the full text. It is free of charge and has no commercial offer.
 
 ## Contact
 
-Publisher: dxvro. Contact: <worldfoundry0@gmail.com> (or the issue tracker of <https://github.com/dxvro/WorldFoundry>). For security problems, please use the private reporting described in [SECURITY.md](SECURITY.md).
+Contact: <worldfoundry0@gmail.com>, or the issue tracker of this repository. For security problems, please use the private reporting described in [SECURITY.md](SECURITY.md).
 
-## Minecraft and other trademarks
-
-WorldFoundry is a fan-made tool published by dxvro as an open-source project (contact: the issue tracker and the private security reporting of the GitHub repository <https://github.com/dxvro/WorldFoundry>). It is free and has no commercial offer.
-
-Minecraft is a trademark of Mojang AB and Microsoft. WorldFoundry contains no Minecraft game files, logos, textures or other assets. It does not ship the Minecraft server: each server is downloaded at runtime from the official source of its loader, and the Minecraft EULA (<https://aka.ms/MinecraftEULA>) is accepted by you, per server, and never automatically. Paper, Fabric, Forge, NeoForge, Modrinth and Eclipse Temurin are names of third-party projects, used only to describe what WorldFoundry works with; their owners do not endorse WorldFoundry.
-
-## Security
-
-Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).
+Contributors: commits must use a no-reply address (for example your GitHub `…@users.noreply.github.com` address). `npm test` and CI reject any other email address in a file or a commit.

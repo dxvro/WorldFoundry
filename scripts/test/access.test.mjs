@@ -14,6 +14,7 @@ test('Notice: the text appears everywhere people see it', async () => {
   assert.equal(DISCLAIMER, 'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.');
   const places = [
     ['README.md'],
+    ['TRADEMARKS.md'],
     ['installer', 'windows', 'worldfoundry.iss'],
     ['installer', 'windows', 'README.txt'],
     ['installer', 'windows', 'start-portable.cmd'],
@@ -22,9 +23,18 @@ test('Notice: the text appears everywhere people see it', async () => {
     ['.github', 'workflows', 'release.yml'],
   ];
   for (const parts of places) assert.ok((await read(...parts)).includes(DISCLAIMER), parts.join('/'));
-  // The English text is required everywhere; the German text may only stay in the German installer messages
+  // The interface carries a general disclaimer that names every rights holder; the sentence of each game comes from
+  // the registry and must be in README.md and TRADEMARKS.md word for word (Minecraft in capitals, as its owner asks).
   const enCommon = await read('packages', 'frontend', 'src', 'i18n', 'locales', 'en', 'common.ts');
-  assert.match(enCommon, /disclaimer: 'Not an official Minecraft product\. Not approved by or associated with Mojang or Microsoft\.'/);
+  for (const owner of ['Mojang', 'Microsoft', 'The Indie Stone', 'Coffee Stain', 'Studio Wildcard', 'Snail Games', 'Valve']) assert.ok(enCommon.includes(owner), `general disclaimer names ${owner}`);
+  const registry = await read('packages', 'backend', 'src', 'games', 'registry.ts');
+  const sentences = [...registry.matchAll(/disclaimer: notA\('([^']+)', '([^']+)'\)/g)].map((match) => `Not an official ${match[1]} product. Not approved by or associated with ${match[2]}.`);
+  assert.equal(sentences.length, 4, 'one disclaimer per game in the registry');
+  assert.ok(sentences[0].toUpperCase() === DISCLAIMER, 'the Minecraft sentence of the registry is the notice of the installers');
+  for (const file of ['README.md', 'TRADEMARKS.md']) {
+    const text = (await read(file)).toUpperCase();
+    for (const sentence of sentences) assert.ok(text.includes(sentence.toUpperCase()), `${file}: ${sentence}`);
+  }
   // Welcome and finish page of the installer: English by default, German as the second language
   const iss = await read('installer', 'windows', 'worldfoundry.iss');
   assert.match(iss, /^english\.WelcomeLabel2=.*NOT AN OFFICIAL MINECRAFT PRODUCT/m);
