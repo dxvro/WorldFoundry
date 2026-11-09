@@ -1,0 +1,52 @@
+export const console = {
+  stream: { stdout: 'Output', stderr: 'Error', input: 'Input', system: 'System' },
+  crash: {
+    label: 'Crash details',
+    notStarted: 'The server could not be started',
+    crashed: 'The server crashed',
+    noExitCode: 'No exit code available.',
+    exitCode: (code: number) => `Exit code ${code}.`,
+    lastLines: 'Last lines',
+    lastLinesLabel: 'Last lines before the crash',
+  },
+  connection: {
+    connecting: 'Console connecting …',
+    reconnecting: 'Console disconnected, reconnecting …',
+  },
+  filter: {
+    label: 'Filter console',
+    placeholder: 'Filter (text)',
+    streamsLabel: 'Output channels',
+    lines: (count: number) => `${count} lines`,
+    linesOf: (shown: number, total: number) => `${shown} of ${total} lines`,
+    max: ' (maximum)',
+  },
+  log: {
+    label: (name: string) => `Console of ${name}`,
+    empty: 'No output yet. Lines appear here as soon as the server starts.',
+    waiting: 'Waiting for the connection …',
+    noMatch: 'No line matches the filter.',
+    newLines: (count: number) => `${count} new lines`,
+    jumpToNewest: 'Jump to the newest lines',
+  },
+  command: {
+    label: 'Command for the server',
+    placeholderOnline: 'Enter a command, e.g. say Hello',
+    placeholderOffline: 'The server is not running',
+    send: 'Send',
+    sendFailed: 'The command could not be sent.',
+    historyHint: 'Use the arrow keys (up/down) to recall earlier commands.',
+  },
+  live: { installStarting: 'Installation starting' },
+  gap: {
+    one: 'One line is missing (buffer exceeded).',
+    many: (missing: number) => `${missing} lines are missing (buffer exceeded).`,
+  },
+  errors: {
+    timeout: 'The server did not acknowledge the command.',
+    notConnectedSent: 'No connection to the console. The command was not sent.',
+    interrupted: 'The connection to the console was interrupted.',
+    closed: 'The console was closed.',
+    notConnected: 'No connection to the console.',
+  },
+};

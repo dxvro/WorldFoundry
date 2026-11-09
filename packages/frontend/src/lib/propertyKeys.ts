@@ -1,0 +1,71 @@
+// Every key of the backend's property catalog (packages/backend/src/properties/catalog.ts). The German dictionary is typed against this
+// list, so a key that is added here without a label and description is a compile error. A test compares it with the backend's catalog.
+export const KNOWN_PROPERTY_KEYS = [
+  // world
+  'level-name',
+  'level-seed',
+  'level-type',
+  'generator-settings',
+  'generate-structures',
+  'max-world-size',
+  'spawn-protection',
+  'allow-nether',
+  'spawn-monsters',
+  'spawn-animals',
+  'spawn-npcs',
+  'view-distance',
+  'simulation-distance',
+  // gameplay
+  'gamemode',
+  'difficulty',
+  'hardcore',
+  'pvp',
+  'allow-flight',
+  'force-gamemode',
+  'enable-command-block',
+  // players
+  'max-players',
+  'white-list',
+  'enforce-whitelist',
+  'online-mode',
+  'hide-online-players',
+  'op-permission-level',
+  'player-idle-timeout',
+  'enforce-secure-profile',
+  'require-resource-pack',
+  'resource-pack',
+  'resource-pack-sha1',
+  'resource-pack-prompt',
+  // network
+  'motd',
+  'server-port',
+  'server-ip',
+  'enable-status',
+  'enable-query',
+  'query.port',
+  'enable-rcon',
+  'rcon.port',
+  'rcon.password',
+  'prevent-proxy-connections',
+  'rate-limit',
+  'network-compression-threshold',
+  'accepts-transfers',
+  // advanced
+  'broadcast-console-to-ops',
+  'broadcast-rcon-to-ops',
+  'bug-report-link',
+  'entity-broadcast-range-percentage',
+  'function-permission-level',
+  'log-ips',
+  'max-chained-neighbor-updates',
+  'max-tick-time',
+  'pause-when-empty-seconds',
+  'sync-chunk-writes',
+  'use-native-transport',
+  'region-file-compression',
+  'text-filtering-config',
+] as const;
+
+export type KnownPropertyKey = (typeof KNOWN_PROPERTY_KEYS)[number];
+
+export const isKnownPropertyKey = (key: string): key is KnownPropertyKey => (KNOWN_PROPERTY_KEYS as readonly string[]).includes(key);

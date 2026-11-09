@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Package build as a probe: downloads Node.js (with checksum), builds the archive and starts the runtime on the build machine.
+      - name: Build package (Windows)
+        if: runner.os == 'Windows'
+        run: node scripts/package.mjs --target win-x64 --skip-build
+
+      - name: Build package (Linux)
+        if: runner.os == 'Linux'
+        run: node scripts/package.mjs --target linux-x64 --skip-build
+
+      # Real installation test on the fresh Ubuntu VM of the runner (systemd, root): install.sh, sign-in, update, uninstall.sh
+      - name: Verify Linux installation
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          tar -xzf release/worldfoundry-*-linux-x64.tar.gz -C "$work"
+          cd "$work"/worldfoundry-*-linux-x64
+          sudo ./install.sh --port 3917
+          token="$(sudo sed -n "s/^AUTH_TOKEN='\(.*\)'$/\1/p" /etc/worldfoundry/worldfoundry.env)"
+          test -n "$token"
+          curl -fsS http://127.0.0.1:3917/api/health
+          echo
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3917/api/servers)" = 401
+          curl -fsS -H "Authorization: Bearer $token" http://127.0.0.1:3917/api/servers
+          echo
+          test "$(sudo stat -c '%a %U:%G' /etc/worldfoundry/worldfoundry.env)" = "640 root:worldfoundry"
+          # Home network address, actual port for installer and updater
+          # /var/lib/worldfoundry is readable by worldfoundry only (0750): the runner user needs sudo
+          sudo test -f /var/lib/worldfoundry/network.json
+          sudo grep -q '"port":3917' /var/lib/worldfoundry/network.json
+          network="$(curl -fsS -H "Authorization: Bearer $token" http://127.0.0.1:3917/api/system/network)"
+          grep -q '"hostname"' <<<"$network"
+          # Reset the password (local only, as root): the new password opens the web interface, the token stays valid for the API
+          test -x /usr/local/bin/worldfoundry
+          printf 'ci-new-password-1' | sudo worldfoundry reset-password --password-stdin
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"token":"ci-new-password-1"}' http://127.0.0.1:3917/api/auth/login)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"token\":\"$token\"}" http://127.0.0.1:3917/api/auth/login)" = 401
+          curl -fsS -H "Authorization: Bearer $token" http://127.0.0.1:3917/api/servers
+          echo
+          sudo ./install.sh        # update: configuration and token are kept
+          test "$(sudo sed -n "s/^AUTH_TOKEN='\(.*\)'$/\1/p" /etc/worldfoundry/worldfoundry.env)" = "$token"
+          systemctl is-active worldfoundry
+          sudo ./uninstall.sh
+          test -d /var/lib/worldfoundry
+          test ! -e /opt/worldfoundry
+          sudo ./uninstall.sh --purge --yes
+          test ! -d /var/lib/worldfoundry
+
+      # End-to-end update test (Ubuntu): install a test package, fake GitHub with signed test releases, trigger the update
+      # through the API (privileged updater via systemd .path), tampered package, forged request, rollback.
+      - name: Verify self-update (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 25
+        run: bash scripts/ci/update-e2e-linux.sh
+
+      # Real installation test of the Windows installer including a silent update through the update service. Not checkable
+      # on the runner: SmartScreen, User Account Control, Windows Server 2016, restart of the computer.
+      - name: Verify Windows installer and self-update
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 30
+        run: ./scripts/ci/update-e2e-windows.ps1

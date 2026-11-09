@@ -1,0 +1,29 @@
+{
+  "name": "worldfoundry",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @worldfoundry/backend\" \"npm run dev -w @worldfoundry/frontend\"",
+    "build": "npm run build -w @worldfoundry/frontend && npm run build -w @worldfoundry/backend",
+    "start": "npm run start -w @worldfoundry/backend",
+    "typecheck": "npm run typecheck -w @worldfoundry/backend && npm run typecheck -w @worldfoundry/frontend",
+    "test": "npm run test -w @worldfoundry/backend && npm run test -w @worldfoundry/frontend && npm run test:scripts",
+    "db:generate": "npm run db:generate -w @worldfoundry/backend",
+    "test:scripts": "node --test \"scripts/test/*.test.mjs\"",
+    "package": "node scripts/package.mjs",
+    "package:win-x64": "node scripts/package.mjs --target win-x64",
+    "package:linux-x64": "node scripts/package.mjs --target linux-x64",
+    "package:linux-arm64": "node scripts/package.mjs --target linux-arm64"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

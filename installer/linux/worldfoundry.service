@@ -1,0 +1,60 @@
+[Unit]
+Description=WorldFoundry (Minecraft server management)
+Documentation=file:///opt/worldfoundry/README.txt
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=worldfoundry
+Group=worldfoundry
+WorkingDirectory=/var/lib/worldfoundry
+Environment=CONFIG_FILE=/etc/worldfoundry/worldfoundry.env
+Environment=NODE_ENV=production
+# Folder of the privileged updater: status.json (read-only), request/ (the application puts update requests here)
+Environment=UPDATE_DIR=/var/lib/worldfoundry-update
+ExecStart=/opt/worldfoundry/node/node /opt/worldfoundry/app/backend/dist/index.js
+# Restart from the web interface (network settings): the application exits with code 75 and systemd starts it again.
+# Any exit code other than 0 counts as a failure with on-failure; 75 is additionally named explicitly.
+Restart=on-failure
+RestartForceExitStatus=75
+RestartSec=5
+
+# Clean shutdown: systemd sends SIGTERM only to the main process (KillMode=mixed). The application then stops
+# all Minecraft servers with "stop" (STOP_TIMEOUT_SECONDS, default 120 s, plus 15 s reserve) and exits.
+# Only after TimeoutStopSec is the rest killed hard (SIGKILL). If you raise STOP_TIMEOUT_SECONDS, also raise
+# TimeoutStopSec: sudo systemctl edit worldfoundry
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=180
+SendSIGHUP=no
+
+UMask=0027
+LimitNOFILE=65536
+
+# Hardening. Deliberately NOT set: MemoryDenyWriteExecute (Java/JIT needs executable, writable memory)
+# and SystemCallFilter (Java and Minecraft mods need a great many system calls).
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/worldfoundry /var/lib/worldfoundry-update/request
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+# Allow ports below 1024 (e.g. PORT=80) without root, no other special privileges
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

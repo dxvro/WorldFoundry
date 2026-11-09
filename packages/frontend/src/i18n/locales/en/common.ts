@@ -1,0 +1,31 @@
+export const common = {
+  loading: 'Loading …',
+  close: 'Close',
+  cancel: 'Cancel',
+  retry: 'Try again',
+  unknownError: 'Unknown error.',
+  errorCode: (code: string) => `Error code: ${code}`,
+  disclaimer: 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.',
+  units: {
+    underOneMinute: 'under 1 min',
+    day: 'd',
+    hour: 'h',
+    minute: 'min',
+    million: 'M',
+    thousand: 'K',
+  },
+  serverState: {
+    offline: 'Offline',
+    preparing: 'Preparing',
+    starting: 'Starting',
+    online: 'Online',
+    stopping: 'Stopping',
+    crashed: 'Crashed',
+  },
+  installState: {
+    pending: 'Waiting for installation',
+    installing: 'Installing',
+    installed: 'Installed',
+    failed: 'Installation failed',
+  },
+};

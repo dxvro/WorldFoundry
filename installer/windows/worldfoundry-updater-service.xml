@@ -1,0 +1,32 @@
+<!--
+  WinSW configuration of the update service (Windows) for WorldFoundry.
+  The file must have the same name as worldfoundry-updater-service.exe.
+  The service runs as LocalSystem (unlike the application itself, which runs as NT SERVICE\worldfoundry) and
+  waits for update requests that the application puts in the folder request\. It checks signature and checksum
+  again itself and starts the installation through the Task Scheduler (outside this service), because
+  the installer replaces this service and node.exe during the installation.
+  The installer replaces @DATADIR@ and @UPDATEROOT@. Use ASCII only.
+-->
+<service>
+  <id>worldfoundry-updater</id>
+  <name>WorldFoundry Update Service</name>
+  <description>Installs verified updates of WorldFoundry when requested by the web interface (privileged).</description>
+
+  <executable>%BASE%\node\node.exe</executable>
+  <arguments>"%BASE%\tools\updater.mjs" watch --update-root "@UPDATEROOT@" --install-dir "%BASE%" --config-file "@DATADIR@\worldfoundry.env"</arguments>
+  <workingdirectory>@UPDATEROOT@</workingdirectory>
+
+  <env name="NODE_ENV" value="production"/>
+
+  <startmode>Automatic</startmode>
+  <stoptimeout>15 sec</stoptimeout>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <logpath>@UPDATEROOT@\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>2048</sizeThreshold>
+    <keepFiles>4</keepFiles>
+  </log>
+</service>

@@ -1,0 +1,18 @@
+export const shell = {
+  mainNavigation: 'Main navigation',
+  overview: 'Overview',
+  newServer: 'New server',
+  system: 'System',
+  servers: 'Servers',
+  loadingServers: 'Loading …',
+  noServers: 'No servers yet',
+  logout: 'Log out',
+  connecting: 'Connecting to the server …',
+  connectionLost: 'Connection to the server lost. The data shown may be out of date; reconnecting automatically.',
+  starting: 'Starting WorldFoundry …',
+  noConnection: 'No connection to WorldFoundry',
+  rootMissing: 'The #root element is missing.',
+  notFoundTitle: 'Page not found',
+  notFoundText: 'This address does not belong to any page of WorldFoundry.',
+  toOverview: 'Back to overview',
+};

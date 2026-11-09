@@ -1,0 +1,171 @@
+name: Release
+
+# Triggered by a tag such as v0.1.0. The tag must match the version in packages/backend/package.json.
+# A manual run (workflow_dispatch) only checks the signing key. It does not build or publish anything.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Without a signing key a release would be created that no installed client accepts. Therefore check first.
+  signing-key:
+    name: Check signing key
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+      - name: Check secret UPDATE_SIGNING_KEY
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::error::The secret UPDATE_SIGNING_KEY is missing. No releases may be published without a signature (see docs/UPDATES.md, section How the owner publishes an update)."
+            exit 1
+          fi
+          printf 'probe' > probe.txt
+          node scripts/sign-release.mjs --sums probe.txt --out probe.sig
+
+  package:
+    name: Package ${{ matrix.target }}
+    needs: [signing-key]
+    if: github.event_name == 'push'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: windows-latest, target: win-x64 }
+          - { os: ubuntu-latest, target: linux-x64 }
+          - { os: ubuntu-latest, target: linux-arm64 }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Compare tag and version
+        shell: bash
+        run: |
+          version="$(node -p "require('./packages/backend/package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "The tag $GITHUB_REF_NAME does not match the version $version in packages/backend/package.json." >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Build package
+        run: npm run package -- --target ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            release/worldfoundry-*-${{ matrix.target }}.zip
+            release/worldfoundry-*-${{ matrix.target }}.tar.gz
+            release/worldfoundry-*-${{ matrix.target }}.*.sha256
+          if-no-files-found: error
+
+  installer:
+    name: Windows installer
+    needs: [signing-key]
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      # Only create the file tree release/win-x64, the ZIP is built by the job "package"
+      - name: Build Windows package
+        run: npm run package -- --target win-x64 --no-archive
+
+      - name: Provide Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe was not found.' }
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $version = node -p "require('./packages/backend/package.json').version"
+          & $env:ISCC "/DAppVersion=$version" installer\windows\worldfoundry.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with code $LASTEXITCODE." }
+          $setup = Get-ChildItem release -Filter 'worldfoundry-*-setup.exe' | Select-Object -First 1
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($setup.Name)" | Out-File -FilePath "$($setup.FullName).sha256" -Encoding ascii
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-win-installer
+          path: |
+            release/worldfoundry-*-setup.exe
+            release/worldfoundry-*-setup.exe.sha256
+          if-no-files-found: error
+
+  publish:
+    name: GitHub release
+    needs: [package, installer]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      # SHA256SUMS.txt is signed with Ed25519; installed clients only install releases with a valid signature.
+      # The step aborts if the secret is missing or does not match a key in keys.ts.
+      - name: Sign checksums
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          cd dist
+          cat ./*.sha256 > SHA256SUMS.txt
+          cd ..
+          node scripts/sign-release.mjs --sums dist/SHA256SUMS.txt --out dist/SHA256SUMS.txt.sig
+          test -s dist/SHA256SUMS.txt.sig
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd dist
+          ls -l
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $prerelease --verify-tag --title "WorldFoundry ${GITHUB_REF_NAME#v}" \
+            --notes "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Installer for Windows (worldfoundry-*-setup.exe, unsigned: SmartScreen shows a warning), portable ZIP for Windows and tar.gz packages for Linux (x64 and arm64). Instructions: section \"Installation\" in the README and docs/INSTALL.md (more documentation in the docs folder). Checksums: SHA256SUMS.txt (signed with SHA256SUMS.txt.sig so that installed versions can update themselves)." \
+            worldfoundry-*-setup.exe worldfoundry-*-win-x64.zip worldfoundry-*-linux-x64.tar.gz worldfoundry-*-linux-arm64.tar.gz SHA256SUMS.txt SHA256SUMS.txt.sig

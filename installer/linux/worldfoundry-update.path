@@ -1,0 +1,12 @@
+[Unit]
+Description=WorldFoundry - update requests from the web interface
+Documentation=file:///opt/worldfoundry/README.txt
+
+[Path]
+# The application (user worldfoundry) writes request.json last and atomically. The privileged updater checks
+# everything again itself and deletes the request immediately so that it does not trigger again.
+PathExists=/var/lib/worldfoundry-update/request/request.json
+Unit=worldfoundry-update.service
+
+[Install]
+WantedBy=multi-user.target

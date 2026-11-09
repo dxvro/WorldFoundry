@@ -1,0 +1,50 @@
+<!--
+  WinSW configuration (Windows service) for WorldFoundry.
+  The file must have the same name as worldfoundry-service.exe.
+  The installer replaces @DATADIR@ with the data folder (default: C:\ProgramData\WorldFoundry).
+  Use ASCII only (special characters as &#NNN;) because the installer edits the file as ANSI text.
+-->
+<service>
+  <id>worldfoundry</id>
+  <name>WorldFoundry</name>
+  <description>Manages Minecraft servers through a web interface (WorldFoundry).</description>
+
+  <executable>%BASE%\node\node.exe</executable>
+  <arguments>"%BASE%\app\backend\dist\index.js"</arguments>
+  <workingdirectory>@DATADIR@</workingdirectory>
+
+  <env name="CONFIG_FILE" value="@DATADIR@\worldfoundry.env"/>
+  <env name="NODE_ENV" value="production"/>
+  <env name="UPDATE_DIR" value="@UPDATEROOT@"/>
+  <env name="TEMP" value="@DATADIR@\tmp"/>
+  <env name="TMP" value="@DATADIR@\tmp"/>
+
+  <priority>Normal</priority>
+
+  <!--
+    Clean shutdown: when stopping, WinSW first sends Ctrl+C to node.exe (the application then shuts down all
+    Minecraft servers with "stop", STOP_TIMEOUT_SECONDS = 120 s plus 15 s reserve) and waits up to
+    stoptimeout. Only after that is it killed hard. stopparentprocessfirst: Ctrl+C goes to node.exe first and not
+    to the Java processes below it, so the application controls the shutdown.
+  -->
+  <stoptimeout>180 sec</stoptimeout>
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <waithint>60 sec</waithint>
+  <sleeptime>1 sec</sleeptime>
+
+  <startmode>Automatic</startmode>
+  <!--
+    Restart from the web interface (network settings): after stopping all Minecraft servers cleanly, the application
+    exits with exit code 75. WinSW reports that as a failure of the service, the following actions restart it.
+  -->
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <logpath>@DATADIR@\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</service>

@@ -1,0 +1,306 @@
+[
+  {
+    "name": "Home network with WSL and link-local",
+    "interfaces": {
+      "Loopback Pseudo-Interface 1": [
+        {
+          "address": "127.0.0.1",
+          "family": "IPv4",
+          "internal": true
+        }
+      ],
+      "Ethernet": [
+        {
+          "address": "fe80::1",
+          "family": "IPv6",
+          "internal": false
+        },
+        {
+          "address": "192.168.178.20",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "vEthernet (WSL (Hyper-V firewall))": [
+        {
+          "address": "172.28.16.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "Ethernet 3": [
+        {
+          "address": "169.254.10.4",
+          "family": "IPv4",
+          "internal": false
+        }
+      ]
+    },
+    "lan": [
+      [
+        "192.168.178.20",
+        "Ethernet",
+        true
+      ]
+    ],
+    "virtual": [
+      [
+        "172.28.16.1",
+        "vEthernet (WSL (Hyper-V firewall))",
+        true
+      ]
+    ]
+  },
+  {
+    "name": "Linux with Docker, libvirt and Tailscale",
+    "interfaces": {
+      "lo": [
+        {
+          "address": "127.0.0.1",
+          "family": "IPv4",
+          "internal": true
+        }
+      ],
+      "eth0": [
+        {
+          "address": "10.0.0.5",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "docker0": [
+        {
+          "address": "172.17.0.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "br-1a2b3c4d5e6f": [
+        {
+          "address": "172.18.0.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "virbr0": [
+        {
+          "address": "192.168.122.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "tailscale0": [
+        {
+          "address": "100.101.102.103",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "veth9f8e7d": []
+    },
+    "lan": [
+      [
+        "10.0.0.5",
+        "eth0",
+        true
+      ]
+    ],
+    "virtual": [
+      [
+        "192.168.122.1",
+        "virbr0",
+        true
+      ],
+      [
+        "172.18.0.1",
+        "br-1a2b3c4d5e6f",
+        true
+      ],
+      [
+        "172.17.0.1",
+        "docker0",
+        true
+      ],
+      [
+        "100.101.102.103",
+        "tailscale0",
+        false
+      ]
+    ]
+  },
+  {
+    "name": "Private ranges first, 192.168 before 10 before 172.16, public last",
+    "interfaces": {
+      "eth2": [
+        {
+          "address": "203.0.113.7",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "eth1": [
+        {
+          "address": "172.20.0.9",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "wlan0": [
+        {
+          "address": "10.1.1.5",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "eth0": [
+        {
+          "address": "192.168.1.5",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "eth3": [
+        {
+          "address": "172.32.0.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ]
+    },
+    "lan": [
+      [
+        "192.168.1.5",
+        "eth0",
+        true
+      ],
+      [
+        "10.1.1.5",
+        "wlan0",
+        true
+      ],
+      [
+        "172.20.0.9",
+        "eth1",
+        true
+      ],
+      [
+        "203.0.113.7",
+        "eth2",
+        false
+      ],
+      [
+        "172.32.0.1",
+        "eth3",
+        false
+      ]
+    ],
+    "virtual": []
+  },
+  {
+    "name": "Windows with VirtualBox, VMware, ZeroTier and OpenVPN",
+    "interfaces": {
+      "WLAN": [
+        {
+          "address": "192.168.0.77",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "VirtualBox Host-Only Network": [
+        {
+          "address": "192.168.56.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "VMware Network Adapter VMnet8": [
+        {
+          "address": "192.168.209.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "ZeroTier One [8056c2e21c000001]": [
+        {
+          "address": "10.147.17.5",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "OpenVPN TAP-Windows6": [
+        {
+          "address": "10.8.0.6",
+          "family": "IPv4",
+          "internal": false
+        }
+      ],
+      "vEthernet (Default Switch)": [
+        {
+          "address": "172.30.64.1",
+          "family": "IPv4",
+          "internal": false
+        }
+      ]
+    },
+    "lan": [
+      [
+        "192.168.0.77",
+        "WLAN",
+        true
+      ]
+    ],
+    "virtual": [
+      [
+        "192.168.209.1",
+        "VMware Network Adapter VMnet8",
+        true
+      ],
+      [
+        "192.168.56.1",
+        "VirtualBox Host-Only Network",
+        true
+      ],
+      [
+        "10.8.0.6",
+        "OpenVPN TAP-Windows6",
+        true
+      ],
+      [
+        "10.147.17.5",
+        "ZeroTier One [8056c2e21c000001]",
+        true
+      ],
+      [
+        "172.30.64.1",
+        "vEthernet (Default Switch)",
+        true
+      ]
+    ]
+  },
+  {
+    "name": "Loopback and IPv6 only: no address",
+    "interfaces": {
+      "lo": [
+        {
+          "address": "127.0.0.1",
+          "family": "IPv4",
+          "internal": true
+        },
+        {
+          "address": "::1",
+          "family": "IPv6",
+          "internal": true
+        }
+      ],
+      "eth0": [
+        {
+          "address": "fd00::5",
+          "family": "IPv6",
+          "internal": false
+        }
+      ]
+    },
+    "lan": [],
+    "virtual": []
+  }
+]

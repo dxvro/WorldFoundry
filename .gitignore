@@ -1,0 +1,14 @@
+node_modules/
+dist/
+/data/
+/servers/
+.env
+*.log
+*.tsbuildinfo
+/release/
+
+# agent worktrees
+/.claude/worktrees/
+
+# Minecraft and loader files are downloaded at runtime and never part of the repository
+*.jar

@@ -1,0 +1,15 @@
+[Unit]
+Description=WorldFoundry - apply update (privileged)
+Documentation=file:///opt/worldfoundry/README.txt
+# Deliberately NO dependency on worldfoundry.service (no BindsTo/PartOf/Requires): stopping the application
+# during the installation must not end this process.
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/worldfoundry/node/node /opt/worldfoundry/tools/updater.mjs apply
+TimeoutStartSec=1800
+UMask=0022
+# The updater replaces /opt/worldfoundry including the Node executable that runs it; on Linux this is
+# unproblematic (the opened file stays valid until the end), and it backs up the old version first.

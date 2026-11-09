@@ -1,0 +1,28 @@
+#!/bin/sh
+# WorldFoundry - administration on the server computer (install.sh links it to /usr/local/bin/worldfoundry)
+#
+#   sudo worldfoundry reset-password                     show a new random password for the web interface
+#   sudo worldfoundry reset-password --password-stdin    read the password from standard input
+#
+# The command writes directly to the database, opens no network access and therefore needs root. It runs as the
+# system user "worldfoundry" so the database files keep belonging to it. The service does not have to be stopped.
+INSTALL_DIR=/opt/worldfoundry
+CONF_FILE=/etc/worldfoundry/worldfoundry.env
+SERVICE_USER=worldfoundry
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run as root: sudo worldfoundry $*" >&2
+  exit 1
+fi
+if [ ! -x "$INSTALL_DIR/node/node" ] || [ ! -f "$INSTALL_DIR/app/backend/dist/cli.js" ]; then
+  echo "Error: WorldFoundry is not installed in $INSTALL_DIR." >&2
+  exit 1
+fi
+
+if command -v runuser >/dev/null 2>&1; then
+  exec runuser -u "$SERVICE_USER" -- env CONFIG_FILE="$CONF_FILE" NODE_ENV=production "$INSTALL_DIR/node/node" "$INSTALL_DIR/app/backend/dist/cli.js" "$@"
+elif command -v sudo >/dev/null 2>&1; then
+  exec sudo -u "$SERVICE_USER" env CONFIG_FILE="$CONF_FILE" NODE_ENV=production "$INSTALL_DIR/node/node" "$INSTALL_DIR/app/backend/dist/cli.js" "$@"
+fi
+echo "Error: neither runuser nor sudo found, the command cannot run as user $SERVICE_USER." >&2
+exit 1

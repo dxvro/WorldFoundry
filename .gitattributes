@@ -1,0 +1,31 @@
+# Line endings are the same on every checkout (Windows with core.autocrlf, Linux, CI).
+# Tests compare checked-in files, and shell scripts / systemd units / the env template must never get CRLF.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.sql text eol=lf
+*.json text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.service text eol=lf
+*.env.template text eol=lf
+
+# Windows-only files: cmd.exe needs CRLF in batch files (the Windows ZIP is also built on Linux),
+# the Inno Setup script and the files of the Windows installer/package keep the Windows convention.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.iss text eol=crlf
+installer/windows/*.txt text eol=crlf
+installer/windows/*.xml text eol=crlf
+
+# binary files are never converted
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
