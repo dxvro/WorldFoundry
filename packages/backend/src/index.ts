@@ -1,6 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { buildApp } from './app.js';
+import { ensureInitialPassword, removeInitialPasswordFile } from './auth/first-start.js';
 import { ConfigError, loadConfig, loadDotEnv } from './config/env.js';
 import { openDb } from './db/client.js';
 import { runMigrations } from './db/migrate.js';
@@ -34,6 +35,9 @@ async function main(): Promise<void> {
   const network = effectiveNetwork(networkDefaults, await readStoredNetwork(new SettingsStore(handle.db)));
   Object.assign(config, { host: network.host, port: network.port, allowedHosts: network.allowedHosts });
 
+  // never without a sign-in: the first start without AUTH_TOKEN creates a password (printed below, after the address)
+  const initialPassword = await ensureInitialPassword({ db: handle.db, dataDir: config.dataDir, authToken: config.authToken });
+
   const userAgent = config.modrinthUserAgent ?? `WorldFoundry/${readVersion()}`;
   const app = buildApp({
     db: handle.db,
@@ -45,6 +49,8 @@ async function main(): Promise<void> {
     restart: { exit: (code) => void shutdown('Restart', code) },
   });
   const { manager } = app.services;
+  // a password set in the web interface or with reset-password replaces the initial one
+  app.services.auth.onCredentialChange(() => void removeInitialPasswordFile(config.dataDir).catch(() => undefined));
 
   let shuttingDown = false;
   const shutdown = async (signal: string, exitCode = 0): Promise<void> => {
@@ -100,13 +106,12 @@ async function main(): Promise<void> {
   app.log.info(
     `Configuration: ${configFile === null ? 'no .env file, environment variables and defaults apply' : configFile}; data: ${config.dataDir}; servers: ${config.serversDir}`,
   );
-  if (!app.services.auth.enabled) {
-    app.log.warn(
-      'WARNING: Neither an AUTH_TOKEN nor a password is set. Anyone on the network who can reach this port can start servers, run commands and manage files. Set a password under System or only run this in trusted networks.',
-    );
-  }
   const { network: networkService } = app.services;
   app.log.info(`Web interface available at: ${describeAccess(listening.host, listening.port, networkService.detected(), networkService.hostname)}`);
+  if (initialPassword !== null) {
+    // on the console and not through the logger: a password does not belong into a log file or a log collector
+    console.log(`\n  First start: sign in with this password and set your own under System > Password.\n\n      ${initialPassword.password}\n\n  It is also in ${initialPassword.file}\n`);
+  }
   // installers and the updater read the address the application really listens on from here (the port can be changed in the UI)
   await writeNetworkInfo(config.dataDir, listening.host, listening.port).catch((error: unknown) => app.log.warn({ err: error }, 'network.json could not be written'));
 }

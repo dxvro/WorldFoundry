@@ -52,7 +52,7 @@ npm run build
 npm start
 ```
 
-Then open `http://localhost:3000`. Started this way there is no sign-in until you set one: put `AUTH_TOKEN=<at least 8 characters>` into a `.env` file (see [.env.example](.env.example)) before the first start, or set a password under **System** right after it. Without either, everyone who can reach the port has full access. For development (`npm run dev`), tests and building packages see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Then open `http://localhost:3000`. On the first start WorldFoundry creates a password, prints it once in the terminal and writes it to `initial-password.txt` in the data folder (`data/` in the checkout). Sign in with it and set your own under **System > Password**; the file is deleted then. If you set `AUTH_TOKEN` in a `.env` file (see [.env.example](.env.example)), that token is the first sign-in instead and no password is created.
 
 ## Documentation
 

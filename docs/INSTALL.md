@@ -445,7 +445,7 @@ After a port change, also update the firewall rule for the new port (section 2.4
 - **Scripts and API:** The token stays the machine access. Send it as `Authorization: Bearer <token>`. Changing the password does not change the token. The token is changed only in the configuration file, followed by a service restart.
 - **Failed logins:** After 5 wrong logins within 5 minutes, the IP address is blocked (HTTP 429) for a while.
 - **No HTTPS:** The login protects against random access on the LAN. It does not protect against someone reading the traffic on your network. Do not share the token.
-- **No token and no password** means open access for everyone who can reach the port. The installers always create a token, so this applies only if you have removed it yourself.
+- **No token and no password:** the next start creates a random password and writes it to `initial-password.txt` in the data folder. The installers always create a token, so this applies only if you have removed it yourself.
 
 **Forgot the password?** Reset it only on the computer itself:
 
