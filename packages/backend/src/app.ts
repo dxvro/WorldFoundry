@@ -11,6 +11,7 @@ import { registerGameRoutes } from './http/routes/games.js';
 import { registerHealthRoutes } from './http/routes/health.js';
 import { registerJavaRoutes } from './http/routes/java.js';
 import { registerModRoutes } from './http/routes/mods.js';
+import { registerCurseForgeRoutes } from './http/routes/curseforge.js';
 import { registerNetworkRoutes } from './http/routes/network.js';
 import { registerPlayerRoutes } from './http/routes/players.js';
 import { registerServerRoutes } from './http/routes/servers.js';
@@ -93,6 +94,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   registerServerRoutes(app, context);
   registerPlayerRoutes(app, context);
   registerModRoutes(app, services.mods);
+  registerCurseForgeRoutes(app, services.curseforge, services.mods);
   registerWorldIoRoutes(app, context);
 
   // Boot sequence: recover whatever the last run left half done, then start the background services. The

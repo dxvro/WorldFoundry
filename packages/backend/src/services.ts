@@ -13,6 +13,8 @@ import { LoaderCatalog } from './installer/catalog.js';
 import { createInstallerRunner, type InstallerRunner } from './installer/runner.js';
 import { InstallService } from './installer/service.js';
 import { GameAdapters } from './games/adapters.js';
+import { CurseForgeClient, type CurseForgeApi } from './curseforge/client.js';
+import { CurseForgeService } from './curseforge/service.js';
 import { MinecraftAdapter } from './games/minecraft/adapter.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
 import { ManagedRuntimes } from './java/managed.js';
@@ -47,6 +49,8 @@ export interface ServiceOptions {
   db: Db;
   config: AppConfig;
   modrinth: ModrinthApi;
+  // tests pass a fake; the real client talks to api.curseforge.com with the user's own key
+  curseforgeApi?: CurseForgeApi;
   logger?: Logger;
   // Phase 2 compatibility: replaces the process manager as the guard seen by the mod service
   runtimeGuard?: ServerRuntimeGuard;
@@ -91,6 +95,7 @@ export interface Services {
   bus: EventBus;
   catalog: LoaderCatalog;
   games: GameAdapters;
+  curseforge: CurseForgeService;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -210,6 +215,7 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.downloader === undefined ? {} : { downloader: options.downloader }),
   });
   hooks.modService = mods;
+  const curseforge = new CurseForgeService(db, options.curseforgeApi ?? new CurseForgeClient({ userAgent, ...(options.fetch === undefined ? {} : { fetch: options.fetch }) }));
 
   const install = new InstallService({
     db,
@@ -336,5 +342,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.restart?.exit === undefined ? {} : { exit: options.restart.exit }),
     ...(options.restart?.delayMs === undefined ? {} : { delayMs: options.restart.delayMs }),
   });
-  return { lock, bus, catalog, games, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  return { lock, bus, catalog, games, curseforge, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }

@@ -66,7 +66,8 @@ export async function loadResolverContext(env: UpdateEnv): Promise<ResolverConte
 
 async function findCandidates(env: UpdateEnv): Promise<InternalCandidate[]> {
   const rows = (await env.db.select().from(mods).where(eq(mods.serverId, env.serverId))).filter(
-    (row): row is Mod & { projectId: string } => row.projectId !== null,
+    // only Modrinth mods are checked; CurseForge and manual files are not
+    (row): row is Mod & { projectId: string } => row.projectId !== null && row.source === 'modrinth',
   );
   if (rows.length === 0) return [];
   const hashes = rows.map((row) => row.sha512);

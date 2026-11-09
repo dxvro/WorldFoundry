@@ -13,6 +13,8 @@ import { listModBackups, pruneModBackups, type PruneResult } from './mod-backups
 import { setModEnabled } from './toggle.js';
 import { rethrowFsError, type ModLogger } from './fs-errors.js';
 import { installPlan } from './installer.js';
+import { installFromCurseForge, type CfInstallResult } from './curseforge.js';
+import type { CurseForgeApi } from '../curseforge/client.js';
 import { KeyedLock } from '../lib/keyed-lock.js';
 import { requireLoaderProfile, type LoaderProfile } from './profile.js';
 import { planInstall } from './resolver.js';
@@ -238,6 +240,14 @@ export class ModService {
   async updateLog(serverId: string, limit: number): Promise<ModUpdateLogEntry[]> {
     const { env } = await this.context(serverId);
     return listUpdateLog(env, limit);
+  }
+
+  // Installs a CurseForge project and its required dependencies, under the same lock and checks as every other change.
+  installFromCurseForge(serverId: string, api: CurseForgeApi, apiKey: string, modId: number, fileId?: number): Promise<CfInstallResult> {
+    return this.locked(serverId, true, async ({ server, env }) => {
+      await scanServer(env);
+      return installFromCurseForge({ ...env, loader: server.loader, mcVersion: server.mcVersion, api, apiKey }, modId, fileId);
+    });
   }
 
   private async locked<T>(serverId: string, mutating: boolean, task: (context: Context) => Promise<T>): Promise<T> {
