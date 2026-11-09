@@ -43,6 +43,8 @@ export const errors = {
   // replaces the text of a validation detail; the path of the detail is shown in front of it
   invalidDetail: 'invalid value',
   codes: {
+    GAME_NOT_FOUND: 'This game is not known to WorldFoundry.',
+    GAME_NOT_AVAILABLE: (p: Details) => (text(p.game) === undefined ? 'Servers for this game cannot be created yet.' : `Servers for ${p.game} cannot be created yet.`),
     NETWORK_ERROR: 'The server cannot be reached. Please check the network connection.',
     INVALID_RESPONSE: 'The response of the server is unreadable.',
     UNAUTHORIZED: 'Sign-in required. Please sign in.',

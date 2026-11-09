@@ -8,6 +8,7 @@ import type { ServerDto } from '../contract.js';
 import { servers, type Server } from '../db/schema.js';
 import type { BackupDisposal, BackupService } from '../backups/service.js';
 import type { EventBus } from '../events/bus.js';
+import { assertGameAvailable } from '../games/registry.js';
 import { AppError } from '../http/errors.js';
 import type { LoaderCatalog } from '../installer/catalog.js';
 import { parseLaunchSpec } from '../installer/launch-spec.js';
@@ -92,6 +93,7 @@ export class ServerService {
   }
 
   async create(input: CreateServerInput): Promise<ServerDto> {
+    const game = assertGameAvailable(input.game ?? 'minecraft');
     const minRamMb = input.minRamMb ?? Math.min(1024, input.maxRamMb ?? 1024);
     const maxRamMb = input.maxRamMb ?? Math.max(2048, minRamMb);
     this.assertRam(minRamMb, maxRamMb);
@@ -104,6 +106,7 @@ export class ServerService {
       tx.insert(servers).values({
         id,
         name: input.name,
+        game: game.id,
         loader: input.loader,
         mcVersion: input.mcVersion,
         loaderVersion: plan.loaderVersion,

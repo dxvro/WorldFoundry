@@ -7,6 +7,7 @@ import { registerFrontend } from './http/frontend.js';
 import { registerHostGuard } from './http/host.js';
 import { registerOriginGuard } from './http/origin.js';
 import { registerBackupRoutes } from './http/routes/backups.js';
+import { registerGameRoutes } from './http/routes/games.js';
 import { registerHealthRoutes } from './http/routes/health.js';
 import { registerJavaRoutes } from './http/routes/java.js';
 import { registerModRoutes } from './http/routes/mods.js';
@@ -83,6 +84,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
   registerWebSocketRoutes(app, context);
   registerHealthRoutes(app, context);
+  registerGameRoutes(app);
   registerSystemRoutes(app, context);
   registerNetworkRoutes(app, context);
   registerUpdateRoutes(app, context);

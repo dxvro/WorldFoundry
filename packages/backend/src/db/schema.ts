@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core';
+import { GAME_IDS } from '../games/types.js';
 import { BACKUP_KINDS, SELF_UPDATE_RESULTS, BACKUP_STATUSES, DEPENDENCY_TYPES, INSTALL_STATES, LOADERS, MOD_SOURCES, UPDATE_STATUSES } from './enums.js';
 
 export const servers = sqliteTable(
@@ -6,6 +7,8 @@ export const servers = sqliteTable(
   {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
+    // which game adapter owns this server; rows from before the column existed are Minecraft servers
+    game: text('game', { enum: GAME_IDS }).notNull().default('minecraft'),
     loader: text('loader', { enum: LOADERS }).notNull(),
     mcVersion: text('mc_version').notNull(),
     loaderVersion: text('loader_version'),

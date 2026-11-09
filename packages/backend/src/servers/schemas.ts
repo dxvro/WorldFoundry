@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { LOADERS } from '../db/enums.js';
+import { GAME_IDS } from '../games/types.js';
 
 export const MIN_RAM_MB = 256;
 
@@ -8,6 +9,8 @@ const ramField = z.number().int().min(MIN_RAM_MB).max(4_194_304);
 export const CreateServerSchema = z
   .object({
     name: z.string().trim().min(1).max(60),
+    // defaults to Minecraft, the only game of the first versions of the API
+    game: z.enum(GAME_IDS).optional(),
     loader: z.enum(LOADERS),
     mcVersion: z.string().trim().min(1).max(64),
     loaderVersion: z.string().trim().min(1).max(64).optional(),

@@ -14,6 +14,7 @@
 //   - import notices have `code` (their key, unless `key` is set), `params` and `text`
 import type { BackupKind, BackupStatus, DependencyType, InstallState, Loader, ModSource, UpdateStatus } from './db/enums.js';
 import type { Backup, Mod, ModDependency, ModUpdateLogEntry as ModUpdateLogRow, Server } from './db/schema.js';
+import type { GameDefinition } from './games/types.js';
 import type { AppEvent } from './events/bus.js';
 import type { MessageParams, MessageRef } from './messages.js';
 import type { InstallLogLine, InstallLogView } from './installer/install-log.js';
@@ -54,6 +55,7 @@ export type { ErrorParamsMap, MessageKey, MessageParams, MessageParamsMap, Messa
 export type { InstallMode, LatestRelease, SystemUpdateState, UpdateHistoryEntry, UpdatePhase, UpdateProgress };
 export type { SelfUpdateResult } from './db/enums.js';
 export type { ConsoleStream, ServerState } from './process/types.js';
+export type { GameAvailability, GameDefinition, GameId, GamePort, HostPlatform, ModSourceInfo } from './games/types.js';
 export type * from './worldio/dto.js';
 
 export interface ErrorBody {
@@ -69,6 +71,10 @@ export interface ServerDto extends Omit<Server, 'launchSpec' | 'installErrorRef'
   // key and params for `installError`; null for errors stored before references existed
   installErrorRef: MessageRef | null;
   status: RuntimeStatus;
+}
+
+export interface GamesInfo {
+  games: GameDefinition[];
 }
 
 export interface HealthInfo {

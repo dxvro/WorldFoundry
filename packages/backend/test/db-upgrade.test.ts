@@ -96,7 +96,9 @@ describe('upgrading a database from the previous schema', () => {
     // all old columns keep their values
     const keep = (rows: Array<Record<string, unknown>>, drop: string[]): Array<Record<string, unknown>> =>
       rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !drop.includes(key))));
-    expect(keep(after.servers, ['auto_start', 'backup_interval_hours', 'backup_keep_last', 'backup_include_config', 'backup_schedule_since', 'install_error_ref'])).toEqual(before.servers);
+    expect(keep(after.servers, ['auto_start', 'backup_interval_hours', 'backup_keep_last', 'backup_include_config', 'backup_schedule_since', 'install_error_ref', 'game'])).toEqual(before.servers);
+    // servers from before WorldFoundry knew several games are Minecraft servers
+    expect(after.servers.every((row) => row['game'] === 'minecraft')).toBe(true);
     expect(keep(after.mods, ['enabled'])).toEqual(before.mods);
     expect(after.deps).toEqual(before.deps);
     expect(keep(after.log, ['error_ref'])).toEqual(before.log);
@@ -114,7 +116,7 @@ describe('upgrading a database from the previous schema', () => {
     // the self-update tables of the newest migration exist and are empty
     expect(await scalar('SELECT count(*) FROM app_settings')).toBe(0);
     expect(await scalar('SELECT count(*) FROM update_history')).toBe(0);
-    expect(await scalar('SELECT count(*) FROM __drizzle_migrations')).toBe(5);
+    expect(await scalar('SELECT count(*) FROM __drizzle_migrations')).toBe(6);
   });
 
   it('keeps relationships working: foreign keys, cascades and the new table', async () => {
@@ -139,7 +141,7 @@ describe('upgrading a database from the previous schema', () => {
     await seedPreviousSchema();
     await runMigrations(handle.db);
     await runMigrations(handle.db);
-    expect(await scalar('SELECT count(*) FROM __drizzle_migrations')).toBe(5);
+    expect(await scalar('SELECT count(*) FROM __drizzle_migrations')).toBe(6);
 
     const app = buildApp({ db: handle.db, config: { ...testConfig(dir), javaAutoInstall: false }, modrinth: new FakeModrinth().api(), javaStandardRoots: [] });
     await app.ready();
@@ -163,7 +165,7 @@ describe('upgrading a database from the previous schema', () => {
 
   it('keeps the earlier migrations untouched while new ones are only added', async () => {
     const files = (await readdir(MIGRATIONS_FOLDER)).filter((name) => name.endsWith('.sql')).sort();
-    expect(files).toHaveLength(5);
+    expect(files).toHaveLength(6);
     expect(files.slice(0, 2)).toEqual(['0000_dazzling_onslaught.sql', '0001_dry_thunderbolt.sql']);
     // the line endings depend on the checkout (core.autocrlf), the content does not
     const earlier = (await readFile(path.join(MIGRATIONS_FOLDER, files[1] as string), 'utf8')).replace(/\r\n/g, '\n');

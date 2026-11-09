@@ -257,6 +257,7 @@ export interface ErrorParamsMap {
   ARCHIVE_TOO_LARGE: { entry: string } | { maxMb: number };
   ARCHIVE_PATH_TOO_LONG: { path: string };
   BACKUP_LEVEL_INVALID: { levelName: string };
+  GAME_NOT_AVAILABLE: { game: string };
   BACKUP_TOO_DEEP: { path: string };
   TOO_MANY_ATTEMPTS: { seconds: number };
   JAVA_RUNTIME_NOT_FOUND: { major: number };
