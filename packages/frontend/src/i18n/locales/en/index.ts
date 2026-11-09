@@ -18,6 +18,7 @@ import { network } from './network';
 import { password } from './password';
 import { update } from './update';
 import { messages } from './messages';
+import { games } from './games';
 
 export const en = {
   common,
@@ -40,4 +41,5 @@ export const en = {
   password,
   update,
   messages,
+  games,
 };

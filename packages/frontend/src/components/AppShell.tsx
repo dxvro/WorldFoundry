@@ -1,4 +1,4 @@
-import { LayoutGrid, LogOut, Plus, Settings, WifiOff } from 'lucide-react';
+import { Gamepad2, LayoutGrid, LogOut, Plus, Settings, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useI18n } from '../i18n';
@@ -12,11 +12,12 @@ import { Button, cx } from './ui';
 function Brand(): ReactNode {
   return (
     <Link to="/" className="flex min-h-11 items-center gap-2.5 rounded-md text-ink no-underline">
+      {/* a world (ring with a meridian) resting on an anvil */}
       <svg aria-hidden viewBox="0 0 32 32" className="size-7 shrink-0">
         <rect width="32" height="32" rx="7" fill="var(--color-raised)" />
-        <rect x="6" y="7" width="20" height="5" rx="1.5" fill="var(--color-accent)" />
-        <rect x="6" y="14" width="20" height="5" rx="1.5" fill="var(--color-ok)" />
-        <rect x="6" y="21" width="12" height="5" rx="1.5" fill="var(--color-idle)" />
+        <circle cx="16" cy="12.5" r="6.5" fill="none" stroke="var(--color-accent)" strokeWidth="2" />
+        <path d="M9.5 12.5h13M16 6c-3 3.5-3 9.500 0 13M16 6c3 3.5 3 9.500 0 13" fill="none" stroke="var(--color-accent)" strokeWidth="1.4" />
+        <path d="M8 22h16l-2.500 4h-11z" fill="var(--color-ok)" />
       </svg>
       <span className="text-base font-semibold tracking-tight">WorldFoundry</span>
     </Link>
@@ -60,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactNode {
   const { state, statusFor } = useLive();
   const { t } = useI18n();
   const servers = state.servers ?? [];
+  const isNew = route.name === 'new' || route.name === 'new-game' || route.name === 'new-world';
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
@@ -72,9 +74,13 @@ export function AppShell({ children }: { children: ReactNode }): ReactNode {
             <LayoutGrid aria-hidden className="size-4" />
             {t.shell.overview}
           </Link>
-          <Link to="/new" className={navClass(route.name === 'new')} aria-current={route.name === 'new' ? 'page' : undefined}>
+          <Link to="/new" className={navClass(isNew)} aria-current={isNew ? 'page' : undefined}>
             <Plus aria-hidden className="size-4" />
             {t.shell.newServer}
+          </Link>
+          <Link to="/games" className={navClass(route.name === 'games')} aria-current={route.name === 'games' ? 'page' : undefined}>
+            <Gamepad2 aria-hidden className="size-4" />
+            {t.games.nav}
           </Link>
           <Link to="/system" className={navClass(route.name === 'system')} aria-current={route.name === 'system' ? 'page' : undefined}>
             <Settings aria-hidden className="size-4" />
@@ -121,14 +127,18 @@ export function AppShell({ children }: { children: ReactNode }): ReactNode {
         <footer className="border-t border-line px-4 pb-20 pt-3 sm:px-6 lg:hidden">
           <Disclaimer />
         </footer>
-        <nav aria-label={t.shell.mainNavigation} className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-line bg-panel lg:hidden">
+        <nav aria-label={t.shell.mainNavigation} className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-panel lg:hidden">
           <Link to="/" className={cx(navClass(route.name === 'overview' || route.name === 'server'), 'min-h-14 justify-center rounded-none px-1! text-sm')} aria-current={route.name === 'overview' ? 'page' : undefined}>
             <LayoutGrid aria-hidden className="size-5" />
             {t.shell.overview}
           </Link>
-          <Link to="/new" className={cx(navClass(route.name === 'new'), 'min-h-14 justify-center rounded-none px-1! text-sm')} aria-current={route.name === 'new' ? 'page' : undefined}>
+          <Link to="/new" className={cx(navClass(isNew), 'min-h-14 justify-center rounded-none px-1! text-sm')} aria-current={isNew ? 'page' : undefined}>
             <Plus aria-hidden className="size-5" />
             {t.shell.newServer}
+          </Link>
+          <Link to="/games" className={cx(navClass(route.name === 'games'), 'min-h-14 justify-center rounded-none px-1! text-sm')} aria-current={route.name === 'games' ? 'page' : undefined}>
+            <Gamepad2 aria-hidden className="size-5" />
+            {t.games.nav}
           </Link>
           <Link to="/system" className={cx(navClass(route.name === 'system'), 'min-h-14 justify-center rounded-none px-1! text-sm')} aria-current={route.name === 'system' ? 'page' : undefined}>
             <Settings aria-hidden className="size-5" />

@@ -42,7 +42,9 @@ describe('disclaimer', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.getAllByText(DISCLAIMER).length).toBeGreaterThanOrEqual(1);
-    expect(DISCLAIMER).toBe('Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.');
+    // the general disclaimer names every rights holder family
+    for (const owner of ['Mojang', 'Microsoft', 'The Indie Stone', 'Coffee Stain', 'Studio Wildcard', 'Snail Games', 'Valve']) expect(DISCLAIMER).toContain(owner);
+    expect(DISCLAIMER).toContain('not an official product');
   });
 
   it('asks for the password once one was set', async () => {

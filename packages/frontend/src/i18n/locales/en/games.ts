@@ -1,0 +1,39 @@
+export const games = {
+  documentTitle: 'Games · WorldFoundry',
+  title: 'Games',
+  intro:
+    'The games WorldFoundry can run servers for. WorldFoundry ships no game files: every server is downloaded from the publisher or through SteamCMD on your machine, and you accept the license of each game yourself.',
+  nav: 'Games',
+  loading: 'Loading the games …',
+  loadFailed: 'The list of games could not be loaded',
+  available: 'Available',
+  planned: 'Planned',
+  plannedHint: 'Support for this game is being built. Servers cannot be created yet.',
+  serverCount: (n: number) => (n === 1 ? '1 server' : `${n} servers`),
+  createServer: 'Create a server',
+  facts: {
+    delivery: 'Server files',
+    platforms: 'Runs on',
+    ports: 'Default ports',
+    mods: 'Mods',
+    license: 'License',
+    rights: 'Rights holders',
+  },
+  delivery: {
+    vendor: 'Downloaded from the official source at installation',
+    steamcmd: (appId: number) => `Downloaded with SteamCMD (app ${appId}, anonymous login)`,
+  },
+  platform: { win32: 'Windows', linux: 'Linux' },
+  port: (purpose: string, port: number, protocol: string) => `${purpose}: ${port} (${protocol.toUpperCase()})`,
+  needsKey: 'own API key needed',
+  legalTitle: 'Trademarks and affiliation',
+  legalBody:
+    'WorldFoundry is free, open-source software (GPL-3.0) made by volunteers. All game names, logos and trademarks belong to their owners and are used only to say what WorldFoundry works with. None of the companies named on this page has made, approved or sponsored WorldFoundry.',
+  // game picker of "New server"
+  pickTitle: 'New server',
+  pickDocumentTitle: 'New server · WorldFoundry',
+  pickIntro: 'Choose the game the server is for.',
+  pickLabel: 'Games',
+  fromWorld: 'Minecraft server from an existing world',
+  groupLabel: (game: string) => `${game} servers`,
+};

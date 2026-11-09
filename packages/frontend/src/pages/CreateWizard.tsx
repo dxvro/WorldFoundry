@@ -1,3 +1,4 @@
+import { GameDisclaimer } from '../games/GameDisclaimer';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, ExternalLink, Rocket, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { InstallPanel } from '../components/InstallPanel';
@@ -228,6 +229,7 @@ export function CreateWizard(): ReactNode {
             {t.wizard.fromWorld}
           </Link>
         </div>
+        <GameDisclaimer game="minecraft" />
         <StepIndicator current={step} reached={reached} />
       </div>
 

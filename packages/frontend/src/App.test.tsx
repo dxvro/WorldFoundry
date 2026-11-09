@@ -83,8 +83,8 @@ describe('App authentication', () => {
     // the session expires on the server; the next API call is refused
     world.authenticated = false;
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole('link', { name: 'New server' })[0] as HTMLElement);
-    // the wizard loads the loaders, which answers 401
+    await user.click(screen.getAllByRole('link', { name: 'System' })[0] as HTMLElement);
+    // the system page loads its data, which answers 401
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Sign-in required' })).toBeInTheDocument());
   });
 

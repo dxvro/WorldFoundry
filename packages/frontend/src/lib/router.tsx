@@ -1,3 +1,5 @@
+import type { GameId } from '@worldfoundry/backend/contract';
+import { isGameId } from '../games/look';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
 export const SERVER_TABS = ['console', 'config', 'world', 'players', 'mods', 'store', 'backups'] as const;
@@ -6,6 +8,8 @@ export type ServerTab = (typeof SERVER_TABS)[number];
 export type Route =
   | { name: 'overview' }
   | { name: 'new' }
+  | { name: 'new-game'; game: GameId }
+  | { name: 'games' }
   | { name: 'system' }
   | { name: 'new-world' }
   | { name: 'server'; id: string; tab: ServerTab }
@@ -18,7 +22,9 @@ export function parseRoute(pathname: string): Route {
   if (parts.length === 0) return { name: 'overview' };
   if (parts.length === 1 && parts[0] === 'new') return { name: 'new' };
   if (parts.length === 1 && parts[0] === 'system') return { name: 'system' };
+  if (parts.length === 1 && parts[0] === 'games') return { name: 'games' };
   if (parts.length === 2 && parts[0] === 'new' && parts[1] === 'world') return { name: 'new-world' };
+  if (parts.length === 2 && parts[0] === 'new' && parts[1] !== undefined && isGameId(parts[1])) return { name: 'new-game', game: parts[1] };
   if (parts[0] === 'servers' && parts.length <= 3 && parts[1] !== undefined) {
     let id: string;
     try {

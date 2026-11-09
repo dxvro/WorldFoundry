@@ -1,3 +1,4 @@
+import { GameDisclaimer } from '../games/GameDisclaimer';
 import { ArrowLeft, RotateCcw, ServerOff, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { InstallPanel } from '../components/InstallPanel';
@@ -88,6 +89,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         </p>
         <ActionBar server={server} status={status} actions={actions} />
         <ActionFeedback serverId={server.id} actions={actions} />
+        <GameDisclaimer game={server.game} />
         {status.state === 'preparing' ? (
           <Notice tone="info" title={renderOptionalRef(status.messageRef, t, status.message) ?? t.server.preparing.fallbackTitle}>
             <p>{t.server.preparing.body}</p>

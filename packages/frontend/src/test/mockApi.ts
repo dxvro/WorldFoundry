@@ -21,6 +21,7 @@ export const offline = { state: 'offline', pid: null, startedAt: null, exitCode:
 export const serverFixture = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
   id: 'srv-1',
   name: 'Survival',
+  game: 'minecraft',
   loader: 'fabric',
   mcVersion: '1.21.1',
   loaderVersion: '0.16.0',
@@ -73,8 +74,37 @@ export const networkFixture = (overrides: Record<string, unknown> = {}): Record<
   publicUrl: null,
   restartRequired: false,
   warnings: [],
-  restart: { automatic: true, note: 'Der Dienst startet WorldFoundry nach dem Beenden selbst wieder.' },
+  restart: { automatic: true, note: 'The service starts WorldFoundry again by itself after it exits.' },
   ...overrides,
+});
+
+const game = (id: string, name: string, availability: string, disclaimer: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+  id,
+  name,
+  availability,
+  rightsHolders: ['Owner of ' + name],
+  disclaimer,
+  eula: { name: 'License of ' + name, url: 'https://example.invalid/eula' },
+  delivery: { kind: 'steamcmd', appId: 1, anonymous: true },
+  platforms: ['win32', 'linux'],
+  ports: [{ purpose: 'Game', port: 7777, protocol: 'udp' }],
+  modSources: [{ id: 'workshop', name: 'Steam Workshop', url: 'https://example.invalid/workshop', requiresKey: false }],
+  ...extra,
+});
+
+// what GET /api/games answers: one available game and one planned
+export const gamesFixture = (): Record<string, unknown> => ({
+  games: [
+    game('minecraft', 'Minecraft: Java Edition', 'available', 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.', {
+      delivery: { kind: 'vendor-download' },
+      ports: [{ purpose: 'Game', port: 25565, protocol: 'tcp' }],
+      modSources: [
+        { id: 'modrinth', name: 'Modrinth', url: 'https://modrinth.com', requiresKey: false },
+        { id: 'curseforge', name: 'CurseForge', url: 'https://www.curseforge.com/minecraft', requiresKey: true, note: 'Needs your own free CurseForge API key.' },
+      ],
+    }),
+    game('zomboid', 'Project Zomboid', 'planned', 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.'),
+  ],
 });
 
 // Routes are "METHOD /path-prefix"; the longest matching prefix wins. Unknown requests answer 404.
@@ -95,7 +125,7 @@ export function mockApi(routes: Record<string, Handler>): MockApi {
           return m === method && prefix !== undefined && path.startsWith(prefix);
         })
         .sort((a, b) => b.length - a.length)[0];
-      if (key === undefined) return json(404, { error: { code: 'NOT_FOUND', message: `nicht gefunden: ${method} ${url}` } });
+      if (key === undefined) return json(404, { error: { code: 'NOT_FOUND', message: `not found: ${method} ${url}` } });
       const result = (table.get(key) as Handler)(call);
       return result instanceof Response ? result : json(result.status ?? 200, result.body);
     }),
@@ -113,6 +143,7 @@ export function mockApi(routes: Record<string, Handler>): MockApi {
 export const baseRoutes = (server: Record<string, unknown>, system: Record<string, unknown> = systemFixture()): Record<string, Handler> => ({
   'GET /api/auth/status': () => ({ body: { authRequired: false, authenticated: true } }),
   'GET /api/health': () => ({ body: { status: 'ok', database: 'ok', lanUrls: [] } }),
+  'GET /api/games': () => ({ body: gamesFixture() }),
   'GET /api/servers': () => ({ body: { servers: [server] } }),
   'GET /api/system': () => ({ body: system }),
   // no update information unless a test asks for it (otherwise the longer /api/system route would answer)

@@ -1,3 +1,5 @@
+import { useGames } from '../games/GamesProvider';
+import { GAME_LOOK, GAME_ORDER } from '../games/look';
 import { Cpu, Globe, HardDrive, Plus, Server, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { ActionBar, ActionFeedback, useServerActions } from '../components/ServerActions';
@@ -215,6 +217,7 @@ export function Overview(): ReactNode {
   const { t } = useI18n();
   const { state, statusFor, listError, refresh } = useLive();
   const { navigate } = useRouter();
+  const { nameOf } = useGames();
   const servers = state.servers;
 
   useEffect(() => {
@@ -258,18 +261,31 @@ export function Overview(): ReactNode {
       ) : (
         <>
           {listError === null ? null : <Notice tone="warn">{t.overview.listStale(listError)}</Notice>}
-          <ul className="space-y-3" aria-label={t.overview.serversLabel}>
-            {servers.map((server) => (
-              <ServerRow
-                key={server.id}
-                server={server}
-                status={statusFor(server)}
-                install={state.installs[server.id]}
-                crash={state.crashes[server.id]}
-                host={host === undefined ? null : lanHost(host)}
-              />
-            ))}
-          </ul>
+          {GAME_ORDER.filter((game) => servers.some((server) => server.game === game)).map((game) => {
+            const Icon = GAME_LOOK[game].icon;
+            const own = servers.filter((server) => server.game === game);
+            return (
+              <section key={game} aria-label={t.games.groupLabel(nameOf(game))} className="space-y-2">
+                <h2 className="flex items-center gap-2 text-sm font-medium text-dim">
+                  <Icon aria-hidden className="size-4 text-accent" />
+                  {nameOf(game)}
+                  <span className="num text-faint">{own.length}</span>
+                </h2>
+                <ul className="space-y-3" aria-label={t.overview.serversLabel}>
+                  {own.map((server) => (
+                    <ServerRow
+                      key={server.id}
+                      server={server}
+                      status={statusFor(server)}
+                      install={state.installs[server.id]}
+                      crash={state.crashes[server.id]}
+                      host={host === undefined ? null : lanHost(host)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </>
       )}
     </div>

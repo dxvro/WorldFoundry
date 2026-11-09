@@ -1,3 +1,4 @@
+import type { GamesInfo } from '@worldfoundry/backend/contract';
 import { request } from './api';
 import type {
   AuthStatus,
@@ -58,6 +59,10 @@ export const networkApi = {
   state: (signal?: AbortSignal): Promise<NetworkState> => request('/api/system/network', signal === undefined ? {} : { signal }),
   save: (input: NetworkInput): Promise<NetworkState> => request('/api/system/network', { method: 'PUT', body: input }),
   restart: (): Promise<RestartPlan> => request('/api/system/restart', { method: 'POST', body: { confirm: true } }),
+};
+
+export const gamesApi = {
+  list: (signal?: AbortSignal): Promise<GamesInfo> => request('/api/games', signal === undefined ? {} : { signal }),
 };
 
 export const systemApi = {

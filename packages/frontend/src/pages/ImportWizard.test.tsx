@@ -74,7 +74,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('import wizard', () => {
   it('is reachable from the create wizard', async () => {
-    window.history.replaceState(null, '', '/new');
+    window.history.replaceState(null, '', '/new/minecraft');
     const user = userEvent.setup();
     render(<App />);
     await user.click(await screen.findByRole('link', { name: 'From an existing world' }));

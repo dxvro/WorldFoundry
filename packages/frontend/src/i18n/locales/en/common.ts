@@ -5,7 +5,9 @@ export const common = {
   retry: 'Try again',
   unknownError: 'Unknown error.',
   errorCode: (code: string) => `Error code: ${code}`,
-  disclaimer: 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.',
+  // the general disclaimer of the shell and the login page; each game adds its own where a page is about that game
+  disclaimer:
+    'WorldFoundry is an independent open-source project. It is not an official product of any game publisher and is not approved by or associated with Mojang, Microsoft, The Indie Stone, Coffee Stain, Studio Wildcard, Snail Games or Valve.',
   units: {
     underOneMinute: 'under 1 min',
     day: 'd',

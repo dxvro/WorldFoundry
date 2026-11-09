@@ -5,7 +5,10 @@ import { Button, EmptyState, ErrorNotice, LoadingBlock } from './components/ui';
 import { I18nProvider, useI18n } from './i18n';
 import { LiveProvider } from './live/LiveProvider';
 import { RouterProvider, useRouter } from './lib/router';
+import { GamesProvider } from './games/GamesProvider';
 import { CreateWizard } from './pages/CreateWizard';
+import { GamesPage } from './pages/Games';
+import { NewServer } from './pages/NewServer';
 import { ImportWizard } from './pages/ImportWizard';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
@@ -20,7 +23,12 @@ function Routes(): ReactNode {
     case 'overview':
       return <Overview />;
     case 'new':
-      return <CreateWizard key={visit} />;
+      return <NewServer />;
+    case 'new-game':
+      // Minecraft is the only game with a wizard so far; the picker never links to another one
+      return route.game === 'minecraft' ? <CreateWizard key={visit} /> : <NewServer />;
+    case 'games':
+      return <GamesPage />;
     case 'system':
       return <SystemPage />;
     case 'new-world':
@@ -55,9 +63,11 @@ function Gate(): ReactNode {
   if (phase === 'login') return <Login />;
   return (
     <LiveProvider>
-      <AppShell>
-        <Routes />
-      </AppShell>
+      <GamesProvider>
+        <AppShell>
+          <Routes />
+        </AppShell>
+      </GamesProvider>
     </LiveProvider>
   );
 }

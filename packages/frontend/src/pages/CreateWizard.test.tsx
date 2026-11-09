@@ -9,6 +9,7 @@ const json = (status: number, body: unknown): Response => new Response(JSON.stri
 const created = {
   id: 'srv-1',
   name: 'Survival',
+  game: 'minecraft',
   loader: 'fabric',
   mcVersion: '1.21.1',
   loaderVersion: '0.16.0',
@@ -56,7 +57,7 @@ describe('create wizard', () => {
   beforeEach(() => {
     FakeSocket.reset();
     vi.stubGlobal('WebSocket', FakeSocket);
-    window.history.replaceState(null, '', '/new');
+    window.history.replaceState(null, '', '/new/minecraft');
   });
   afterEach(() => vi.unstubAllGlobals());
 
