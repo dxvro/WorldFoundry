@@ -12,3 +12,6 @@ dist/
 
 # Minecraft and loader files are downloaded at runtime and never part of the repository
 *.jar
+
+# personal Claude Code instructions
+CLAUDE.local.md

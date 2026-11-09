@@ -6,39 +6,24 @@ import type { InstallState } from '../db/enums.js';
 import { servers, type Server } from '../db/schema.js';
 import type { EventBus } from '../events/bus.js';
 import { AppError, errorMsg } from '../http/errors.js';
-import type { JavaService } from '../java/service.js';
 import type { KeyedLock } from '../lib/keyed-lock.js';
 import { msg, refOf, serializeRef, textOf, type Msg, type Text } from '../messages.js';
 import { silentLogger, type Logger } from '../lib/logger.js';
-import { downloadToTmp } from '../mods/downloader.js';
-import { removeQuietly } from '../mods/files.js';
-import { rethrowFsError } from '../mods/fs-errors.js';
 import type { ServerRuntimeGuard } from '../mods/runtime-guard.js';
-import type { LoaderCatalog } from './catalog.js';
-import { LOADER_INFO } from './catalog.js';
-import { detectForgeLaunch } from './detect-launch.js';
+import type { GameAdapters } from '../games/adapters.js';
 import { INSTALL_LOG_FILE, countLogLines } from './install-log.js';
-import { serializeLaunchSpec, type LaunchSpec } from './launch-spec.js';
-import type { InstallerRunner } from './runner.js';
-import type { ResolvedInstall } from './types.js';
 
 export { INSTALL_LOG_FILE };
-const INSTALLER_TIMEOUT_MS = 10 * 60_000;
-const TAIL_LINES = 15;
 const MAX_ERROR_LENGTH = 3000;
-const PROGRESS_INTERVAL_MS = 250;
 
 export interface InstallServiceOptions {
   db: Db;
   serversDir: string;
   lock: KeyedLock;
   bus: EventBus;
-  catalog: LoaderCatalog;
-  java: JavaService;
-  runner: InstallerRunner;
+  games: GameAdapters;
   guard: ServerRuntimeGuard;
   logger?: Logger;
-  installerTimeoutMs?: number;
 }
 
 const notFound = (): AppError => new AppError(404, 'SERVER_NOT_FOUND', 'The server was not found.');
@@ -149,15 +134,7 @@ export class InstallService {
     if (server.installState === 'installed') {
       throw new AppError(409, 'ALREADY_INSTALLED', 'The server is already installed.');
     }
-    if (options.checkJava && LOADER_INFO[server.loader].requiresInstallerJava) {
-      // a missing runtime is installed by the job itself when automatic installation is on; otherwise this throws
-      await this.options.java.plan({
-        javaPath: server.javaPath,
-        loader: server.loader,
-        mcVersion: server.mcVersion,
-        requiredMajor: server.requiredJavaMajor,
-      });
-    }
+    await this.options.games.forServer(server).validateInstall(server, options);
   }
 
   private serverDir(serverId: string): string {
@@ -187,10 +164,16 @@ export class InstallService {
     const dir = this.serverDir(serverId);
     await mkdir(dir, { recursive: true });
     const log = await LogFile.open(dir, this.options.bus, serverId);
-    log.write(`=== Installation of ${server.loader} ${server.mcVersion}${server.loaderVersion === null ? '' : ` ${server.loaderVersion}`} started ===`);
+    const adapter = this.options.games.forServer(server);
+    log.write(`=== Installation of ${adapter.installTitle(server)} started ===`);
     await this.setState(serverId, 'installing', null);
     try {
-      const result = await this.install(server, dir, log);
+      const result = await adapter.install(server, {
+        dir,
+        signal: this.abort.signal,
+        log: (line) => log.write(line),
+        progress: (phase, percent, message) => this.progress(serverId, phase, percent, message),
+      });
       await this.setState(serverId, 'installed', null, result);
       this.progress(serverId, 'done', 100, msg('INSTALL_DONE'));
       log.write('=== Installation finished ===');
@@ -210,139 +193,5 @@ export class InstallService {
   private describe(error: unknown): Msg {
     const failure = errorMsg(error, msg('INSTALL_UNEXPECTED_ERROR'));
     return failure.text.length > MAX_ERROR_LENGTH ? { text: `${failure.text.slice(0, MAX_ERROR_LENGTH)} ...`, ref: failure.ref } : failure;
-  }
-
-  private async install(server: Server, dir: string, log: LogFile): Promise<Partial<Server>> {
-    const { catalog, java } = this.options;
-    const signal = this.abort.signal;
-    const checkAborted = (): void => {
-      if (signal.aborted) throw new AppError(500, 'INSTALL_ABORTED', 'The installation was interrupted (the application is shutting down).');
-    };
-
-    this.progress(server.id, 'resolve', null, msg('INSTALL_STEP_RESOLVE'));
-    log.write('Querying the version at the source ...');
-    const plan = await catalog.resolve(server.loader, server.mcVersion, server.loaderVersion);
-    for (const note of plan.notes) log.write(`Note: ${note}`);
-    log.write(`Source: ${plan.artifact.url}`);
-    checkAborted();
-
-    const needsJava = plan.mode.kind === 'installer';
-    let javaPath = '';
-    if (needsJava) {
-      let javaStep = '';
-      const selection = await java.acquire(
-        {
-          javaPath: server.javaPath,
-          loader: server.loader,
-          mcVersion: server.mcVersion,
-          requiredMajor: plan.requiredJavaMajor,
-        },
-        {
-          signal,
-          onProgress: (step) => {
-            this.progress(server.id, 'java', step.percent, step.ref === undefined ? step.message : { text: step.message, ref: step.ref });
-            if (step.phase !== javaStep) log.write(step.message);
-            javaStep = step.phase;
-          },
-        },
-      );
-      javaPath = selection.runtime.path;
-      log.write(`Using Java ${selection.runtime.major} (${selection.runtime.path})`);
-      for (const warning of selection.warnings) log.write(`Note: ${warning.text}`);
-    }
-
-    const tmpDir = path.join(dir, '.tmp');
-    await rm(tmpDir, { recursive: true, force: true });
-    let lastReport = 0;
-    const part = await downloadToTmp(
-      {
-        url: plan.artifact.url,
-        fileName: plan.artifact.fileName,
-        ...(plan.artifact.hash === undefined ? {} : { hash: plan.artifact.hash }),
-        ...(plan.artifact.size === undefined ? {} : { size: plan.artifact.size }),
-        allowedHosts: plan.artifact.allowedHosts,
-        requireZip: plan.artifact.requireZip,
-        onProgress: (received, total) => {
-          const now = Date.now();
-          if (now - lastReport < PROGRESS_INTERVAL_MS && received !== total) return;
-          lastReport = now;
-          const percent = total === null || total === 0 ? null : Math.min(99, Math.floor((received / total) * 100));
-          this.progress(server.id, 'download', percent, msg('INSTALL_STEP_DOWNLOAD', { fileName: plan.artifact.fileName, kib: Math.round(received / 1024) }));
-        },
-      },
-      tmpDir,
-      catalog.downloader,
-    );
-    log.write(`Download finished${plan.artifact.hash === undefined ? '' : ` (${plan.artifact.hash.algorithm} verified)`}`);
-    const target = path.join(dir, plan.artifact.fileName);
-    try {
-      await rename(part, target);
-    } catch (error) {
-      await removeQuietly(part);
-      rethrowFsError(error, plan.artifact.fileName);
-    }
-    checkAborted();
-
-    let launch: LaunchSpec;
-    if (plan.mode.kind === 'jar') {
-      launch = { kind: 'jar', jar: plan.mode.launchJar };
-    } else {
-      try {
-        launch = await this.runInstaller(server, plan, javaPath, dir, log);
-      } finally {
-        await rm(target, { force: true }).catch(() => undefined);
-      }
-    }
-    log.write(`Start file: ${launch.kind === 'jar' ? launch.jar : launch.unixFile}`);
-    return {
-      launchSpec: serializeLaunchSpec(launch),
-      requiredJavaMajor: plan.requiredJavaMajor,
-      loaderVersion: plan.loaderVersion,
-    };
-  }
-
-  private async runInstaller(server: Server, plan: ResolvedInstall, javaPath: string, dir: string, log: LogFile): Promise<LaunchSpec> {
-    if (plan.mode.kind !== 'installer') throw new AppError(500, 'INTERNAL_ERROR', 'Invalid installation mode.');
-    this.progress(server.id, 'install', null, msg('INSTALL_STEP_INSTALLER'));
-    log.write(`Running installer: java -jar ${plan.artifact.fileName} ${plan.mode.arguments.join(' ')}`);
-    const tail: string[] = [];
-    const timeoutMs = this.options.installerTimeoutMs ?? INSTALLER_TIMEOUT_MS;
-    let result;
-    try {
-      result = await this.options.runner({
-        javaPath,
-        args: ['-jar', plan.artifact.fileName, ...plan.mode.arguments],
-        cwd: dir,
-        timeoutMs,
-        signal: this.abort.signal,
-        onLine: (line) => {
-          log.write(line);
-          tail.push(line);
-          if (tail.length > TAIL_LINES) tail.shift();
-        },
-      });
-    } catch (error) {
-      this.logger.error({ err: error }, 'The installer could not be started');
-      throw new AppError(500, 'INSTALLER_FAILED', 'The installer could not be started. Is the Java file valid?', undefined, { reason: 'not-started' });
-    }
-    const output = tail.length === 0 ? '' : `\nLast output:\n${tail.join('\n')}`;
-    if (result.aborted) throw new AppError(500, 'INSTALL_ABORTED', 'The installation was interrupted (the application is shutting down).');
-    if (result.timedOut) {
-      throw new AppError(500, 'INSTALLER_TIMEOUT', `The installer was cancelled after ${Math.round(timeoutMs / 60_000)} minutes.${output}`, undefined, {
-        minutes: Math.round(timeoutMs / 60_000),
-        output: tail.join('\n'),
-      });
-    }
-    if (result.exitCode !== 0) {
-      throw new AppError(500, 'INSTALLER_FAILED', `The installer failed with exit code ${result.exitCode ?? 'unknown'}.${output}`, undefined, {
-        reason: 'exit',
-        exitCode: result.exitCode ?? 'unknown',
-        output: tail.join('\n'),
-      });
-    }
-    if (server.loader !== 'forge' && server.loader !== 'neoforge') {
-      throw new AppError(500, 'INTERNAL_ERROR', 'Invalid installation mode.');
-    }
-    return detectForgeLaunch(dir, server.loader, server.mcVersion, plan.loaderVersion);
   }
 }

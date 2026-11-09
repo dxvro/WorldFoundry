@@ -1,4 +1,7 @@
-import type { MessageRef } from '../messages.js';
+import type { Server } from '../db/schema.js';
+import type { AppError } from '../http/errors.js';
+import type { Msg, Text } from '../messages.js';
+import type { LineEvent } from '../process/patterns.js';
 
 // Every game WorldFoundry knows. A game with availability 'planned' is listed with its disclaimer and facts, but no
 // server can be created for it yet.
@@ -45,68 +48,70 @@ export interface GameDefinition {
 
 // ---- The adapter: everything the core needs from a game ----
 //
-// The core owns what is the same for every game: the process (spawn, console, metrics, clean stop), ports, locks,
-// backups and their schedule, archives, import/export, the event bus and the HTTP API. A game adapter supplies the
-// parts that differ. The Minecraft code predates this interface and is moved behind it step by step; a new game is
-// written against it from the start.
+// The core owns what is the same for every game: the install queue, its state and log, the process (spawn, console,
+// metrics, clean stop), ports, locks and the HTTP API. A game adapter supplies what differs. Backups, import/export,
+// player lists and mods are still Minecraft code paths; they move behind this interface when a second game needs them.
 
-export interface ServerRef {
-  id: string;
-  // absolute folder of this server: <serversDir>/<id>
+
+export type { LineEvent };
+
+export interface InstallContext {
   dir: string;
-  // game-specific settings of the server (version, branch, memory, ...), validated by the adapter
-  settings: Record<string, unknown>;
+  signal: AbortSignal;
+  // one line of install.log
+  log: (line: string) => void;
+  // live progress for the interface
+  progress: (phase: string, percent: number | null, message: Text) => void;
 }
 
-export interface InstallProgress {
-  phase: string;
-  percent: number | null;
-  message: string;
-  messageRef?: MessageRef;
+// Work that has to finish before the process can be started (Minecraft: a missing Java runtime is downloaded).
+// It runs in the background without the server lock; the core then asks for the start plan again.
+export interface PreparationTask {
+  // the Java major for the Java runtime list ("in use by"), null for other kinds of preparation
+  javaMajor: number | null;
+  // console line when the preparation begins, and status text while it runs
+  notice: Msg;
+  status: (percent: number | null) => Msg;
+  run: (signal: AbortSignal, onProgress: (step: { phase: string; percent: number | null; text: Text }) => void) => Promise<void>;
+  done: Msg;
+  cancelled: Msg;
+  failed: Msg;
+  // when the start plan asks for the same preparation again right after it succeeded
+  stillMissing: () => AppError;
 }
 
 export interface LaunchPlan {
   command: string;
   args: string[];
-  cwd: string;
-  env?: Record<string, string>;
+  port: number;
+  // the first console line of the run
+  startLine: Msg;
+  // console notes shown after it, and returned as warnings of the start request
+  notes: Msg[];
+  // runs after the port check, right before the process is spawned (Minecraft: eula.txt)
+  beforeSpawn: () => Promise<void>;
+  // remembered while the process runs, for the Java runtime list
+  javaPath: string | null;
 }
 
-export interface ConfigFile {
-  // path relative to the server folder
-  path: string;
-  label: string;
-  format: 'properties' | 'ini' | 'lua' | 'json' | 'text';
-}
+export type StartPlan =
+  | { kind: 'prepare'; task: PreparationTask; port: number; notes: Msg[] }
+  | { kind: 'launch'; plan: LaunchPlan };
 
 export interface GameAdapter {
   readonly definition: GameDefinition;
 
-  // Check and normalise the game-specific part of a create or update request; throws AppError for invalid input.
-  parseSettings(input: unknown): Promise<Record<string, unknown>>;
+  // First line of install.log
+  installTitle(server: Server): string;
+  // Checks before an installation is queued; throws AppError when it cannot work.
+  validateInstall(server: Server, options: { checkJava: boolean }): Promise<void>;
+  // Puts the server files into ctx.dir. Returns the columns of the server row that the installation sets.
+  install(server: Server, ctx: InstallContext): Promise<Partial<Server>>;
 
-  // Put the server files into `server.dir` (download or SteamCMD) and report progress. Runs under the server lock.
-  install(server: ServerRef, report: (progress: InstallProgress) => void, signal: AbortSignal): Promise<void>;
-
-  // The process to start. The core spawns it without a shell.
-  launch(server: ServerRef): Promise<LaunchPlan>;
-
-  // True for the output line that means "players can join now".
-  isReady(line: string): boolean;
-
-  // The console line that asks the server to save and exit; null when the game has none and the process gets a signal.
-  stopCommand(): string | null;
-
-  // Files and folders, relative to the server folder, that make up the world. A backup contains exactly these.
-  worldPaths(server: ServerRef): Promise<string[]>;
-
-  // Files and folders that hold the configuration, offered as an optional part of a backup or export.
-  configPaths(server: ServerRef): Promise<string[]>;
-
-  // The configuration files the interface offers an editor for.
-  configFiles(server: ServerRef): Promise<ConfigFile[]>;
-
-  // Whether a backup may run while the server is up. Games without a safe "pause saving" command return false,
-  // and the core then stops the server for the backup.
-  readonly supportsLiveBackup: boolean;
+  // Everything the start needs, or the preparation that has to run first. `resumed` is true right after a preparation.
+  planStart(server: Server, dir: string, options: { resumed: boolean }): Promise<StartPlan>;
+  // Readiness and players from one console line
+  classifyLine(line: string): LineEvent | null;
+  // The console line that saves and exits; null when the game has none and the process gets a signal
+  readonly stopCommand: string | null;
 }

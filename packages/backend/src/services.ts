@@ -12,6 +12,8 @@ import type { ScryptCost } from './auth/password.js';
 import { LoaderCatalog } from './installer/catalog.js';
 import { createInstallerRunner, type InstallerRunner } from './installer/runner.js';
 import { InstallService } from './installer/service.js';
+import { GameAdapters } from './games/adapters.js';
+import { MinecraftAdapter } from './games/minecraft/adapter.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
 import { ManagedRuntimes } from './java/managed.js';
 import { JavaService } from './java/service.js';
@@ -88,6 +90,7 @@ export interface Services {
   lock: KeyedLock;
   bus: EventBus;
   catalog: LoaderCatalog;
+  games: GameAdapters;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -133,6 +136,20 @@ export function createServices(options: ServiceOptions): Services {
   const java = options.java ?? new JavaService(javaDetector, managed, config.javaAutoInstall);
   java.onInstallEvent((event) => bus.emit(event));
   const spawner = options.spawner ?? realSpawner;
+  const runner = options.installerRunner ?? createInstallerRunner(spawner);
+
+  const minecraft = new MinecraftAdapter({
+    catalog,
+    java,
+    runner,
+    logger,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
+    ...(timings.installerTimeoutMs === undefined ? {} : { installerTimeoutMs: timings.installerTimeoutMs }),
+    savePort: async (serverId, port) => {
+      await db.transaction((tx) => tx.update(serversTable).set({ port, updatedAt: new Date() }).where(eq(serversTable.id, serverId)));
+    },
+  });
+  const games = new GameAdapters([minecraft]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};
@@ -141,7 +158,7 @@ export function createServices(options: ServiceOptions): Services {
     serversDir: config.serversDir,
     lock,
     spawner,
-    java,
+    games,
     bus,
     logger,
     stopTimeoutMs: config.stopTimeoutMs,
@@ -199,12 +216,9 @@ export function createServices(options: ServiceOptions): Services {
     serversDir: config.serversDir,
     lock,
     bus,
-    catalog,
-    java,
-    runner: options.installerRunner ?? createInstallerRunner(spawner),
+    games,
     guard: manager,
     logger,
-    ...(timings.installerTimeoutMs === undefined ? {} : { installerTimeoutMs: timings.installerTimeoutMs }),
   });
   const backups = new BackupService({
     db,
@@ -322,5 +336,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.restart?.exit === undefined ? {} : { exit: options.restart.exit }),
     ...(options.restart?.delayMs === undefined ? {} : { delayMs: options.restart.delayMs }),
   });
-  return { lock, bus, catalog, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  return { lock, bus, catalog, games, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }

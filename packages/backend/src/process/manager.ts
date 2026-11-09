@@ -6,20 +6,15 @@ import { servers, type Server } from '../db/schema.js';
 import type { EventBus } from '../events/bus.js';
 import { AppError, errorMsg } from '../http/errors.js';
 import { msg, refOf, refsOf, textOf, textsOf, type MessageRef, type Msg, type Text } from '../messages.js';
-import { launchTarget, parseLaunchSpec } from '../installer/launch-spec.js';
-import { JavaService } from '../java/service.js';
+import type { GameAdapters } from '../games/adapters.js';
+import type { GameAdapter, PreparationTask } from '../games/types.js';
 import type { KeyedLock } from '../lib/keyed-lock.js';
 import { silentLogger, type Logger } from '../lib/logger.js';
 import type { ServerRuntimeGuard } from '../mods/runtime-guard.js';
-import { buildJavaArgs } from './command.js';
 import { normalizeExitCode } from './exit-code.js';
-import { writeEulaFile, EULA_URL } from './eula.js';
 import { LineAssembler, RingBuffer } from './lines.js';
 import { MetricsSampler, type ProcessMetrics, type SampleReader } from './metrics.js';
-import { classifyLine } from './patterns.js';
 import { probePort, type PortProbe } from './ports.js';
-import { loadProperties, saveProperties } from '../properties/store.js';
-import { DEFAULT_PORT, readTyped } from '../properties/typed.js';
 import type { ProcessSpawner, ServerProcess } from './spawner.js';
 import { offlineStatus, type ConsoleLine, type ConsoleStream, type RuntimeStatus, type ServerState } from './types.js';
 
@@ -40,7 +35,7 @@ export interface ProcessManagerOptions {
   serversDir: string;
   lock: KeyedLock;
   spawner: ProcessSpawner;
-  java: JavaService;
+  games: GameAdapters;
   bus: EventBus;
   probePort?: PortProbe;
   platform?: NodeJS.Platform;
@@ -60,9 +55,9 @@ export interface StartResult {
   warningRefs: Array<MessageRef | null>;
 }
 
-// Phase before the process exists: a missing Java runtime is installed in the background
+// Phase before the process exists: work of the game (a missing Java runtime) runs in the background
 interface Preparation {
-  major: number;
+  task: PreparationTask;
   controller: AbortController;
 }
 
@@ -71,6 +66,8 @@ class Instance {
 
   preparation: Preparation | null = null;
   javaPath: string | null = null;
+  // the adapter of the running process: console lines and the stop command
+  game: GameAdapter | null = null;
 
   status: RuntimeStatus = offlineStatus();
   readonly buffer = new RingBuffer<ConsoleLine>(HISTORY_SIZE);
@@ -297,60 +294,29 @@ export class ProcessManager implements ServerRuntimeGuard {
     }
     const server = await this.loadServer(serverId);
     this.assertInstalled(server);
-    if (!server.eulaAccepted) {
-      throw new AppError(
-        409,
-        'EULA_NOT_ACCEPTED',
-        `The Minecraft EULA (${EULA_URL}) has not been accepted for this server yet. Acceptance is required before the server can start.`,
-      );
-    }
     const serverDir = path.join(serversDir, server.id);
-    const launch = parseLaunchSpec(server.launchSpec);
-    const target = launch === null ? null : launchTarget(launch, this.platform);
-    if (launch === null || target === null || !(await exists(path.join(serverDir, target.file)))) {
-      throw new AppError(
-        409,
-        'SERVER_FILES_MISSING',
-        'The start file of the server is missing. Please start the installation again.',
-      );
+    const adapter = this.options.games.forServer(server);
+    const start = await adapter.planStart(server, serverDir, { resumed: resume !== null });
+    if (start.kind === 'prepare') {
+      if (resume !== null) throw start.task.stillMissing();
+      return this.beginPreparation(serverId, start.port, start.task, start.notes);
     }
-
-    const plan = await this.options.java.plan({
-      javaPath: server.javaPath,
-      loader: server.loader,
-      mcVersion: server.mcVersion,
-      requiredMajor: server.requiredJavaMajor,
-    });
-    if (plan.kind === 'install') {
-      if (resume !== null) {
-        throw new AppError(422, 'JAVA_NOT_FOUND', `Java ${plan.major} was installed but cannot be found. Please check the Java list under Configuration.`, undefined, { major: plan.major });
-      }
-      return this.beginPreparation(serverId, server.port, plan.major, plan.warnings);
-    }
-    const { runtime, warnings } = plan;
-
-    const port = await this.resolvePort(server, serverDir);
+    const { plan } = start;
+    const port = plan.port;
     const instance = this.instanceOf(serverId);
     // reserved until the process runs, so two starts racing for one port cannot both pass the check
     instance.reservedPort = port;
     try {
       await this.assertPortFree(serverId, port);
-      await writeEulaFile(serverDir, true);
+      await plan.beforeSpawn();
       if (resume !== null && (resume.controller.signal.aborted || instance.preparation !== resume)) throw this.cancelled();
-      const args = buildJavaArgs({
-        minRamMb: server.minRamMb,
-        maxRamMb: server.maxRamMb,
-        useAikarFlags: server.useAikarFlags,
-        extraJvmArgs: server.extraJvmArgs,
-        launch,
-        platform: this.platform,
-      });
       instance.preparation = null;
       this.resetInstance(instance, port);
-      instance.javaPath = runtime.path;
-      this.pushSystem(instance, msg('SERVER_STARTING', { major: runtime.major, port }));
-      for (const warning of warnings) this.pushSystem(instance, msg('START_NOTE', { note: warning }));
-      await this.spawnServer(instance, runtime.path, args, serverDir, port);
+      instance.javaPath = plan.javaPath;
+      instance.game = adapter;
+      this.pushSystem(instance, plan.startLine);
+      for (const warning of plan.notes) this.pushSystem(instance, msg('START_NOTE', { note: warning }));
+      await this.spawnServer(instance, plan.command, plan.args, serverDir, port);
     } finally {
       instance.reservedPort = null;
     }
@@ -365,7 +331,7 @@ export class ProcessManager implements ServerRuntimeGuard {
     } catch (error) {
       this.logger.error({ err: error, serverId }, 'Post-start processing after the server start failed');
     }
-    return { status: this.snapshot(instance), warnings: textsOf(warnings), warningRefs: refsOf(warnings) };
+    return { status: this.snapshot(instance), warnings: textsOf(plan.notes), warningRefs: refsOf(plan.notes) };
   }
 
   private async spawnServer(instance: Instance, command: string, args: string[], cwd: string, port: number): Promise<void> {
@@ -390,24 +356,6 @@ export class ProcessManager implements ServerRuntimeGuard {
     this.update(instance, { pid: child.pid ?? null });
   }
 
-
-  private async resolvePort(server: Server, serverDir: string): Promise<number> {
-    const { doc, exists: hasFile } = await loadProperties(serverDir);
-    let port: number;
-    if (!hasFile) {
-      doc.set('server-port', String(server.port));
-      await saveProperties(serverDir, doc);
-      port = server.port;
-    } else {
-      port = doc.get('server-port') === undefined ? DEFAULT_PORT : readTyped(doc)['server-port'];
-    }
-    if (port !== server.port) {
-      await this.options.db.transaction((tx) =>
-        tx.update(servers).set({ port, updatedAt: new Date() }).where(eq(servers.id, server.id)),
-      );
-    }
-    return port;
-  }
 
   private async assertPortFree(serverId: string, port: number): Promise<void> {
     for (const [otherId, other] of this.instances) {
@@ -469,50 +417,47 @@ export class ProcessManager implements ServerRuntimeGuard {
     return new AppError(409, 'START_CANCELLED', 'The start was cancelled.');
   }
 
-  private beginPreparation(serverId: string, port: number, major: number, warnings: Msg[]): StartResult {
+  private beginPreparation(serverId: string, port: number, task: PreparationTask, warnings: Msg[]): StartResult {
     const instance = this.instanceOf(serverId);
     this.resetInstance(instance, null);
     instance.finalized = true;
-    const preparation: Preparation = { major, controller: new AbortController() };
+    const preparation: Preparation = { task, controller: new AbortController() };
     instance.preparation = preparation;
-    this.pushSystem(instance, msg('JAVA_AUTO_INSTALL_NOTICE', { major }));
-    this.update(instance, { state: 'preparing', startedAt: Date.now(), port, ...statusMessage(msg('JAVA_INSTALLING', { major })) });
+    this.pushSystem(instance, task.notice);
+    this.update(instance, { state: 'preparing', startedAt: Date.now(), port, ...statusMessage(task.status(null)) });
     void this.runPreparation(instance, preparation);
     return { status: this.snapshot(instance), warnings: textsOf(warnings), warningRefs: refsOf(warnings) };
   }
 
   private async runPreparation(instance: Instance, preparation: Preparation): Promise<void> {
-    const { major, controller } = preparation;
+    const { task, controller } = preparation;
     let lastStatus = 0;
     let lastPhase = '';
     let lastStep = -1;
     try {
-      await this.options.java.ensureManaged(major, {
-        signal: controller.signal,
-        onProgress: (progress) => {
-          if (instance.preparation !== preparation) return;
-          const step = Math.floor((progress.percent ?? 0) / 25);
-          if (progress.phase !== lastPhase || (progress.phase === 'download' && step !== lastStep)) {
-            this.pushSystem(instance, progress.ref === undefined ? progress.message : { text: progress.message, ref: progress.ref });
-            lastPhase = progress.phase;
-            lastStep = step;
-          }
-          const now = Date.now();
-          if (now - lastStatus < PROGRESS_STATUS_INTERVAL_MS) return;
-          lastStatus = now;
-          this.update(instance, statusMessage(progress.percent === null ? msg('JAVA_INSTALLING', { major }) : msg('JAVA_INSTALLING_PERCENT', { major, percent: progress.percent })));
-        },
+      await task.run(controller.signal, (progress) => {
+        if (instance.preparation !== preparation) return;
+        const step = Math.floor((progress.percent ?? 0) / 25);
+        if (progress.phase !== lastPhase || (progress.phase === 'download' && step !== lastStep)) {
+          this.pushSystem(instance, progress.text);
+          lastPhase = progress.phase;
+          lastStep = step;
+        }
+        const now = Date.now();
+        if (now - lastStatus < PROGRESS_STATUS_INTERVAL_MS) return;
+        lastStatus = now;
+        this.update(instance, statusMessage(task.status(progress.percent)));
       });
       if (instance.preparation !== preparation) return;
-      this.pushSystem(instance, msg('JAVA_INSTALLED_STARTING', { major }));
+      this.pushSystem(instance, task.done);
       await this.options.lock.run(instance.serverId, async () => {
         if (instance.preparation !== preparation) return;
         await this.startLocked(instance.serverId, preparation);
       });
     } catch (error) {
       if (instance.preparation !== preparation) return;
-      const failure = errorMsg(error, msg('JAVA_INSTALL_FAILED_GENERIC'));
-      if (!(error instanceof AppError)) this.logger.error({ err: error, serverId: instance.serverId }, 'Java installation before the server start failed');
+      const failure = errorMsg(error, task.failed);
+      if (!(error instanceof AppError)) this.logger.error({ err: error, serverId: instance.serverId }, 'The preparation before the server start failed');
       this.failPreparation(instance, failure);
     }
   }
@@ -563,7 +508,7 @@ export class ProcessManager implements ServerRuntimeGuard {
   javaUsage(): Array<{ serverId: string; javaPath: string | null; preparingMajor: number | null }> {
     return [...this.instances.values()]
       .filter((instance) => instance.active)
-      .map((instance) => ({ serverId: instance.serverId, javaPath: instance.javaPath, preparingMajor: instance.preparation?.major ?? null }));
+      .map((instance) => ({ serverId: instance.serverId, javaPath: instance.javaPath, preparingMajor: instance.preparation?.task.javaMajor ?? null }));
   }
 
   private resetInstance(instance: Instance, port: number | null): void {
@@ -602,7 +547,7 @@ export class ProcessManager implements ServerRuntimeGuard {
 
   private handleLine(instance: Instance, stream: ConsoleStream, text: string): void {
     this.pushLine(instance, stream, text);
-    const event = classifyLine(text);
+    const event = instance.game?.classifyLine(text) ?? null;
     if (event === null) return;
     if (event.type === 'done') {
       if (instance.status.state === 'starting') {
@@ -681,19 +626,21 @@ export class ProcessManager implements ServerRuntimeGuard {
   private requestStop(instance: Instance, notice: Text): void {
     if (instance.status.state === 'stopping') return;
     if (instance.preparation !== null) {
-      this.cancelPreparation(instance, msg('START_CANCELLED_JAVA'));
+      this.cancelPreparation(instance, instance.preparation.task.cancelled);
       return;
     }
     this.pushSystem(instance, notice);
     this.markStopping(instance);
     const child = instance.child;
-    if (child !== null && child.stdin.writable) child.stdin.write('stop\n');
+    const command = instance.game?.stopCommand ?? null;
+    if (child !== null && command !== null && child.stdin.writable) child.stdin.write(`${command}\n`);
+    else if (child !== null && command === null) child.kill('SIGTERM');
     else void this.forceKill(instance);
   }
 
   private async forceKill(instance: Instance): Promise<void> {
     if (instance.preparation !== null) {
-      this.cancelPreparation(instance, msg('START_CANCELLED_JAVA'));
+      this.cancelPreparation(instance, instance.preparation.task.cancelled);
       return;
     }
     instance.expectedExit = true;

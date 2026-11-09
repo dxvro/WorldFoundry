@@ -528,9 +528,7 @@ describe('concurrent installs', () => {
       serversDir: env.config.serversDir,
       lock: env.services.lock,
       bus: env.services.bus,
-      catalog: env.services.catalog,
-      java: env.services.java,
-      runner: env.installer.runner,
+      games: env.services.games,
       guard: { isRunning: () => ++calls > 1 },
     });
     await install.enqueue(id, { checkJava: true });
