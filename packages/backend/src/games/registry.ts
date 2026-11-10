@@ -30,7 +30,7 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'zomboid',
     name: 'Project Zomboid',
-    availability: 'planned',
+    availability: 'available',
     rightsHolders: ['The Indie Stone'],
     disclaimer: notA('Project Zomboid', 'The Indie Stone'),
     eula: { name: 'Steam Subscriber Agreement', url: 'https://store.steampowered.com/subscriber_agreement/' },

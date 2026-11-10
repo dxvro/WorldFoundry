@@ -8,7 +8,8 @@ import type { ServerDto } from '../contract.js';
 import { servers, type Server } from '../db/schema.js';
 import type { BackupDisposal, BackupService } from '../backups/service.js';
 import type { EventBus } from '../events/bus.js';
-import { assertGameAvailable } from '../games/registry.js';
+import type { GameAdapters } from '../games/adapters.js';
+import { assertGameAvailable, isGameId } from '../games/registry.js';
 import { AppError } from '../http/errors.js';
 import type { LoaderCatalog } from '../installer/catalog.js';
 import { parseLaunchSpec } from '../installer/launch-spec.js';
@@ -38,6 +39,7 @@ export interface ServerServiceOptions {
   install: InstallService;
   manager: ProcessManager;
   backups: BackupService;
+  games: GameAdapters;
   totalMemoryMb?: () => number;
 }
 
@@ -90,6 +92,25 @@ export class ServerService {
     let port = DEFAULT_PORT_START;
     while (used.has(port)) port++;
     return port;
+  }
+
+  // A server of another game than Minecraft: the adapter checks the request and fills the row.
+  async createForGame(raw: unknown): Promise<ServerDto> {
+    const gameId = (raw as { game?: unknown } | null)?.game;
+    if (!isGameId(gameId) || gameId === 'minecraft') throw new AppError(422, 'GAME_NOT_FOUND', 'The game was not found.');
+    const adapter = this.options.games.get(gameId);
+    if (adapter.createColumns === undefined) throw new AppError(422, 'GAME_NOT_AVAILABLE', 'Servers for this game cannot be created yet.');
+    const others = await this.options.db.select().from(servers);
+    const columns = await adapter.createColumns(raw, others);
+    const now = new Date();
+    const id = randomUUID();
+    await this.options.db.transaction((tx) =>
+      tx.insert(servers).values({ loader: 'vanilla', mcVersion: '', name: 'Server', ...columns, id, game: gameId, createdAt: now, updatedAt: now }),
+    );
+    await mkdir(path.join(this.options.serversDir, id), { recursive: true });
+    this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'created' });
+    await this.options.install.enqueue(id, { checkJava: false });
+    return this.get(id);
   }
 
   async create(input: CreateServerInput): Promise<ServerDto> {

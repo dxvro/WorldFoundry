@@ -94,6 +94,10 @@ export interface LaunchPlan {
   beforeSpawn: () => Promise<void>;
   // remembered while the process runs, for the Java runtime list
   javaPath: string | null;
+  // working folder of the process; the server folder when absent
+  cwd?: string;
+  // secrets in the command line that must never show up in the console
+  redact?: string[];
 }
 
 export type StartPlan =
@@ -102,6 +106,9 @@ export type StartPlan =
 
 export interface GameAdapter {
   readonly definition: GameDefinition;
+
+  // Columns of a new server row from the create request. Minecraft keeps its own create path (loader catalog) and has none.
+  createColumns?(input: unknown, others: Server[]): Promise<Partial<Server>>;
 
   // First line of install.log
   installTitle(server: Server): string;

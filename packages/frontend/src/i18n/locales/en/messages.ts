@@ -16,6 +16,7 @@ const exitOf = (p: { code?: number; signal?: string }): string => ('signal' in p
 export const messages: MessageTexts = {
   // ---- console lines and runtime status (process manager) ----
   SERVER_STOPPING: 'Stopping the server ...',
+  SERVER_STARTING_GAME: (p) => `Starting the ${p.game} server (port ${p.port}) ...`,
   SERVER_RESTARTING: 'Restarting the server ...',
   SERVER_KILLING: 'Killing the server immediately ...',
   SERVER_STOPPING_APP_SHUTDOWN: 'The application is shutting down, stopping the server ...',

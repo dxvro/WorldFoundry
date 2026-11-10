@@ -9,6 +9,8 @@ export const servers = sqliteTable(
     name: text('name').notNull(),
     // which game adapter owns this server; rows from before the column existed are Minecraft servers
     game: text('game', { enum: GAME_IDS }).notNull().default('minecraft'),
+    // JSON of the settings only one game has (Project Zomboid: profile, Steam branch, second UDP port, ...)
+    gameSettings: text('game_settings').notNull().default('{}'),
     loader: text('loader', { enum: LOADERS }).notNull(),
     mcVersion: text('mc_version').notNull(),
     loaderVersion: text('loader_version'),

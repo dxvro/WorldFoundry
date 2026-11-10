@@ -42,6 +42,7 @@ const TEMPLATES = {
   SERVER_KILLING: () => 'Killing the server immediately ...',
   SERVER_STOPPING_APP_SHUTDOWN: () => 'The application is shutting down, stopping the server ...',
   SERVER_STARTING: (p: { major: number; port: number }) => `Starting the server (Java ${p.major}, port ${p.port}) ...`,
+  SERVER_STARTING_GAME: (p: { game: string; port: number }) => `Starting the ${p.game} server (port ${p.port}) ...`,
   START_NOTE: (p: { note: Msg }) => `Note: ${p.note.text}`,
   START_FAILED_REASON: (p: { reason: Msg }) => `The server could not be started: ${p.reason.text}`,
   JAVA_AUTO_INSTALL_NOTICE: (p: { major: number }) =>

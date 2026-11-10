@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `game_settings` text DEFAULT '{}' NOT NULL;

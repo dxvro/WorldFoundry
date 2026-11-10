@@ -20,7 +20,11 @@ export function registerServerRoutes(app: FastifyInstance, { services, config }:
   app.get('/api/servers', async () => ({ servers: await servers.list() }));
 
   app.post('/api/servers', async (request, reply) => {
-    const server = await servers.create(CreateServerSchema.parse(request.body));
+    const body = request.body as { game?: unknown } | null;
+    const server =
+      body !== null && typeof body === 'object' && body.game !== undefined && body.game !== 'minecraft'
+        ? await servers.createForGame(body)
+        : await servers.create(CreateServerSchema.parse(request.body));
     return reply.status(201).send({ server });
   });
 

@@ -68,6 +68,8 @@ class Instance {
   javaPath: string | null = null;
   // the adapter of the running process: console lines and the stop command
   game: GameAdapter | null = null;
+  // never shown in the console (an admin password on the command line)
+  redact: string[] = [];
 
   status: RuntimeStatus = offlineStatus();
   readonly buffer = new RingBuffer<ConsoleLine>(HISTORY_SIZE);
@@ -314,9 +316,10 @@ export class ProcessManager implements ServerRuntimeGuard {
       this.resetInstance(instance, port);
       instance.javaPath = plan.javaPath;
       instance.game = adapter;
+      instance.redact = plan.redact ?? [];
       this.pushSystem(instance, plan.startLine);
       for (const warning of plan.notes) this.pushSystem(instance, msg('START_NOTE', { note: warning }));
-      await this.spawnServer(instance, plan.command, plan.args, serverDir, port);
+      await this.spawnServer(instance, plan.command, plan.args, plan.cwd ?? serverDir, port);
     } finally {
       instance.reservedPort = null;
     }
@@ -545,7 +548,9 @@ export class ProcessManager implements ServerRuntimeGuard {
     child.once('close', (code, signal) => this.finalize(instance, child, code, signal));
   }
 
-  private handleLine(instance: Instance, stream: ConsoleStream, text: string): void {
+  private handleLine(instance: Instance, stream: ConsoleStream, raw: string): void {
+    let text = raw;
+    for (const secret of instance.redact) if (secret !== '') text = text.split(secret).join('[hidden]');
     this.pushLine(instance, stream, text);
     const event = instance.game?.classifyLine(text) ?? null;
     if (event === null) return;

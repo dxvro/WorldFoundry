@@ -69,6 +69,7 @@ const envSchema = z.object({
   FRONTEND_DIR: z.preprocess(nonEmpty, z.string().min(1).optional()),
   LOG_LEVEL: z.preprocess(nonEmpty, z.enum(LOG_LEVELS).default('info')),
   MODRINTH_USER_AGENT: z.preprocess(nonEmpty, z.string().min(3).max(200).optional()),
+  STEAMCMD_PATH: z.preprocess(nonEmpty, z.string().min(1).max(1024).optional()),
   AUTH_TOKEN: z.preprocess(nonEmpty, z.string().min(8, 'at least 8 characters').max(200).optional()),
   ALLOWED_ORIGINS: z.preprocess(nonEmpty, z.string().optional()),
   ALLOWED_HOSTS: z.preprocess(nonEmpty, z.string().optional()),
@@ -96,6 +97,8 @@ export interface AppConfig {
   logLevel: (typeof LOG_LEVELS)[number];
   modrinthUserAgent?: string;
   authToken?: string;
+  // an existing steamcmd(.sh|.exe); without it WorldFoundry downloads SteamCMD into the data folder
+  steamcmdPath?: string;
   allowedOrigins: string[];
   allowedHosts: string[];
   stopTimeoutMs: number;
@@ -183,6 +186,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env, options: Loa
     logLevel: env.LOG_LEVEL,
     ...(env.MODRINTH_USER_AGENT === undefined ? {} : { modrinthUserAgent: env.MODRINTH_USER_AGENT }),
     ...(env.AUTH_TOKEN === undefined ? {} : { authToken: env.AUTH_TOKEN }),
+    ...(env.STEAMCMD_PATH === undefined ? {} : { steamcmdPath: path.resolve(home, env.STEAMCMD_PATH) }),
     allowedOrigins: parseOrigins(env.ALLOWED_ORIGINS),
     allowedHosts: parseHosts(env.ALLOWED_HOSTS),
     stopTimeoutMs: env.STOP_TIMEOUT_SECONDS * 1000,

@@ -16,6 +16,8 @@ import { GameAdapters } from './games/adapters.js';
 import { CurseForgeClient, type CurseForgeApi } from './curseforge/client.js';
 import { CurseForgeService } from './curseforge/service.js';
 import { MinecraftAdapter } from './games/minecraft/adapter.js';
+import { ZomboidAdapter } from './games/zomboid/adapter.js';
+import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
 import { ManagedRuntimes } from './java/managed.js';
 import { JavaService } from './java/service.js';
@@ -51,6 +53,9 @@ export interface ServiceOptions {
   modrinth: ModrinthApi;
   // tests pass a fake; the real client talks to api.curseforge.com with the user's own key
   curseforgeApi?: CurseForgeApi;
+  // tests pass a SteamCMD that runs a fake program, and a UDP check that needs no free port
+  steamCmd?: SteamCmd;
+  udpProbe?: (port: number) => Promise<boolean>;
   logger?: Logger;
   // Phase 2 compatibility: replaces the process manager as the guard seen by the mod service
   runtimeGuard?: ServerRuntimeGuard;
@@ -154,7 +159,21 @@ export function createServices(options: ServiceOptions): Services {
       await db.transaction((tx) => tx.update(serversTable).set({ port, updatedAt: new Date() }).where(eq(serversTable.id, serverId)));
     },
   });
-  const games = new GameAdapters([minecraft]);
+  const steam =
+    options.steamCmd ??
+    new SteamCmd({
+      dir: path.join(config.dataDir, 'steamcmd'),
+      runner,
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+      ...(options.platform === undefined ? {} : { platform: options.platform }),
+      ...(config.steamcmdPath === undefined ? {} : { configuredPath: config.steamcmdPath }),
+    });
+  const zomboid = new ZomboidAdapter({
+    steam,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
+    ...(options.udpProbe === undefined ? {} : { probeUdp: options.udpProbe }),
+  });
+  const games = new GameAdapters([minecraft, zomboid]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};
@@ -249,6 +268,7 @@ export function createServices(options: ServiceOptions): Services {
     install,
     manager,
     backups,
+    games,
     ...(options.totalMemoryMb === undefined ? {} : { totalMemoryMb: options.totalMemoryMb }),
   });
   const properties = new PropertiesService({ db, serversDir: config.serversDir, lock, guard: manager });

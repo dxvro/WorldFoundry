@@ -37,9 +37,9 @@ describe('the game of a server', () => {
   });
 
   it('refuses a game without an adapter and creates nothing', async () => {
-    const res = await create({ game: 'zomboid' });
+    const res = await create({ game: 'satisfactory' });
     expect(res.status).toBe(422);
-    expect(res.body.error).toMatchObject({ code: 'GAME_NOT_AVAILABLE', params: { game: 'Project Zomboid' } });
+    expect(res.body.error).toMatchObject({ code: 'GAME_NOT_AVAILABLE', params: { game: 'Satisfactory' } });
     expect((await env.call<{ servers: unknown[] }>('GET', '/api/servers')).body.servers).toHaveLength(0);
   });
 });
