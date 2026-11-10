@@ -22,6 +22,7 @@ export const serverFixture = (overrides: Record<string, unknown> = {}): Record<s
   id: 'srv-1',
   name: 'Survival',
   game: 'minecraft',
+  gameSettings: '{}',
   loader: 'fabric',
   mcVersion: '1.21.1',
   loaderVersion: '0.16.0',
@@ -92,7 +93,7 @@ const game = (id: string, name: string, availability: string, disclaimer: string
   ...extra,
 });
 
-// what GET /api/games answers: one available game and one planned
+// what GET /api/games answers: two available games and one planned
 export const gamesFixture = (): Record<string, unknown> => ({
   games: [
     game('minecraft', 'Minecraft: Java Edition', 'available', 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.', {
@@ -103,7 +104,8 @@ export const gamesFixture = (): Record<string, unknown> => ({
         { id: 'curseforge', name: 'CurseForge', url: 'https://www.curseforge.com/minecraft', requiresKey: true, inProgress: true, note: 'In progress.' },
       ],
     }),
-    game('zomboid', 'Project Zomboid', 'planned', 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.'),
+    game('zomboid', 'Project Zomboid', 'available', 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.'),
+    game('ark', 'ARK: Survival Evolved', 'planned', 'Not an official ARK product. Not approved by or associated with Studio Wildcard or Snail Games.'),
   ],
 });
 

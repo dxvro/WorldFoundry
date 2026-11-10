@@ -44,6 +44,7 @@ export const errors = {
   invalidDetail: 'invalid value',
   codes: {
     GAME_NOT_FOUND: 'This game is not known to WorldFoundry.',
+    GAME_SETTINGS_INVALID: 'The stored settings of this server are damaged.',
     GAME_FEATURE_UNSUPPORTED: (p: Details) => (text(p.game) === undefined ? 'This part of WorldFoundry is not available for this game yet.' : `This part of WorldFoundry is not available for ${p.game} servers yet.`),
     STEAMCMD_FAILED: (p: Details) => (opt(p, 'reason') === 'lib32' ? 'SteamCMD needs 32-bit libraries on Linux. On Debian or Ubuntu install them with: sudo apt install lib32gcc-s1' : 'SteamCMD did not confirm the installation. The details are in the installation log.'),
     GAME_NOT_AVAILABLE: (p: Details) => (text(p.game) === undefined ? 'Servers for this game cannot be created yet.' : `Servers for ${p.game} cannot be created yet.`),

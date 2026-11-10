@@ -30,6 +30,7 @@ Optional, through environment variables or a configuration file (template: `.env
 | `LOG_LEVEL`            | `info`                           | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`                              |
 | `MODRINTH_USER_AGENT`  | `WorldFoundry/<version>`        | User agent for Modrinth and loader requests (do not enter personal data)                  |
 | `AUTH_TOKEN`           | (empty = a password is created)  | Access token, at least 8 characters. Enables the login for the whole API. At the same time the first password of the web interface and the machine access (`Authorization: Bearer`) for scripts and the update service, see [Password](#web-interface-password) |
+| `STEAMCMD_PATH`        | (empty = download into data)     | Existing SteamCMD for Steam game servers (Project Zomboid). Without it SteamCMD is downloaded from Valve into `<DATA_DIR>/steamcmd` |
 | `ALLOWED_ORIGINS`      | (empty)                          | Comma-separated additional origins (the Vite dev proxy needs no entry)                    |
 | `ALLOWED_HOSTS`        | (empty)                          | Comma-separated additional host names without port, e.g. `craft.example.lan` (see [Security](#security)). More can be added in the web interface |
 | `FRONTEND_DIR`         | `<code>/../frontend/dist`        | Folder with the built web interface                                                       |

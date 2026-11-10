@@ -9,6 +9,7 @@ import { GamesProvider } from './games/GamesProvider';
 import { CreateWizard } from './pages/CreateWizard';
 import { GamesPage } from './pages/Games';
 import { NewServer } from './pages/NewServer';
+import { ZomboidWizard } from './pages/ZomboidWizard';
 import { ImportWizard } from './pages/ImportWizard';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
@@ -25,8 +26,9 @@ function Routes(): ReactNode {
     case 'new':
       return <NewServer />;
     case 'new-game':
-      // Minecraft is the only game with a wizard so far; the picker never links to another one
-      return route.game === 'minecraft' ? <CreateWizard key={visit} /> : <NewServer />;
+      if (route.game === 'minecraft') return <CreateWizard key={visit} />;
+      if (route.game === 'zomboid') return <ZomboidWizard key={visit} />;
+      return <NewServer />;
     case 'games':
       return <GamesPage />;
     case 'system':

@@ -4,14 +4,14 @@
 
 WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
-**Status: early development.** No release has been published yet. Minecraft works; the other games are being built. To try WorldFoundry, run it from source (see below).
+**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid has its first version; the other games are being built. To try WorldFoundry, run it from source (see below).
 
 ## Games
 
 | Game | Status | Server files | Mods |
 | --- | --- | --- | --- |
 | Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
-| Project Zomboid | Planned | SteamCMD, anonymous login | Steam Workshop |
+| Project Zomboid | Early: install, start, stop, console, settings. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop planned |
 | Satisfactory | Planned | SteamCMD, anonymous login | ficsit.app |
 | ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
 
@@ -33,6 +33,10 @@ WorldFoundry ships no game files, logos or artwork. Every server is downloaded o
 - **Import and export** of worlds, with or without mods
 - **Automatic Java installation** when the matching version is missing (Eclipse Temurin)
 - **Autostart** of individual servers
+
+## Project Zomboid and other Steam games
+
+WorldFoundry downloads SteamCMD from Valve into its data folder on first use and always logs in anonymously; no Steam account is needed. To use an existing SteamCMD, set `STEAMCMD_PATH`. On 64-bit Linux SteamCMD needs 32-bit libraries: on Debian or Ubuntu `sudo apt install lib32gcc-s1`. Each Zomboid server keeps the program (`server/`) apart from its world and settings (`data/`). The in-game admin password is created by WorldFoundry and shown in the server's settings.
 
 ## How it works
 

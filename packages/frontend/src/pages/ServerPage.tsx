@@ -1,3 +1,4 @@
+import { useGames } from '../games/GamesProvider';
 import { GameDisclaimer } from '../games/GameDisclaimer';
 import { ArrowLeft, RotateCcw, ServerOff, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
@@ -17,10 +18,13 @@ import { ConsoleTab } from './server/ConsoleTab';
 import { contentNames, ModsTab } from './server/ModsTab';
 import { PlayersTab } from './server/PlayersTab';
 import { StoreTab } from './server/StoreTab';
+import { ZomboidSettingsTab } from './server/ZomboidSettingsTab';
+import { zomboidSettings } from '../games/zomboid';
 import { WorldTab } from './server/WorldTab';
 
 export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNode {
   const { t } = useI18n();
+  const { nameOf } = useGames();
   const { state, statusFor, listError, refresh } = useLive();
   const { navigate } = useRouter();
   const server = state.servers?.find((entry) => entry.id === id);
@@ -54,7 +58,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
   const names = contentNames(server);
   const restartNeeded = state.restartNeeded[server.id] === true && (status.state === 'starting' || status.state === 'online');
   const installed = server.installState === 'installed';
-  const tabs: Array<{ id: ServerTab; label: string }> = [
+  const allTabs: Array<{ id: ServerTab; label: string }> = [
     { id: 'console', label: t.server.tabs.console },
     { id: 'config', label: t.server.tabs.config },
     { id: 'world', label: t.server.tabs.world },
@@ -63,6 +67,10 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     { id: 'store', label: names.store },
     { id: 'backups', label: t.server.tabs.backups },
   ];
+  // other games have the console and their own settings so far
+  const minecraft = server.game === 'minecraft';
+  const tabs = minecraft ? allTabs : allTabs.filter((entry) => entry.id === 'console' || entry.id === 'config');
+  const zomboid = zomboidSettings(server);
   const waitingForJava = status.state === 'preparing' ? preparingMajor(status.message, status.messageRef) : null;
 
   return (
@@ -78,9 +86,19 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
           <StatusChip server={server} status={status} />
         </div>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-dim">
-          <span className="chip">{LOADER_LABEL[server.loader]}{server.loaderVersion === null ? '' : ` ${server.loaderVersion}`}</span>
-          <span className="num">{t.server.header.minecraft(server.mcVersion)}</span>
-          <span className="num">{t.server.header.port(status.port ?? server.port)}</span>
+          {minecraft ? (
+            <>
+              <span className="chip">{LOADER_LABEL[server.loader]}{server.loaderVersion === null ? '' : ` ${server.loaderVersion}`}</span>
+              <span className="num">{t.server.header.minecraft(server.mcVersion)}</span>
+              <span className="num">{t.server.header.port(status.port ?? server.port)}</span>
+            </>
+          ) : (
+            <>
+              <span className="chip">{nameOf(server.game)}</span>
+              {zomboid === null ? null : <span className="num">{t.zomboid.header.branch(zomboid.branch)}</span>}
+              <span className="num">{zomboid === null ? t.server.header.port(server.port) : t.zomboid.header.ports(server.port, zomboid.udpPort)}</span>
+            </>
+          )}
           {status.startedAt !== null && (status.state === 'online' || status.state === 'starting') ? <span className="num">{t.server.header.runningSince(formatDuration(Date.now() - status.startedAt))}</span> : null}
           <span className="num inline-flex items-center gap-1.5">
             <Users aria-hidden className="size-4" />
@@ -139,12 +157,12 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
 
       <div role="region" aria-label={tabs.find((entry) => entry.id === tab)?.label}>
         {tab === 'console' ? <ConsoleTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'config' ? <ConfigTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'world' ? <WorldTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'players' ? <PlayersTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'mods' ? <ModsTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}
-        {tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'config' ? minecraft ? <ConfigTab key={server.id} server={server} status={status} /> : <ZomboidSettingsTab key={server.id} server={server} /> : null}
+        {!minecraft ? null : tab === 'world' ? <WorldTab key={server.id} server={server} status={status} /> : null}
+        {!minecraft ? null : tab === 'players' ? <PlayersTab key={server.id} server={server} status={status} /> : null}
+        {!minecraft ? null : tab === 'mods' ? <ModsTab key={server.id} server={server} status={status} /> : null}
+        {!minecraft ? null : tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}
+        {!minecraft ? null : tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
       </div>
     </div>
   );

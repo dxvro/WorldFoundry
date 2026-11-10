@@ -7,6 +7,7 @@ import { baseRoutes, mockApi, offline, serverFixture, type MockApi } from '../te
 
 const MINECRAFT = 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.';
 const ZOMBOID = 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.';
+const ARK = 'Not an official ARK product. Not approved by or associated with Studio Wildcard or Snail Games.';
 
 let api: MockApi;
 const open = (path: string, routes: Record<string, Parameters<MockApi['set']>[1]> = {}): void => {
@@ -31,7 +32,7 @@ describe('games page', () => {
     open('/games');
     expect(await screen.findByRole('heading', { name: 'Games', level: 1 })).toBeInTheDocument();
     const cards = await screen.findAllByTestId('game-card');
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
 
     const minecraft = within(cards[0] as HTMLElement);
     expect(minecraft.getByRole('heading', { name: 'Minecraft: Java Edition' })).toBeInTheDocument();
@@ -48,9 +49,13 @@ describe('games page', () => {
 
     const zomboid = within(cards[1] as HTMLElement);
     expect(zomboid.getByText(ZOMBOID)).toBeInTheDocument();
-    expect(zomboid.getByText('Planned')).toBeInTheDocument();
     expect(zomboid.getByText('Downloaded with SteamCMD (app 1, anonymous login)')).toBeInTheDocument();
-    expect(zomboid.queryByRole('button', { name: 'Create a server' })).not.toBeInTheDocument();
+    expect(zomboid.getByRole('button', { name: 'Create a server' })).toBeInTheDocument();
+
+    const ark = within(cards[2] as HTMLElement);
+    expect(ark.getByText(ARK)).toBeInTheDocument();
+    expect(ark.getByText('Planned')).toBeInTheDocument();
+    expect(ark.queryByRole('button', { name: 'Create a server' })).not.toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Trademarks and affiliation' })).toBeInTheDocument();
   });
@@ -62,7 +67,7 @@ describe('games page', () => {
     expect(screen.queryByTestId('game-card')).not.toBeInTheDocument();
     if (working !== undefined) api.set('GET /api/games', working);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findAllByTestId('game-card')).toHaveLength(2);
+    expect(await screen.findAllByTestId('game-card')).toHaveLength(3);
   });
 });
 
@@ -72,9 +77,10 @@ describe('new server', () => {
     expect(await screen.findByRole('heading', { name: 'New server' })).toBeInTheDocument();
     const list = await screen.findByRole('list', { name: 'Games' });
     expect(within(list).getByRole('link', { name: /Minecraft: Java Edition/ })).toHaveAttribute('href', '/new/minecraft');
-    expect(within(list).queryByRole('link', { name: /Project Zomboid/ })).not.toBeInTheDocument();
-    expect(within(list).getByText('Project Zomboid')).toBeInTheDocument();
-    expect(within(list).getByText(ZOMBOID)).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: /Project Zomboid/ })).toHaveAttribute('href', '/new/zomboid');
+    expect(within(list).queryByRole('link', { name: /ARK/ })).not.toBeInTheDocument();
+    expect(within(list).getByText('ARK: Survival Evolved')).toBeInTheDocument();
+    expect(within(list).getByText(ARK)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Minecraft server from an existing world' })).toHaveAttribute('href', '/new/world');
   });
 

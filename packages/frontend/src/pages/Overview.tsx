@@ -133,8 +133,14 @@ function ServerRow({ server, status, install, crash, host }: RowProps): ReactNod
             </Link>
           </h3>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-dim">
-            <span className="chip">{LOADER_LABEL[server.loader]}</span>
-            <span className="num">{t.overview.minecraftVersion(server.mcVersion)}</span>
+            {server.game === 'minecraft' ? (
+              <>
+                <span className="chip">{LOADER_LABEL[server.loader]}</span>
+                <span className="num">{t.overview.minecraftVersion(server.mcVersion)}</span>
+              </>
+            ) : (
+              <span className="chip">{GAME_LOOK[server.game].shortName}</span>
+            )}
             <span className="num text-faint" title={host === null ? undefined : t.overview.connectTo(`${host}:${port}`)}>
               {t.overview.portLabel(port)}
             </span>

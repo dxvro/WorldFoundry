@@ -19,6 +19,7 @@ import { password } from './password';
 import { update } from './update';
 import { messages } from './messages';
 import { games } from './games';
+import { zomboid } from './zomboid';
 
 export const en = {
   common,
@@ -42,4 +43,5 @@ export const en = {
   update,
   messages,
   games,
+  zomboid,
 };

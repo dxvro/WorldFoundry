@@ -97,6 +97,9 @@ export const serversApi = {
     (await request<{ server: ServerView }>(server(id), signal === undefined ? {} : { signal })).server,
   create: async (input: CreateServerInput): Promise<ServerView> =>
     (await request<{ server: ServerView }>('/api/servers', { method: 'POST', body: input })).server,
+  // a server of another game than Minecraft; the adapter of the game checks the fields
+  createForGame: async (input: Record<string, unknown> & { game: string }): Promise<ServerView> =>
+    (await request<{ server: ServerView }>('/api/servers', { method: 'POST', body: input })).server,
   update: (id: string, input: UpdateServerInput): Promise<{ server: ServerView; restartRequired: boolean }> =>
     request(server(id), { method: 'PATCH', body: input }),
   remove: (id: string, backups?: 'delete' | 'keep'): Promise<{ deleted: true }> =>
