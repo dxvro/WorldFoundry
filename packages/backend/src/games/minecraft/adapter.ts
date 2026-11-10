@@ -1,5 +1,6 @@
 import { access, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { minecraftLayout, type BackupLayout } from '../../backups/world.js';
 import type { Server } from '../../db/schema.js';
 import { AppError } from '../../http/errors.js';
 import type { LoaderCatalog } from '../../installer/catalog.js';
@@ -56,6 +57,10 @@ export class MinecraftAdapter implements GameAdapter {
   constructor(private readonly options: MinecraftAdapterOptions) {
     this.platform = options.platform ?? process.platform;
     this.logger = options.logger ?? silentLogger;
+  }
+
+  backupLayout(_server: Server, dir: string): Promise<BackupLayout> {
+    return minecraftLayout(dir);
   }
 
   classifyLine(line: string): ReturnType<typeof classifyLine> {

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { classifyZomboidLine } from '../src/games/zomboid/adapter.js';
 import { readIniValues, setIniValues } from '../src/games/zomboid/ini.js';
+import { SteamWorkshopClient, mapFoldersOf, modIdsOf, workshopIdOf, type WorkshopDetails } from '../src/games/zomboid/workshop.js';
 import { createInstallerRunner } from '../src/installer/runner.js';
 import { realSpawner } from '../src/process/spawner.js';
 import { buildAppUpdateArgs, parseProgress, SteamCmd } from '../src/steam/steamcmd.js';
@@ -47,10 +48,48 @@ describe('Project Zomboid helpers', () => {
   });
 });
 
+describe('Steam Workshop helpers', () => {
+  it('reads ids from links and mod ids and map folders from descriptions', () => {
+    expect(workshopIdOf('2392709985')).toBe('2392709985');
+    expect(workshopIdOf('https://steamcommunity.com/sharedfiles/filedetails/?id=2392709985&searchtext=')).toBe('2392709985');
+    expect(workshopIdOf('nope')).toBeNull();
+    const text = 'Great mod\n[b]Workshop ID: 1[/b]\nMod ID: Hydrocraft\nModID:HydroExtra\nMap Folder: Raven Creek\nmod id: hydrocraft';
+    expect(modIdsOf(text)).toEqual(['Hydrocraft', 'HydroExtra', 'hydrocraft']);
+    expect(mapFoldersOf(text)).toEqual(['Raven Creek']);
+  });
+
+  it('asks GetPublishedFileDetails without a key and maps missing and foreign items', async () => {
+    const sent: string[] = [];
+    const client = new SteamWorkshopClient((async (input: string | URL | Request, init?: RequestInit) => {
+      sent.push(`${String(input)} ${String(init?.body)}`);
+      return new Response(
+        JSON.stringify({
+          response: {
+            publishedfiledetails: [
+              { publishedfileid: '1', result: 1, title: 'Alpha', description: 'Mod ID: alpha', file_size: '2048', time_updated: 100, consumer_app_id: 108600 },
+              { publishedfileid: '2', result: 9 },
+              { publishedfileid: '3', result: 1, title: 'Other game', consumer_app_id: 4000 },
+            ],
+          },
+        }),
+      );
+    }) as typeof fetch);
+    const details = await client.details(['1', '2', '3']);
+    expect(sent[0]).toBe('https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/ itemcount=3&publishedfileids%5B0%5D=1&publishedfileids%5B1%5D=2&publishedfileids%5B2%5D=3');
+    expect(details.map((item) => [item.id, item.found, item.title, item.modIds, item.sizeBytes, item.updatedAt, item.forZomboid])).toEqual([
+      ['1', true, 'Alpha', ['alpha'], 2048, 100_000, true],
+      ['2', false, null, [], null, null, false],
+      ['3', true, 'Other game', [], null, null, false],
+    ]);
+  });
+});
+
 describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
   let t: TestDb;
   let app: FastifyInstance;
+  const workshop = new Map<string, WorkshopDetails>();
   beforeEach(async () => {
+    workshop.clear();
     t = await createTestDb();
     const steamScript = path.join(t.dir, 'steamcmd.sh');
     await writeFile(steamScript, `#!/bin/bash\nexec "${process.execPath}" "${path.join(HERE, 'fake-steamcmd.mjs')}" "$@"\n`);
@@ -61,6 +100,7 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
       javaStandardRoots: [],
       portProbe: async () => 'free',
       udpProbe: async () => true,
+      workshopApi: { details: async (ids) => ids.map((id) => workshop.get(id) ?? { id, found: false, title: null, previewUrl: null, sizeBytes: null, updatedAt: null, modIds: [], mapFolders: [], forZomboid: false }) },
       steamCmd: new SteamCmd({ dir: path.join(t.dir, 'steamcmd'), runner: createInstallerRunner(realSpawner), configuredPath: steamScript }),
     });
     await app.ready();
@@ -91,7 +131,8 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
 
     expect((await call('POST', `/api/servers/${id}/start`)).status).toBe(200);
     const status = async () => (await call<{ server: { status: { state: string; players: string[] } } }>('GET', `/api/servers/${id}`)).body.server.status;
-    await waitFor(async () => (await status()).state === 'online' || undefined, 10_000);
+    // the player line follows the ready line
+    await waitFor(async () => ((await status()).state === 'online' && (await status()).players.length > 0) || undefined, 10_000);
     expect((await status()).players).toEqual(['Rick']);
 
     const args = JSON.parse(await readFile(path.join(t.dir, 'servers', id, 'server', 'fake-zomboid-args.json'), 'utf8')) as string[];
@@ -115,10 +156,99 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
     await waitFor(async () => (await status()).state === 'offline' || undefined, 10_000);
   }, 60_000);
 
+  it('backs up Server, Saves and db while stopped, refuses while running, and restores with a safety copy', async () => {
+    const created = await call<{ server: { id: string } }>('POST', '/api/servers', { game: 'zomboid', name: 'Knox' });
+    const id = created.body.server.id;
+    const data = path.join(t.dir, 'servers', id, 'data');
+    const status = async () => (await call<{ server: { status: { state: string } } }>('GET', `/api/servers/${id}`)).body.server.status;
+    await waitFor(async () => (await call<{ server: { installState: string } }>('GET', `/api/servers/${id}`)).body.server.installState === 'installed' || undefined, 15_000);
+    await mkdir(path.join(data, 'Saves', 'Multiplayer', 'servertest'), { recursive: true });
+    await writeFile(path.join(data, 'Saves', 'Multiplayer', 'servertest', 'map_1_1.bin'), 'original');
+
+    await call('POST', `/api/servers/${id}/start`);
+    await waitFor(async () => (await status()).state === 'online' || undefined, 10_000);
+    expect((await call('POST', `/api/servers/${id}/backups`, {})).body).toMatchObject({ error: { code: 'BACKUP_NEEDS_STOP' } });
+    await call('POST', `/api/servers/${id}/stop`);
+    await waitFor(async () => (await status()).state === 'offline' || undefined, 10_000);
+
+    const started = await call<{ backup: { id: string } }>('POST', `/api/servers/${id}/backups`, {});
+    expect(started.status).toBe(202);
+    const list = async () => (await call<{ backups: Array<{ id: string; status: string; kind: string; levelName: string; worlds: string[] }> }>('GET', `/api/servers/${id}/backups`)).body.backups;
+    await waitFor(async () => (await list()).find((row) => row.id === started.body.backup.id)?.status === 'ok' || undefined, 10_000);
+    expect((await list())[0]).toMatchObject({ levelName: 'servertest', worlds: ['Server', 'Saves', 'db'] });
+
+    await writeFile(path.join(data, 'Saves', 'Multiplayer', 'servertest', 'map_1_1.bin'), 'changed');
+    const restored = await call<{ safety: { kind: string } | null }>('POST', `/api/servers/${id}/backups/${started.body.backup.id}/restore`);
+    expect(restored.status).toBe(200);
+    expect(restored.body.safety?.kind).toBe('safety');
+    expect(await readFile(path.join(data, 'Saves', 'Multiplayer', 'servertest', 'map_1_1.bin'), 'utf8')).toBe('original');
+    expect(await readFile(path.join(data, 'Server', 'servertest.ini'), 'utf8')).toContain('DefaultPort=16261');
+  }, 60_000);
+
+  it('edits its settings files as text while stopped, and the ports of the ini move the server', async () => {
+    const created = await call<{ server: { id: string } }>('POST', '/api/servers', { game: 'zomboid', name: 'Knox' });
+    const other = await call<{ server: { id: string } }>('POST', '/api/servers', { game: 'zomboid', name: 'Other', profile: 'other' });
+    const id = created.body.server.id;
+    await waitFor(async () => (await call<{ servers: Array<{ installState: string }> }>('GET', '/api/servers')).body.servers.every((row) => row.installState === 'installed') || undefined, 20_000);
+    const put = (key: string, text: string) => app.inject({ method: 'PUT', url: `/api/servers/${id}/config-files/${key}`, payload: { text } }).then((res) => ({ status: res.statusCode, body: res.json<Record<string, unknown>>() }));
+
+    const files = await call<{ files: Array<{ key: string; path: string; exists: boolean }> }>('GET', `/api/servers/${id}/config-files`);
+    expect(files.body.files.map((file) => [file.key, file.path, file.exists])).toEqual([
+      ['ini', 'data/Server/servertest.ini', true],
+      ['sandbox', 'data/Server/servertest_SandboxVars.lua', false],
+      ['spawnregions', 'data/Server/servertest_spawnregions.lua', false],
+      ['spawnpoints', 'data/Server/servertest_spawnpoints.lua', false],
+    ]);
+    const ini = await call<{ text: string }>('GET', `/api/servers/${id}/config-files/ini`);
+    expect(ini.body.text).toContain('UDPPort=16262');
+
+    expect((await put('sandbox', 'SandboxVars = { Zombies = 4 }\n')).status).toBe(200);
+    expect(await readFile(path.join(t.dir, 'servers', id, 'data', 'Server', 'servertest_SandboxVars.lua'), 'utf8')).toBe('SandboxVars = { Zombies = 4 }\n');
+
+    // the other server holds 16263/16264
+    expect((await put('ini', ini.body.text.replace('UDPPort=16262', 'UDPPort=16264'))).body).toMatchObject({ error: { code: 'PORT_IN_USE' } });
+    expect((await put('ini', ini.body.text.replace('DefaultPort=16261', 'DefaultPort=99'))).body).toMatchObject({ error: { code: 'PORT_INVALID' } });
+    expect((await put('ini', ini.body.text.replace('DefaultPort=16261', 'DefaultPort=17000').replace('UDPPort=16262', 'UDPPort=17001'))).status).toBe(200);
+    const moved = (await call<{ server: { port: number; gameSettings: string } }>('GET', `/api/servers/${id}`)).body.server;
+    expect([moved.port, (JSON.parse(moved.gameSettings) as { udpPort: number }).udpPort]).toEqual([17000, 17001]);
+
+    await call('POST', `/api/servers/${id}/start`);
+    await waitFor(async () => (await call<{ server: { status: { state: string } } }>('GET', `/api/servers/${id}`)).body.server.status.state === 'online' || undefined, 10_000);
+    expect((await put('sandbox', 'x')).body).toMatchObject({ error: { code: 'SERVER_RUNNING' } });
+    await call('POST', `/api/servers/${id}/stop`);
+    await waitFor(async () => (await call<{ server: { status: { state: string } } }>('GET', `/api/servers/${id}`)).body.server.status.state === 'offline' || undefined, 10_000);
+    expect((await call('GET', `/api/servers/${id}/config-files/nope`)).status).toBe(404);
+    expect(other.status).toBe(201);
+  }, 60_000);
+
+  it('keeps the Workshop items, mod ids and maps of the ini in order', async () => {
+    const item = (id: string, title: string, modIds: string[], mapFolders: string[] = []): WorkshopDetails => ({ id, found: true, title, previewUrl: null, sizeBytes: 10, updatedAt: 1, modIds, mapFolders, forZomboid: true });
+    workshop.set('111', item('111', 'Brita Weapons', ['Brita']));
+    workshop.set('222', item('222', 'Raven Creek', ['RavenCreek'], ['RavenCreek']));
+    workshop.set('333', { ...item('333', 'Not PZ', []), forZomboid: false });
+    const created = await call<{ server: { id: string } }>('POST', '/api/servers', { game: 'zomboid', name: 'Knox' });
+    const id = created.body.server.id;
+    await waitFor(async () => (await call<{ server: { installState: string } }>('GET', `/api/servers/${id}`)).body.server.installState === 'installed' || undefined, 15_000);
+
+    expect((await call('GET', `/api/servers/${id}/workshop`)).body).toEqual({ items: [], mods: [], maps: ['Muldraugh, KY'], detailsError: null });
+    expect((await call('GET', '/api/workshop/lookup?q=https%3A%2F%2Fsteamcommunity.com%2Fsharedfiles%2Ffiledetails%2F%3Fid%3D222')).body).toMatchObject({ item: { id: '222', modIds: ['RavenCreek'], mapFolders: ['RavenCreek'] } });
+    expect((await call('GET', '/api/workshop/lookup?q=999')).body).toMatchObject({ error: { code: 'WORKSHOP_NOT_FOUND' } });
+    expect((await call('GET', '/api/workshop/lookup?q=333')).body).toMatchObject({ error: { code: 'WORKSHOP_WRONG_GAME' } });
+    expect((await call('GET', '/api/workshop/lookup?q=hello')).body).toMatchObject({ error: { code: 'WORKSHOP_ID_INVALID' } });
+
+    const saved = await app.inject({ method: 'PUT', url: `/api/servers/${id}/workshop`, payload: { items: ['222', '111', '111'], mods: ['RavenCreek', 'Brita'], maps: ['RavenCreek', 'Muldraugh, KY'] } });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ items: [{ id: '222', title: 'Raven Creek' }, { id: '111', title: 'Brita Weapons' }], mods: ['RavenCreek', 'Brita'], maps: ['RavenCreek', 'Muldraugh, KY'] });
+    const ini = readIniValues(await readFile(path.join(t.dir, 'servers', id, 'data', 'Server', 'servertest.ini'), 'utf8'));
+    expect([ini.get('WorkshopItems'), ini.get('Mods'), ini.get('Map'), ini.get('DefaultPort')]).toEqual(['222;111', 'RavenCreek;Brita', 'RavenCreek;Muldraugh, KY', '16261']);
+    expect((await app.inject({ method: 'PUT', url: `/api/servers/${id}/workshop`, payload: { items: ['abc'], mods: [], maps: [] } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PUT', url: `/api/servers/${id}/workshop`, payload: { items: [], mods: ['a;b'], maps: [] } })).statusCode).toBe(400);
+  }, 60_000);
+
   it('refuses the Minecraft-only parts of the API for its servers', async () => {
     const created = await call<{ server: { id: string } }>('POST', '/api/servers', { game: 'zomboid', name: 'Knox' });
     const id = created.body.server.id;
-    for (const url of [`/api/servers/${id}/properties`, `/api/servers/${id}/players`, `/api/servers/${id}/backups`, `/api/servers/${id}/mods`]) {
+    for (const url of [`/api/servers/${id}/properties`, `/api/servers/${id}/players`, `/api/servers/${id}/mods`]) {
       expect((await call('GET', url)).body, url).toMatchObject({ error: { code: 'GAME_FEATURE_UNSUPPORTED', params: { game: 'Project Zomboid' } } });
     }
     expect((await call('GET', `/api/servers/${id}/console/history`)).status).toBe(200);

@@ -20,17 +20,7 @@ import { silentLogger, type Logger } from '../lib/logger.js';
 import { rethrowFsError } from '../mods/fs-errors.js';
 import type { ProcessManager } from '../process/manager.js';
 import { DEFAULT_SAVE_TIMINGS, SaveSession, type SaveTimings } from './save.js';
-import {
-  CONFIG_DIRS,
-  CONFIG_FILES,
-  MANIFEST_NAME,
-  collectSources,
-  hasAnyData,
-  newestChange,
-  readLevelName,
-  validateLevelName,
-  worldNames,
-} from './world.js';
+import { MANIFEST_NAME, collectLayout, hasLayoutData, minecraftLayout, newestChange, type BackupLayout } from './world.js';
 
 export const BackupScheduleSchema = z
   .object({
@@ -69,6 +59,8 @@ export interface BackupServiceOptions {
   logger?: Logger;
   freeSpace?: FreeSpaceReader;
   saveTimings?: SaveTimings;
+  // the folders a backup of a server holds, per game; Minecraft when absent (tests)
+  layoutOf?: (server: Server, serverDir: string) => Promise<BackupLayout>;
 }
 
 export interface RestoreResult {
@@ -145,6 +137,11 @@ export class BackupService {
   }
 
   // ---- queries -----------------------------------------------------------------------------
+
+  private layoutOf(server: Server): Promise<BackupLayout> {
+    const dir = this.serverDir(server.id);
+    return this.options.layoutOf === undefined ? minecraftLayout(dir) : this.options.layoutOf(server, dir);
+  }
 
   private async serverRow(serverId: string): Promise<Server> {
     const row = (await this.options.db.select().from(servers).where(eq(servers.id, serverId)))[0];
@@ -225,9 +222,13 @@ export class BackupService {
       if (BUSY_STATES.has(this.options.manager.status(serverId).state)) {
         throw new AppError(409, 'BACKUP_SERVER_BUSY', 'The server is starting or stopping. Please wait until it is running or stopped.');
       }
-      const withConfig = includeConfig ?? server.backupIncludeConfig;
-      const level = await readLevelName(this.serverDir(serverId));
-      if (!(await hasAnyData(this.serverDir(serverId), level, withConfig))) {
+      const layout = await this.layoutOf(server);
+      const withConfig = (includeConfig ?? server.backupIncludeConfig) && layout.configFiles.length + layout.configDirs.length > 0;
+      const level = layout.levelName;
+      if (!layout.live && this.options.manager.isRunning(serverId)) {
+        throw new AppError(409, 'BACKUP_NEEDS_STOP', 'This game can only be backed up while the server is stopped. Please stop it first.');
+      }
+      if (!(await hasLayoutData(layout, level, withConfig))) {
         throw new AppError(
           409,
           'BACKUP_NOTHING_TO_SAVE',
@@ -268,15 +269,14 @@ export class BackupService {
   async safetyBackupLocked(serverId: string, note: Msg): Promise<BackupDto | null> {
     if (this.jobs.has(serverId)) throw new AppError(409, 'BACKUP_IN_PROGRESS', 'A backup is currently running for this server.');
     const server = await this.serverRow(serverId);
-    const level = await readLevelName(this.serverDir(serverId));
-    const current = await collectSources(this.serverDir(serverId), level, false);
+    const layout = await this.layoutOf(server);
+    const current = await collectLayout(layout, layout.levelName, false);
     if (current.worlds.length === 0) return null;
     return toBackupDto(await this.process(await this.insertRow(server, 'safety', false, note)));
   }
 
   private async insertRow(server: Server, kind: BackupKind, includeConfig: boolean, note: Msg | null): Promise<Backup> {
-    const serverDir = this.serverDir(server.id);
-    const level = await readLevelName(serverDir);
+    const level = (await this.layoutOf(server)).levelName;
     const now = new Date();
     const id = randomUUID();
     const row: Backup = {
@@ -323,7 +323,7 @@ export class BackupService {
   // sends save-on again after a save-off, whatever happened in between.
   private async process(row: Backup): Promise<Backup> {
     const { manager } = this.options;
-    const serverDir = this.serverDir(row.serverId);
+    const layout = await this.layoutOf(await this.serverRow(row.serverId));
     const dir = this.archiveDir(row.serverId);
     const final = path.join(dir, row.fileName);
     const part = `${final}.part`;
@@ -333,10 +333,11 @@ export class BackupService {
       await mkdir(dir, { recursive: true });
       const state = manager.status(row.serverId).state;
       const live = state === 'online';
+      if (live && !layout.live) throw new AppError(409, 'BACKUP_NEEDS_STOP', 'This game can only be backed up while the server is stopped. Please stop it first.');
       if (!live && state !== 'offline' && state !== 'crashed') {
         throw new AppError(409, 'BACKUP_SERVER_BUSY', 'The server is starting or stopping. Please wait until it is running or stopped.');
       }
-      let collected = await collectSources(serverDir, row.levelName, row.includesConfig);
+      let collected = await collectLayout(layout, row.levelName, row.includesConfig);
       if (collected.worlds.length === 0 && collected.configItems.length === 0) {
         throw new AppError(
           409,
@@ -352,7 +353,7 @@ export class BackupService {
         if (session !== null) {
           await session.freeze();
           // chunks may have been created while the server flushed, so the list is built after the flush
-          collected = await collectSources(serverDir, row.levelName, row.includesConfig);
+          collected = await collectLayout(layout, row.levelName, row.includesConfig);
         }
         const manifest: Manifest & { createdAt: string; kind: BackupKind; serverId: string } = {
           format: 1,
@@ -516,9 +517,9 @@ export class BackupService {
         .limit(1)
     )[0];
     if (last === undefined) return true;
-    const level = await readLevelName(this.serverDir(server.id)).catch(() => null);
-    if (level === null) return true;
-    return (await newestChange(this.serverDir(server.id), level)) > last.createdAt.getTime();
+    const layout = await this.layoutOf(server).catch(() => null);
+    if (layout === null) return true;
+    return (await newestChange(layout.root, layout.levelName, layout.worlds)) > last.createdAt.getTime();
   }
 
   // ---- boot and removal --------------------------------------------------------------------
@@ -583,7 +584,9 @@ export class BackupService {
       if ((await stat(archive).catch(() => null)) === null) {
         throw new AppError(404, 'BACKUP_FILE_MISSING', 'The backup file is missing from the data folder.');
       }
-      const serverDir = this.serverDir(serverId);
+      const layout = await this.layoutOf(server);
+      const serverDir = layout.root;
+      await mkdir(serverDir, { recursive: true });
       const staging = path.join(serverDir, `.restore-new-${randomUUID()}`);
       const trash = path.join(serverDir, `.restore-old-${randomUUID()}`);
       const warnings: Msg[] = [];
@@ -592,20 +595,20 @@ export class BackupService {
       try {
         await assertFreeSpace(this.freeSpace, serverDir, row.rawBytes + 64 * MIB, 'restore');
         await extractTarGz(archive, staging, { maxBytes: row.rawBytes + MIB, maxEntries: 5_000_000, checkpoint: this.checkpoint(serverId, false) });
-        const manifest = await this.readManifest(staging);
+        const manifest = await this.readManifest(staging, layout);
 
         // the safety copy of what is about to be replaced; a failure here stops the restore
-        const currentLevel = await readLevelName(serverDir);
-        const current = await collectSources(serverDir, currentLevel, row.includesConfig);
+        const currentLevel = layout.levelName;
+        const current = await collectLayout(layout, currentLevel, row.includesConfig);
         let safety: BackupDto | null = null;
         if (current.worlds.length > 0 || current.configItems.length > 0) {
           const safetyRow = await this.insertRow(server, 'safety', row.includesConfig, msg('BACKUP_NOTE_BEFORE_RESTORE', { fileName: row.fileName }));
           safety = toBackupDto(await this.process(safetyRow));
         }
 
-        await this.swap(serverDir, staging, trash, manifest, currentLevel);
+        await this.swap(serverDir, staging, trash, manifest, currentLevel, layout);
         swapped = true;
-        const levelNow = await readLevelName(serverDir).catch(() => manifest.levelName);
+        const levelNow = await this.layoutOf(server).then((next) => next.levelName, () => manifest.levelName);
         if (levelNow !== manifest.levelName) {
           warnings.push(msg('RESTORE_LEVEL_MISMATCH', { restored: manifest.levelName, current: levelNow }));
         }
@@ -635,16 +638,16 @@ export class BackupService {
     }
   }
 
-  private async readManifest(staging: string): Promise<Manifest> {
+  private async readManifest(staging: string, layout: BackupLayout): Promise<Manifest> {
     let manifest: Manifest;
     try {
       manifest = ManifestSchema.parse(JSON.parse(await readFile(path.join(staging, MANIFEST_NAME), 'utf8')));
     } catch {
       throw new AppError(422, 'BACKUP_INVALID', 'The backup does not contain a valid description (worldfoundry-backup.json) and cannot be restored.');
     }
-    const level = validateLevelName(manifest.levelName);
-    const allowedWorlds = new Set(worldNames(level));
-    const allowedConfig = new Set([...CONFIG_FILES, ...CONFIG_DIRS]);
+    const level = layout.validateLevel(manifest.levelName);
+    const allowedWorlds = new Set(layout.worlds(level));
+    const allowedConfig = new Set([...layout.configFiles, ...layout.configDirs]);
     const entries = (await readdir(staging)).filter((name) => name !== MANIFEST_NAME);
     const declared = new Set([...manifest.worlds, ...manifest.configItems]);
     const valid =
@@ -656,9 +659,9 @@ export class BackupService {
   }
 
   // Moves what exists aside, moves the restored data in, and puts everything back if any step fails
-  private async swap(serverDir: string, staging: string, trash: string, manifest: Manifest, currentLevel: string): Promise<void> {
+  private async swap(serverDir: string, staging: string, trash: string, manifest: Manifest, currentLevel: string, layout: BackupLayout): Promise<void> {
     const incoming = [...manifest.worlds, ...manifest.configItems];
-    const replaced = new Set([...incoming, ...worldNames(manifest.levelName), ...worldNames(currentLevel)]);
+    const replaced = new Set([...incoming, ...layout.worlds(manifest.levelName), ...layout.worlds(currentLevel)]);
     const aside: Array<{ from: string; to: string }> = [];
     const placed: Array<{ from: string; to: string }> = [];
     const exists = (file: string): Promise<boolean> => lstat(file).then(() => true, () => false);
@@ -667,7 +670,7 @@ export class BackupService {
       for (const name of replaced) {
         const source = path.join(serverDir, name);
         // config items are only replaced when the backup brings them, worlds always (a stale Nether must not stay)
-        const isConfig = CONFIG_FILES.includes(name) || CONFIG_DIRS.includes(name);
+        const isConfig = layout.configFiles.includes(name) || layout.configDirs.includes(name);
         if (isConfig && !incoming.includes(name)) continue;
         if (!(await exists(source))) continue;
         const target = path.join(trash, name);

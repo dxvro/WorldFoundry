@@ -3,13 +3,14 @@ import dgram from 'node:dgram';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import type { BackupLayout } from '../../backups/world.js';
 import type { Server } from '../../db/schema.js';
 import { AppError } from '../../http/errors.js';
 import { msg } from '../../messages.js';
 import type { LineEvent } from '../../process/patterns.js';
 import type { SteamCmd } from '../../steam/steamcmd.js';
 import { gameDefinition } from '../registry.js';
-import type { GameAdapter, InstallContext, StartPlan } from '../types.js';
+import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { readIniValues, setIniValues } from './ini.js';
 
 export const ZOMBOID_APP_ID = 380870;
@@ -98,6 +99,61 @@ export class ZomboidAdapter implements GameAdapter {
 
   constructor(private readonly options: ZomboidAdapterOptions) {
     this.platform = options.platform ?? process.platform;
+  }
+
+  // Server/ (settings), Saves/ (the world) and db/ (players) belong together; the game has no "pause saving",
+  // so its backups run while the server is stopped
+  async backupLayout(server: Server, dir: string): Promise<BackupLayout> {
+    const { profile } = parseZomboidSettings(server);
+    return {
+      root: dataDir(dir),
+      levelName: profile,
+      worlds: () => ['Server', 'Saves', 'db'],
+      configFiles: [],
+      configDirs: [],
+      live: false,
+      validateLevel: (level) => {
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(level)) throw new AppError(422, 'BACKUP_INVALID', 'The backup belongs to an invalid profile name.');
+        return level;
+      },
+    };
+  }
+
+  configFiles(server: Server, dir: string): ConfigFile[] {
+    const { profile } = parseZomboidSettings(server);
+    const file = (name: string): { file: string; display: string } => ({ file: path.join(dataDir(dir), 'Server', name), display: `data/Server/${name}` });
+    return [
+      { key: 'ini', label: 'Server settings', description: 'Name, password, player limit, PvP, Workshop items and mods (Key=Value).', format: 'ini', ...file(`${profile}.ini`) },
+      { key: 'sandbox', label: 'Sandbox settings', description: 'World rules: zombies, loot, day length, start conditions. Created on the first start.', format: 'lua', ...file(`${profile}_SandboxVars.lua`) },
+      { key: 'spawnregions', label: 'Spawn regions', description: 'Where new players can start. Created on the first start.', format: 'lua', ...file(`${profile}_spawnregions.lua`) },
+      { key: 'spawnpoints', label: 'Spawn points', description: 'Exact start points per profession. Created on the first start.', format: 'lua', ...file(`${profile}_spawnpoints.lua`) },
+    ];
+  }
+
+  // The ports in the .ini decide where the game listens; the server row follows them, and taken ports are refused.
+  async checkConfig(server: Server, file: ConfigFile, text: string, others: Server[]): Promise<Partial<Server>> {
+    if (file.key !== 'ini') return {};
+    const values = readIniValues(text);
+    const settings = parseZomboidSettings(server);
+    const read = (key: string, fallback: number): number => {
+      const raw = values.get(key);
+      if (raw === undefined) return fallback;
+      const port = Number(raw.trim());
+      if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new AppError(422, 'PORT_INVALID', `${key} must be a port from 1024 to 65535.`);
+      return port;
+    };
+    const port = read('DefaultPort', server.port);
+    const udpPort = read('UDPPort', settings.udpPort);
+    if (port === udpPort) throw new AppError(422, 'PORT_INVALID', 'DefaultPort and UDPPort must differ.');
+    for (const other of others) {
+      if (other.id === server.id) continue;
+      const used = new Set([other.port, ...(other.game === 'zomboid' ? [parseZomboidSettings(other).udpPort] : [])]);
+      for (const candidate of [port, udpPort]) {
+        if (used.has(candidate)) throw new AppError(409, 'PORT_IN_USE', `Port ${candidate} is already used by the server "${other.name}".`, { port: candidate }, { port: candidate });
+      }
+    }
+    if (port === server.port && udpPort === settings.udpPort) return {};
+    return { port, gameSettings: JSON.stringify({ ...settings, udpPort }) };
   }
 
   classifyLine(line: string): LineEvent | null {

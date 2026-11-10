@@ -1,3 +1,4 @@
+import type { BackupLayout } from '../backups/world.js';
 import type { Server } from '../db/schema.js';
 import type { AppError } from '../http/errors.js';
 import type { Msg, Text } from '../messages.js';
@@ -123,4 +124,23 @@ export interface GameAdapter {
   classifyLine(line: string): LineEvent | null;
   // The console line that saves and exits; null when the game has none and the process gets a signal
   readonly stopCommand: string | null;
+
+  // The folders a backup holds
+  backupLayout(server: Server, dir: string): Promise<BackupLayout>;
+
+  // Settings files the interface offers as text; none for Minecraft, which has its own editors
+  configFiles?(server: Server, dir: string): ConfigFile[];
+  // Checks a new text of a file before it is written; returns columns of the server row that change with it
+  checkConfig?(server: Server, file: ConfigFile, text: string, others: Server[]): Promise<Partial<Server>>;
+}
+
+export interface ConfigFile {
+  key: string;
+  label: string;
+  description: string;
+  // absolute path
+  file: string;
+  // relative to the server folder, for display
+  display: string;
+  format: 'ini' | 'lua' | 'json' | 'text';
 }

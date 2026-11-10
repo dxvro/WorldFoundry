@@ -13,6 +13,8 @@ import { LoaderCatalog } from './installer/catalog.js';
 import { createInstallerRunner, type InstallerRunner } from './installer/runner.js';
 import { InstallService } from './installer/service.js';
 import { GameAdapters } from './games/adapters.js';
+import { ConfigFilesService } from './games/config-files.js';
+import { SteamWorkshopClient, ZomboidWorkshopService, type WorkshopApi } from './games/zomboid/workshop.js';
 import { CurseForgeClient, type CurseForgeApi } from './curseforge/client.js';
 import { CurseForgeService } from './curseforge/service.js';
 import { MinecraftAdapter } from './games/minecraft/adapter.js';
@@ -56,6 +58,7 @@ export interface ServiceOptions {
   // tests pass a SteamCMD that runs a fake program, and a UDP check that needs no free port
   steamCmd?: SteamCmd;
   udpProbe?: (port: number) => Promise<boolean>;
+  workshopApi?: WorkshopApi;
   logger?: Logger;
   // Phase 2 compatibility: replaces the process manager as the guard seen by the mod service
   runtimeGuard?: ServerRuntimeGuard;
@@ -101,6 +104,8 @@ export interface Services {
   catalog: LoaderCatalog;
   games: GameAdapters;
   curseforge: CurseForgeService;
+  configFiles: ConfigFilesService;
+  workshop: ZomboidWorkshopService;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -253,6 +258,7 @@ export function createServices(options: ServiceOptions): Services {
     bus,
     manager,
     logger,
+    layoutOf: (server, dir) => games.forServer(server).backupLayout(server, dir),
     ...(options.freeSpace === undefined ? {} : { freeSpace: options.freeSpace }),
     ...(options.saveTimings === undefined ? {} : { saveTimings: options.saveTimings }),
   });
@@ -362,5 +368,7 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.restart?.exit === undefined ? {} : { exit: options.restart.exit }),
     ...(options.restart?.delayMs === undefined ? {} : { delayMs: options.restart.delayMs }),
   });
-  return { lock, bus, catalog, games, curseforge, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  const configFiles = new ConfigFilesService({ db, serversDir: config.serversDir, lock, bus, games, guard });
+  const workshop = new ZomboidWorkshopService({ db, serversDir: config.serversDir, lock, guard, api: options.workshopApi ?? new SteamWorkshopClient(options.fetch ?? fetch) });
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }

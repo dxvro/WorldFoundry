@@ -106,9 +106,37 @@ const exists = (file: string): Promise<'file' | 'dir' | null> =>
     () => null,
   );
 
+// What a backup of one server contains, relative to `root`: the world folders (always) and the configuration
+// (when asked). Minecraft reads its world name from server.properties; other games name fixed folders.
+export interface BackupLayout {
+  root: string;
+  levelName: string;
+  worlds: (level: string) => string[];
+  configFiles: readonly string[];
+  configDirs: readonly string[];
+  // false: the game has no safe "pause saving", so a backup needs the server stopped
+  live: boolean;
+  validateLevel: (level: string) => string;
+}
+
+export async function minecraftLayout(serverDir: string): Promise<BackupLayout> {
+  return { root: serverDir, levelName: await readLevelName(serverDir), worlds: worldNames, configFiles: CONFIG_FILES, configDirs: CONFIG_DIRS, live: true, validateLevel: validateLevelName };
+}
+
 export async function collectSources(serverDir: string, level: string, includeConfig: boolean): Promise<Collected> {
+  return collectLayout({ root: serverDir, worlds: worldNames, configFiles: CONFIG_FILES, configDirs: CONFIG_DIRS }, level, includeConfig);
+}
+
+export async function collectLayout(
+  layout: Pick<BackupLayout, 'root' | 'worlds' | 'configFiles' | 'configDirs'>,
+  level: string,
+  includeConfig: boolean,
+): Promise<Collected> {
+  const serverDir = layout.root;
+  const CONFIG_FILES = layout.configFiles;
+  const CONFIG_DIRS = layout.configDirs;
   const out: Collected = { sources: [], fileCount: 0, rawBytes: 0, worlds: [], configItems: [], skipped: [] };
-  for (const name of worldNames(level)) {
+  for (const name of layout.worlds(level)) {
     if ((await exists(path.join(serverDir, name))) !== 'dir') continue;
     out.worlds.push(name);
     await walk(path.join(serverDir, name), name, out, 0);
@@ -134,7 +162,14 @@ export async function collectSources(serverDir: string, level: string, includeCo
 
 // cheap check before a backup is queued: is there anything the backup would contain
 export async function hasAnyData(serverDir: string, level: string, includeConfig: boolean): Promise<boolean> {
-  for (const name of worldNames(level)) if ((await exists(path.join(serverDir, name))) === 'dir') return true;
+  return hasLayoutData({ root: serverDir, worlds: worldNames, configFiles: CONFIG_FILES, configDirs: CONFIG_DIRS }, level, includeConfig);
+}
+
+export async function hasLayoutData(layout: Pick<BackupLayout, 'root' | 'worlds' | 'configFiles' | 'configDirs'>, level: string, includeConfig: boolean): Promise<boolean> {
+  const serverDir = layout.root;
+  const CONFIG_FILES = layout.configFiles;
+  const CONFIG_DIRS = layout.configDirs;
+  for (const name of layout.worlds(level)) if ((await exists(path.join(serverDir, name))) === 'dir') return true;
   if (!includeConfig) return false;
   for (const name of CONFIG_FILES) if ((await exists(path.join(serverDir, name))) === 'file') return true;
   for (const name of CONFIG_DIRS) if ((await exists(path.join(serverDir, name))) === 'dir') return true;
@@ -142,7 +177,7 @@ export async function hasAnyData(serverDir: string, level: string, includeConfig
 }
 
 // newest modification time below the world folders, for skipping a scheduled backup of an unchanged, stopped server
-export async function newestChange(serverDir: string, level: string): Promise<number> {
+export async function newestChange(serverDir: string, level: string, worlds: (level: string) => string[] = worldNames): Promise<number> {
   let newest = 0;
   const visit = async (abs: string, depth: number): Promise<void> => {
     if (depth > MAX_DEPTH) return;
@@ -152,6 +187,6 @@ export async function newestChange(serverDir: string, level: string): Promise<nu
     if (!info.isDirectory()) return;
     for (const entry of await readdir(abs).catch(() => [])) if (!EXCLUDED_NAMES.has(entry)) await visit(path.join(abs, entry), depth + 1);
   };
-  for (const name of worldNames(level)) await visit(path.join(serverDir, name), 0);
+  for (const name of worlds(level)) await visit(path.join(serverDir, name), 0);
   return newest;
 }

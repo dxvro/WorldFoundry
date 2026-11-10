@@ -52,6 +52,9 @@ class OtherGame implements GameAdapter {
       },
     };
   }
+  async backupLayout(): Promise<never> {
+    throw new Error('not used');
+  }
   classifyLine(line: string) {
     if (line === '*** SERVER READY ***') return { type: 'done' as const };
     if (line.startsWith('+ ')) return { type: 'join' as const, name: line.slice(2) };
