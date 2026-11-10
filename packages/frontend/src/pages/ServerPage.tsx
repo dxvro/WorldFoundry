@@ -23,6 +23,9 @@ import { FilesTab } from './server/FilesTab';
 import { WorkshopTab } from './server/WorkshopTab';
 import { FicsitTab } from './server/FicsitTab';
 import { GamePlayersTab } from './server/GamePlayersTab';
+import { ArkModsTab } from './server/ArkModsTab';
+import { ArkSettingsTab } from './server/ArkSettingsTab';
+import { ARK_MAPS, arkSettings } from '../games/ark';
 import { SatisfactorySettingsTab } from './server/SatisfactorySettingsTab';
 import { satisfactorySettings } from '../games/satisfactory';
 import { zomboidSettings } from '../games/zomboid';
@@ -80,7 +83,9 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
   const ZOMBOID_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'players', 'workshop', 'backups'];
   const MINECRAFT_TABS: readonly ServerTab[] = ['console', 'config', 'world', 'players', 'mods', 'store', 'backups'];
   const SATISFACTORY_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'players', 'ficsit', 'backups'];
-  const shown = minecraft ? MINECRAFT_TABS : server.game === 'satisfactory' ? SATISFACTORY_TABS : ZOMBOID_TABS;
+  const ARK_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'players', 'workshop', 'backups'];
+  const shown = minecraft ? MINECRAFT_TABS : server.game === 'satisfactory' ? SATISFACTORY_TABS : server.game === 'ark' ? ARK_TABS : ZOMBOID_TABS;
+  const ark = arkSettings(server);
   const tabs = allTabs.filter((entry) => shown.includes(entry.id));
   const satisfactory = satisfactorySettings(server);
   const zomboid = zomboidSettings(server);
@@ -110,8 +115,9 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
               <span className="chip">{nameOf(server.game)}</span>
               {zomboid === null ? null : <span className="num">{t.zomboid.header.branch(zomboid.branch)}</span>}
               {satisfactory === null ? null : <span className="num">{t.satisfactory.header.branch(satisfactory.branch)}</span>}
+              {ark === null ? null : <span className="num">{t.ark.header.map(ARK_MAPS[ark.map] ?? ark.map)}</span>}
               <span className="num">
-                {zomboid !== null ? t.zomboid.header.ports(server.port, zomboid.udpPort) : satisfactory !== null ? t.satisfactory.header.ports(server.port, satisfactory.reliablePort) : t.server.header.port(server.port)}
+                {zomboid !== null ? t.zomboid.header.ports(server.port, zomboid.udpPort) : satisfactory !== null ? t.satisfactory.header.ports(server.port, satisfactory.reliablePort) : ark !== null ? t.ark.header.ports(server.port, ark.queryPort) : t.server.header.port(server.port)}
               </span>
             </>
           )}
@@ -177,6 +183,8 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
           <ConfigTab key={server.id} server={server} status={status} />
         ) : server.game === 'satisfactory' ? (
           <SatisfactorySettingsTab key={server.id} server={server} />
+        ) : server.game === 'ark' ? (
+          <ArkSettingsTab key={server.id} server={server} />
         ) : (
           <ZomboidSettingsTab key={server.id} server={server} />
         )}
@@ -187,6 +195,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         {!minecraft ? null : tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}
         {tab === 'files' && !minecraft ? <FilesTab key={server.id} server={server} status={status} /> : null}
         {tab === 'ficsit' && server.game === 'satisfactory' ? <FicsitTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'workshop' && server.game === 'ark' ? <ArkModsTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'zomboid' ? <WorkshopTab key={server.id} server={server} status={status} /> : null}
         {tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
       </div>

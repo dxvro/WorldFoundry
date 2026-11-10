@@ -180,6 +180,7 @@ export interface WorkshopItem {
   modIds: string[];
   mapFolders: string[];
   forZomboid: boolean;
+  appId: number | null;
 }
 
 export interface WorkshopView {
@@ -231,6 +232,12 @@ export interface GamePlayersView {
 export const gamePlayersApi = {
   get: (id: string, signal?: AbortSignal): Promise<GamePlayersView> => request(`${server(id)}/game-players`, signal === undefined ? {} : { signal }),
   act: (id: string, action: string, name: string): Promise<{ sent: string }> => request(`${server(id)}/game-players/${enc(action)}`, { method: 'POST', body: { name } }),
+};
+
+export const arkModsApi = {
+  get: (id: string, signal?: AbortSignal): Promise<{ mods: WorkshopItem[]; detailsError: string | null }> => request(`${server(id)}/ark-mods`, signal === undefined ? {} : { signal }),
+  save: (id: string, mods: string[]): Promise<{ mods: WorkshopItem[]; detailsError: string | null }> => request(`${server(id)}/ark-mods`, { method: 'PUT', body: { mods } }),
+  lookup: async (query: string): Promise<WorkshopItem> => (await request<{ item: WorkshopItem }>('/api/ark/workshop/lookup', { query: { q: query } })).item,
 };
 
 export const backupsApi = {

@@ -11,6 +11,7 @@ import { GamesPage } from './pages/Games';
 import { NewServer } from './pages/NewServer';
 import { ZomboidWizard } from './pages/ZomboidWizard';
 import { SatisfactoryWizard } from './pages/SatisfactoryWizard';
+import { ArkWizard } from './pages/ArkWizard';
 import { ImportWizard } from './pages/ImportWizard';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
@@ -30,6 +31,7 @@ function Routes(): ReactNode {
       if (route.game === 'minecraft') return <CreateWizard key={visit} />;
       if (route.game === 'zomboid') return <ZomboidWizard key={visit} />;
       if (route.game === 'satisfactory') return <SatisfactoryWizard key={visit} />;
+      if (route.game === 'ark') return <ArkWizard key={visit} />;
       return <NewServer />;
     case 'games':
       return <GamesPage />;

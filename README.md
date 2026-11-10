@@ -4,7 +4,7 @@
 
 WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
-**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid and Satisfactory have their first versions; ARK is being built. To try WorldFoundry, run it from source (see below).
+**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid, Satisfactory and ARK: Survival Evolved have their first versions. To try WorldFoundry, run it from source (see below).
 
 ## Games
 
@@ -13,7 +13,7 @@ WorldFoundry runs dedicated game servers on one of your own computers and is ope
 | Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
 | Project Zomboid | Early: install, start, stop, console, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
 | Satisfactory | Early: install, start, clean stop (Linux), readiness through the server API, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | ficsit.app (server builds, mod loader, dependencies) |
-| ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
+| ARK: Survival Evolved | Early: install, start, RCON console, players with kick/ban, clean stop with SaveWorld, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ActiveMods, downloaded by the server) |
 
 - **Minecraft:** NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 - **Project Zomboid:** Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.
@@ -41,6 +41,10 @@ WorldFoundry downloads SteamCMD from Valve into its data folder on first use and
 ## Satisfactory
 
 On Linux every Satisfactory server gets its own home folder (`home/` in the server folder), so save games of several servers stay apart, and stopping sends SIGINT so the game saves and quits. On Windows the game keeps its saves in `%LOCALAPPDATA%\FactoryGame` for every server of the computer, and stopping ends the process at once. After the first start, claim the server in the game (Server Manager); WorldFoundry does not know its admin password.
+
+## ARK: Survival Evolved
+
+WorldFoundry creates an admin password for each ARK server and uses it for RCON: console commands, the player list, kick and ban, and a clean stop (SaveWorld, then DoExit). Never forward the RCON port on the router. Workshop mods are listed in `ActiveMods` and downloaded by the server itself on start.
 
 ## How it works
 

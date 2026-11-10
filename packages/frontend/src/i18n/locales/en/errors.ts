@@ -45,6 +45,8 @@ export const errors = {
   codes: {
     GAME_NOT_FOUND: 'This game is not known to WorldFoundry.',
     GAME_SETTINGS_INVALID: 'The stored settings of this server are damaged.',
+    PLAYER_ID_UNKNOWN: 'ARK needs the Steam id of a player who is not online (17 digits).',
+    RCON_FAILED: 'The server did not answer on RCON. Is it still starting?',
     BACKUP_NEEDS_STOP: 'This game can only be backed up while the server is stopped. Please stop it first.',
     WORKSHOP_ID_INVALID: 'Please enter a Workshop id or the link of a Workshop item.',
     WORKSHOP_NOT_FOUND: 'This Workshop item was not found or is not public.',
