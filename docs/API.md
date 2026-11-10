@@ -72,7 +72,7 @@ A disabled mod is named `<name>.jar.disabled` in the same folder; loaders ignore
 
 ### Update backups
 
-After every update, only the newest `MOD_BACKUP_KEEP` (default 3) files per mod remain in `mods_backup/` or `plugins_backup/`; the one just created is never deleted. Files that are not assigned to an update are left untouched. The interface shows the size and "Aufräumen" (clean up).
+After every update, only the newest `MOD_BACKUP_KEEP` (default 3) files per mod remain in `mods_backup/` or `plugins_backup/`; the one just created is never deleted. Files that are not assigned to an update are left untouched. The interface shows the size and "Clean up" (clean up).
 
 ## World backups
 
@@ -95,7 +95,7 @@ The archives are stored as `.tar.gz` in `<DATA_DIR>/backups/<server ID>/`. What 
 
 ## Importing and exporting worlds
 
-An existing world (with or without mods) can be brought in and out as an archive. In the interface: wizard "Neuer Server" (new server) → "Aus vorhandener Welt" (from an existing world, `/new/world`) as well as, on a server's page under "Backups", the sections "Welt exportieren" (export world) and "Welt ersetzen" (replace world; only while the server is stopped); each backup can additionally be exported as a world archive.
+An existing world (with or without mods) can be brought in and out as an archive. In the interface: "New server" → "Minecraft server from an existing world" (`/new/world`) as well as, on a server's page under "Backups", the sections "Export world" and "Replace world" (only while the server is stopped); each backup can additionally be exported as a world archive.
 
 **Export** (per server, paths below `/api`):
 

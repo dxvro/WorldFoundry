@@ -6,8 +6,6 @@ rem Installed: Start menu "Reset password". Portable (ZIP): run the file in the 
 setlocal
 cd /d "%~dp0"
 set "DATAROOT=%~dp0data"
-rem Older portable versions used the folder "daten": if that exists and "data" does not, it keeps being used
-if not exist "%~dp0data\" if exist "%~dp0daten\" set "DATAROOT=%~dp0daten"
 if exist "%DATAROOT%\worldfoundry.env" (
   rem portable version: data is next to the script, no elevated rights needed
   set "CONFIG_FILE=%DATAROOT%\worldfoundry.env"

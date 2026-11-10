@@ -5,7 +5,7 @@
 
 This page describes the web interface and how servers are created, installed and started. Installation of WorldFoundry itself is in [INSTALL.md](INSTALL.md), settings are in [CONFIGURATION.md](CONFIGURATION.md), and the HTTP interface is in [API.md](API.md).
 
-> **Language note:** the web interface is available in German and English. The language can be switched in the interface. Button and menu names in this documentation are given as they appear in the German interface.
+> The web interface is in English.
 
 **Contents**
 
@@ -31,6 +31,19 @@ The interface is a dark operations dashboard for phone, tablet and desktop. It o
 - **Login**, as soon as `AUTH_TOKEN` or a password is set; a `401` anywhere leads back to the login.
 
 The interface needs no internet access: fonts are bundled and there are no CDN scripts. The only external images are the icons from Modrinth (`cdn.modrinth.com`); if they are missing, a letter tile is shown. It uses no browser features that are available only over HTTPS or localhost, so it also works over `http://<LAN IP>`. All texts from servers and Modrinth are rendered as text, never as HTML. HTML responses carry `Content-Security-Policy` (own sources only, images additionally from `cdn.modrinth.com`), `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff`. The host, origin and login checks apply unchanged; the interface itself (HTML, scripts, fonts) can be fetched without logging in, every path below `/api` cannot (see [Security](CONFIGURATION.md#security)).
+
+## Games
+
+**New server** first asks for the game. Every server page has a console and a configuration tab; the other tabs depend on the game.
+
+| Game | Server files | Tabs besides console and configuration | Notes |
+| --- | --- | --- | --- |
+| Minecraft: Java Edition | Official source of the loader | World settings, Players, Mods, Mod Store (Modrinth), Backups | Backups also while the server runs. CurseForge is in progress. |
+| Project Zomboid | SteamCMD (app 380870) | Settings files, Players, Steam Workshop, Backups | Admin password for the game is created by WorldFoundry. Backups while stopped. |
+| Satisfactory | SteamCMD (app 1690800) | Settings files, Players (count), Mods (ficsit.app), Backups | Claim the server in the game after the first start. Linux keeps each server apart; on Windows saves are shared. |
+| ARK: Survival Evolved | SteamCMD (app 376030) | Settings files, Players, Steam Workshop, Backups | Commands, players and the clean stop go through RCON with the admin password WorldFoundry creates. |
+
+SteamCMD is downloaded from Valve on first use and always logs in anonymously. On 64-bit Linux it needs 32-bit libraries (`sudo apt install lib32gcc-s1` on Debian or Ubuntu). The sections below describe Minecraft in detail.
 
 ## Creating, installing and starting servers
 
@@ -64,12 +77,12 @@ If the matching Java version is missing for a server, WorldFoundry installs it i
 - **Source:** Eclipse Temurin through the Adoptium API (`https://api.adoptium.net/v3/assets/latest/<version>/hotspot`). The metadata provides download link, size and SHA-256. Only the three hosts that a download actually touches are allowed (checked on 5 Nov 2026, also for Java 8, 17, 21 and 25): `api.adoptium.net`, `github.com` (redirect to the release) and `release-assets.githubusercontent.com`. Every redirect is checked individually against this list.
 - **Target:** `<DATA_DIR>/runtimes/temurin-<major version>/`, for WorldFoundry only. There is no system-wide installation and no change to PATH or the registry.
 - **Procedure:** download to `.tmp-*`, check size and SHA-256, extract safely (zip on Windows, tar.gz on Linux/macOS; paths outside the target folder, absolute paths, `..`, symlinks pointing out of the folder and oversized archives are rejected), run `java -version` and check the major version, then write a marker and move the folder into place with a rename. Aborted or failed runs leave nothing usable; leftovers (`.tmp-*`, `.removing-*`, folders without a marker) are deleted at start. Free disk space is checked before the download.
-- **Platforms:** win32/linux/darwin with x64/arm64. If a combination does not exist at Adoptium (for example Java 8 on Windows arm64), `422 JAVA_NOT_AVAILABLE` is returned with an explanation in German; for unknown platforms, `JAVA_PLATFORM_UNSUPPORTED`.
+- **Platforms:** win32/linux/darwin with x64/arm64. If a combination does not exist at Adoptium (for example Java 8 on Windows arm64), `422 JAVA_NOT_AVAILABLE` is returned with an explanation; for unknown platforms, `JAVA_PLATFORM_UNSUPPORTED`.
 - **Which version:** The lowest long-term-supported version that satisfies the server is installed (8, 11, 17, 21, 25; Minecraft's Java 16 becomes 17); above that, the exact minimum version. Upper limits are respected: Forge up to 1.12.2 gets exactly Java 8.
 - **JRE instead of JDK:** The JRE image is downloaded (about 40 to 60 MB instead of 100 to 200 MB). Server jars and the installers need only the runtime, not a compiler. Verified: the JRE 21 and 25 contain all runtime modules (among them `jdk.unsupported`, `jdk.zipfs`, `jdk.crypto.ec`, `jdk.management`, `jdk.jfr`, `java.sql`); only developer tools such as `jdk.compiler` are missing. The real Forge 1.12.2 installer ran through without errors with the JRE 8. Not checked by hand: modern Forge and NeoForge installers, and a real server start with the JRE. If no JRE image exists for a version and platform, WorldFoundry automatically takes the JDK.
 - **One installation per version:** If several servers or jobs request the same version at the same time, they share one download including its progress. It is cancelled only when the last waiting party has given up (or the application ends).
 
-**Procedure at start (without waiting inside the request):** `POST /api/servers/:id/start` answers immediately. If Java is missing, the server enters the new state `preparing` (interface: "Bereitet vor", preparing) with the message "Java 21 wird installiert ..." (installing Java 21). Progress and steps appear in the server's console (system lines), in the status (`message`) and as the event `java.install`. The installation runs in the background **without** holding the server lock (otherwise it would block, for example, saving properties); the server still counts as running, which is why deleting, mod changes, installation and a second start are rejected with `409`. Once the runtime is there, the normal start path runs again under the lock (port, EULA and files are checked again) and the state goes through `starting` to `online`. An error (download, checksum, port in use ...) ends as `crashed` with a readable message and console line. **Stop, force-stop and restart** cancel the preparation (state `offline`, no process); the download continues for other servers. **When the application shuts down**, preparations are cancelled and the running installation including its `.tmp` folder is cleaned up. In the interface, the stop button is called "Abbrechen" (cancel) during this phase.
+**Procedure at start (without waiting inside the request):** `POST /api/servers/:id/start` answers immediately. If Java is missing, the server enters the new state `preparing` (interface: "Preparing") with the message "Installing Java 21 ...". Progress and steps appear in the server's console (system lines), in the status (`message`) and as the event `java.install`. The installation runs in the background **without** holding the server lock (otherwise it would block, for example, saving properties); the server still counts as running, which is why deleting, mod changes, installation and a second start are rejected with `409`. Once the runtime is there, the normal start path runs again under the lock (port, EULA and files are checked again) and the state goes through `starting` to `online`. An error (download, checksum, port in use ...) ends as `crashed` with a readable message and console line. **Stop, force-stop and restart** cancel the preparation (state `offline`, no process); the download continues for other servers. **When the application shuts down**, preparations are cancelled and the running installation including its `.tmp` folder is cleaned up. In the interface, the stop button is called "Abbrechen" (cancel) during this phase.
 
 The list of runtimes with origin, "Install Java N" and "Remove" (only if no running server uses it, otherwise `409 JAVA_IN_USE`) is in a server's configuration.
 

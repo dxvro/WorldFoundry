@@ -9,9 +9,7 @@
 ; Service:       "worldfoundry", account NT SERVICE\worldfoundry (virtual service account, not SYSTEM)
 ; Update service: "worldfoundry-updater" (LocalSystem), folder %ProgramData%\WorldFoundry Update (requests, status)
 ;
-; Languages: English (default) and German. The language is chosen in the first dialog; a silent installation uses the
-; language of the system, or the one used by the previous installation. Only texts and the names of the Start menu
-; shortcuts depend on the language.
+; Language: English only.
 ;
 ; Silent update (as the update service runs it):
 ;   worldfoundry-<version>-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS="firewall,startmenu"
@@ -19,7 +17,7 @@
 ; applied if they are named with /TASKS. The task names, the service ids and the firewall rule names are read by the
 ; update service of already installed versions and must not change.
 ;
-; This file is saved as UTF-8 with BOM (German umlauts in the German messages).
+; This file is saved as UTF-8 with BOM.
 
 #ifndef AppVersion
   #define AppVersion "0.1.0"
@@ -46,8 +44,14 @@
 #define UpdateFolderName "WorldFoundry Update"
 #define UpdateTaskName "WorldFoundryUpdate"
 #define FirewallWebRule "WorldFoundry - Web"
-#define FirewallMcRule "WorldFoundry - Minecraft"
-#define McPortRange "25565-25575"
+#define FirewallTcpRule "WorldFoundry - Game servers (TCP)"
+#define FirewallUdpRule "WorldFoundry - Game servers (UDP)"
+; Default port ranges of the games: Minecraft 25565+, Satisfactory 7777+ and 8888+ (TCP and UDP),
+; Project Zomboid 16261+, ARK 7777+ and the Steam query ports 27015+ (UDP). RCON (27020+ TCP) stays closed.
+#define TcpPortRange "25565-25575,7777-7790,8888-8899"
+#define UdpPortRange "7777-7790,16261-16280,27015-27030"
+; firewall rule of versions that knew only Minecraft
+#define FirewallOldRule "WorldFoundry - Minecraft"
 #define StartMenuFolderName "WorldFoundry"
 #define StartMenuFolder "{commonprograms}\" + StartMenuFolderName
 
@@ -76,99 +80,59 @@ UninstallDisplayName={#AppName}
 VersionInfoVersion={#AppVersion}
 VersionInfoDescription={#AppName} Setup
 DisableWelcomePage=no
-ShowLanguageDialog=yes
-UsePreviousLanguage=yes
+ShowLanguageDialog=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Messages]
-english.WelcomeLabel2=This wizard will install [name/ver] on your computer.%n%nNOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.%n%nIt is recommended that you close all other applications before continuing.
-english.FinishedLabel=Setup has finished installing [name] on your computer. Addresses and the access token are on the previous page and in the file credentials.txt.%n%nNOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
-english.FinishedLabelNoIcons=Setup has finished installing [name] on your computer. Addresses and the access token are on the previous page and in the file credentials.txt.%n%nNOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
-german.WelcomeLabel2=Dieser Assistent installiert [name/ver] auf Ihrem Computer.%n%nKein offizielles Minecraft-Produkt. Nicht von Mojang oder Microsoft genehmigt oder mit ihnen verbunden.%n%nEs wird empfohlen, alle anderen Anwendungen zu schließen, bevor Sie fortfahren.
-german.FinishedLabel=Das Setup hat [name] auf Ihrem Computer installiert. Adressen und Zugriffstoken stehen auf der vorherigen Seite und in der Datei credentials.txt.%n%nKein offizielles Minecraft-Produkt. Nicht von Mojang oder Microsoft genehmigt oder mit ihnen verbunden.
-german.FinishedLabelNoIcons=Das Setup hat [name] auf Ihrem Computer installiert. Adressen und Zugriffstoken stehen auf der vorherigen Seite und in der Datei credentials.txt.%n%nKein offizielles Minecraft-Produkt. Nicht von Mojang oder Microsoft genehmigt oder mit ihnen verbunden.
+english.WelcomeLabel2=This wizard will install [name/ver] on your computer.%n%nWorldFoundry is not an official product of any game publisher. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.%n%nIt is recommended that you close all other applications before continuing.
+english.FinishedLabel=Setup has finished installing [name] on your computer. Addresses and the access token are on the previous page and in the file credentials.txt.%n%nWorldFoundry is not an official product of any game publisher. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+english.FinishedLabelNoIcons=Setup has finished installing [name] on your computer. Addresses and the access token are on the previous page and in the file credentials.txt.%n%nWorldFoundry is not an official product of any game publisher. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 [CustomMessages]
-english.TaskFirewall=Windows Firewall: open the web port (TCP 3000 or the port set in the configuration) and the Minecraft ports (TCP %1) for private networks
-german.TaskFirewall=Windows-Firewall: Web-Port (TCP 3000 bzw. der in der Konfiguration eingestellte Port) und Minecraft-Ports (TCP %1) für private Netzwerke freigeben
+english.TaskFirewall=Windows Firewall: open the web port (TCP 3000 or the port set in the configuration) and the default game server ports (TCP %1, UDP %2) for private networks
 english.TaskGroupNetwork=Network:
-german.TaskGroupNetwork=Netzwerk:
 english.TaskStartMenu=Start menu shortcut that opens the web interface
-german.TaskStartMenu=Verknüpfung im Startmenü, die die Weboberfläche öffnet
 english.TaskGroupShortcuts=Shortcuts:
-german.TaskGroupShortcuts=Verknüpfungen:
 english.IconWeb=WorldFoundry Web Interface
-german.IconWeb=WorldFoundry Weboberfläche
 english.IconResetPassword=Reset Password
-german.IconResetPassword=Passwort zurücksetzen
 english.IconResetPasswordComment=Reset the password of the web interface (administrator only)
-german.IconResetPasswordComment=Passwort der Weboberfläche zurücksetzen (nur als Administrator)
 
 english.CredPageCaption=Access details
-german.CredPageCaption=Zugangsdaten
 english.CredPageDescription=Address and access token of WorldFoundry
-german.CredPageDescription=Adresse und Zugriffstoken von WorldFoundry
 english.CredAddresses=The web interface is available at:
-german.CredAddresses=Die Weboberfläche ist erreichbar unter:
 english.CredLocal=(on this computer)
-german.CredLocal=(auf diesem Rechner)
 english.CredTip=(Tip: assign a fixed IP address to this computer in your router so that the address does not change.)
-german.CredTip=(Tipp: Im Router eine feste IP-Adresse für diesen Rechner vergeben, damit sich die Adresse nicht ändert.)
 english.CredToken=Access token for signing in (please write it down, it is also the first password):
-german.CredToken=Zugriffstoken zum Anmelden (bitte notieren, es ist zugleich das erste Passwort):
 english.CredTokenAlso=The token is also stored in:
-german.CredTokenAlso=Das Token steht auch in:
 english.CredAdminOnly=(both files are readable by administrators only)
-german.CredAdminOnly=(beide Dateien sind nur für Administratoren lesbar)
 english.CredPassword=You can set your own password in the web interface under "System". Forgot the password: Start menu, "%1".
-german.CredPassword=Ein eigenes Passwort lässt sich in der Weboberfläche unter "System" festlegen. Passwort vergessen: Startmenü, "%1".
 english.CredKept=The existing configuration including the access token was kept:
-german.CredKept=Die vorhandene Konfiguration samt Zugriffstoken wurde beibehalten:
 english.CredData=Data, servers and backups are in:
-german.CredData=Daten, Server und Backups liegen unter:
 english.CredService=The service "WorldFoundry" starts automatically with Windows. Other devices on the network can only reach it if the Windows Firewall allows the port (task "Windows Firewall" during installation, or by hand).
-german.CredService=Der Dienst "WorldFoundry" startet mit Windows automatisch. Andere Geräte im Netzwerk erreichen ihn nur, wenn die Windows-Firewall den Port erlaubt (Aufgabe "Windows-Firewall" bei der Installation oder von Hand).
-english.Disclaimer=NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
-german.Disclaimer=Kein offizielles Minecraft-Produkt. Nicht von Mojang oder Microsoft genehmigt oder mit ihnen verbunden.
+english.Disclaimer=WorldFoundry is not an official product of any game publisher. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 english.StatusSetupService=Setting up the service ...
-german.StatusSetupService=Richte den Dienst ein ...
 english.StatusStartService=Starting the service ...
-german.StatusStartService=Starte den Dienst ...
 
 english.ErrServiceConfigMissing=The service configuration %1 is missing.
-german.ErrServiceConfigMissing=Die Dienst-Konfiguration %1 fehlt.
 english.ErrServiceConfigWrite=The service configuration could not be written.
-german.ErrServiceConfigWrite=Die Dienst-Konfiguration konnte nicht geschrieben werden.
 english.ErrService=The Windows service could not be set up (code %1). See the setup log.
-german.ErrService=Der Windows-Dienst konnte nicht eingerichtet werden (Code %1). Siehe Setup-Protokoll.
 english.ErrServiceAccount=The service account %1 could not be set (code %2).
-german.ErrServiceAccount=Das Dienstkonto %1 konnte nicht gesetzt werden (Code %2).
 english.ErrUpdater=The update service could not be set up (code %1). See the setup log.
-german.ErrUpdater=Der Update-Dienst konnte nicht eingerichtet werden (Code %1). Siehe Setup-Protokoll.
 english.ErrUpdateFolderRights=The access rights for the update folder could not be set. See the setup log.
-german.ErrUpdateFolderRights=Die Zugriffsrechte für den Update-Ordner konnten nicht gesetzt werden. Siehe Setup-Protokoll.
 english.ErrRequestFolderRights=The access rights for the request folder of the update service could not be set. See the setup log.
-german.ErrRequestFolderRights=Die Zugriffsrechte für den Anfrage-Ordner des Update-Dienstes konnten nicht gesetzt werden. Siehe Setup-Protokoll.
 english.ErrDataFolderRights=The access rights for the data folder could not be set. See the setup log.
-german.ErrDataFolderRights=Die Zugriffsrechte für den Datenordner konnten nicht gesetzt werden. Siehe Setup-Protokoll.
 english.ErrConfigRights=The access rights for the configuration file could not be set. See the setup log.
-german.ErrConfigRights=Die Zugriffsrechte für die Konfigurationsdatei konnten nicht gesetzt werden. Siehe Setup-Protokoll.
 english.ErrConfigCreate=The configuration file could not be created (code %1).
-german.ErrConfigCreate=Die Konfigurationsdatei konnte nicht angelegt werden (Code %1).
 
 english.UninstallDone=WorldFoundry was removed. The service and the firewall rules are deleted.
-german.UninstallDone=WorldFoundry wurde entfernt. Dienst und Firewall-Regeln sind gelöscht.
 english.UninstallKept=Your data (servers, worlds, backups, configuration) was NOT deleted and is still in:
-german.UninstallKept=Ihre Daten (Server, Welten, Backups, Konfiguration) wurden NICHT gelöscht und liegen weiterhin unter:
 english.UninstallRemoveByHand=To remove it completely, delete this folder by hand.
-german.UninstallRemoveByHand=Zum vollständigen Entfernen diesen Ordner von Hand löschen.
 
 [Tasks]
-Name: "firewall"; Description: "{cm:TaskFirewall,{#McPortRange}}"; GroupDescription: "{cm:TaskGroupNetwork}"
+Name: "firewall"; Description: "{cm:TaskFirewall,{#TcpPortRange},{#UdpPortRange}}"; GroupDescription: "{cm:TaskGroupNetwork}"
 Name: "startmenu"; Description: "{cm:TaskStartMenu}"; GroupDescription: "{cm:TaskGroupShortcuts}"
 
 [Dirs]
@@ -189,21 +153,13 @@ Name: "{group}\{cm:IconWeb}"; Filename: "{app}\WorldFoundry.url"; Tasks: startme
 Name: "{group}\{cm:IconResetPassword}"; Filename: "{app}\reset-password.cmd"; WorkingDir: "{app}"; Comment: "{cm:IconResetPasswordComment}"
 
 [InstallDelete]
-; The readme of older versions was called LIESMICH.txt (the installer never copied it, but remove it if present).
-; Old Start menu shortcuts are removed in [Code] (RemoveOtherLanguageShortcuts).
-Type: files; Name: "{app}\LIESMICH.txt"
-; Web shortcuts of earlier names (both languages); the new names are created right afterwards.
+; the shortcut is created again right afterwards
 Type: files; Name: "{#StartMenuFolder}\WorldFoundry Web Interface.lnk"
-Type: files; Name: "{#StartMenuFolder}\WorldFoundry Weboberfläche.lnk"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 Type: filesandordirs; Name: "{commonappdata}\{#UpdateFolderName}"
-; leftovers of shortcuts of any language or older version, so that the Start menu folder can be removed
-Type: files; Name: "{#StartMenuFolder}\WorldFoundry Weboberfläche.lnk"
-Type: files; Name: "{#StartMenuFolder}\WorldFoundry Web Interface.lnk"
-Type: files; Name: "{#StartMenuFolder}\WorldFoundry Weboberfläche.lnk"
-Type: files; Name: "{#StartMenuFolder}\Passwort zurücksetzen.lnk"
+; so that the Start menu folder can be removed
 Type: files; Name: "{#StartMenuFolder}\WorldFoundry Web Interface.lnk"
 Type: files; Name: "{#StartMenuFolder}\Reset Password.lnk"
 
@@ -234,12 +190,6 @@ end;
 function CredentialsFile: String;
 begin
   Result := DataDir + '\credentials.txt';
-end;
-
-{ Name of the credentials file in versions before the English rename }
-function LegacyCredentialsFile: String;
-begin
-  Result := DataDir + '\Zugangsdaten.txt';
 end;
 
 function ServiceTool: String;
@@ -527,27 +477,6 @@ begin
     RunIcacls('"' + CredentialsFile + '" /inheritance:r /grant:r "' + SidSystem + ':F" "' + SidAdministrators + ':F"');
 end;
 
-{ Versions before the English rename stored the access details in Zugangsdaten.txt. On an update the file is renamed
-  to credentials.txt (a rename keeps its restrictive ACL, which is set again anyway); if both files exist, the old
-  one is deleted. }
-procedure MigrateCredentialsFile;
-begin
-  if not FileExists(LegacyCredentialsFile) then
-    Exit;
-  if FileExists(CredentialsFile) then
-  begin
-    if not DeleteFile(LegacyCredentialsFile) then
-      Log('The old credentials file Zugangsdaten.txt could not be deleted.');
-  end
-  else if RenameFile(LegacyCredentialsFile, CredentialsFile) then
-  begin
-    Log('Zugangsdaten.txt renamed to credentials.txt.');
-    SecureCredentialsFile;
-  end
-  else
-    Log('Zugangsdaten.txt could not be renamed to credentials.txt.');
-end;
-
 procedure SecureConfigFiles;
 begin
   { Configuration (contains the token): Administrators and SYSTEM full control, service account read-only }
@@ -579,12 +508,16 @@ begin
   Netsh := ExpandConstant('{sys}\netsh.exe');
   Port := WebPort('');
   RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallWebRule}"');
-  RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallMcRule}"');
+  RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallOldRule}"');
+  RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallTcpRule}"');
+  RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallUdpRule}"');
   if RunTool(Netsh, 'advfirewall firewall add rule name="{#FirewallWebRule}" dir=in action=allow protocol=TCP localport=' +
     Port + ' profile=private') <> 0 then
     Log('The firewall rule for the web port could not be created.');
-  if RunTool(Netsh, 'advfirewall firewall add rule name="{#FirewallMcRule}" dir=in action=allow protocol=TCP localport={#McPortRange} profile=private') <> 0 then
-    Log('The firewall rule for the Minecraft ports could not be created.');
+  if RunTool(Netsh, 'advfirewall firewall add rule name="{#FirewallTcpRule}" dir=in action=allow protocol=TCP localport={#TcpPortRange} profile=private') <> 0 then
+    Log('The firewall rule for the TCP game ports could not be created.');
+  if RunTool(Netsh, 'advfirewall firewall add rule name="{#FirewallUdpRule}" dir=in action=allow protocol=UDP localport={#UdpPortRange} profile=private') <> 0 then
+    Log('The firewall rule for the UDP game ports could not be created.');
 end;
 
 function WaitForHealth: Boolean;
@@ -605,32 +538,8 @@ begin
   end;
 end;
 
-{ Older versions created the Start menu shortcuts with German names, and the names now follow the setup language.
-  Remove the names of the other language (and of older versions) so that no duplicate shortcuts remain; the shortcuts
-  of the selected language are created right afterwards. The web shortcut is only touched if its task is selected. }
-procedure RemoveOtherLanguageShortcuts;
-var
-  Folder: String;
-begin
-  Folder := ExpandConstant('{#StartMenuFolder}');
-  if ActiveLanguage = 'german' then
-  begin
-    if WizardIsTaskSelected('startmenu') then
-      DeleteFile(Folder + '\WorldFoundry Web Interface.lnk');
-    DeleteFile(Folder + '\Reset Password.lnk');
-  end
-  else
-  begin
-    if WizardIsTaskSelected('startmenu') then
-      DeleteFile(Folder + '\WorldFoundry Weboberfläche.lnk');
-    DeleteFile(Folder + '\Passwort zurücksetzen.lnk');
-  end;
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssInstall then
-    RemoveOtherLanguageShortcuts;
   if CurStep = ssPostInstall then
   begin
     WizardForm.StatusLabel.Caption := CustomMessage('StatusSetupService');
@@ -640,7 +549,6 @@ begin
     RegisterService;
     RegisterUpdater;
     PrepareUpdateFolders;
-    MigrateCredentialsFile;
     if FirstInstall then
       SecureFolderAndFiles;
     if FirstInstall then
@@ -713,7 +621,9 @@ begin
     RunTool(ExpandConstant('{sys}\schtasks.exe'), '/Delete /TN {#UpdateTaskName} /F');
     Netsh := ExpandConstant('{sys}\netsh.exe');
     RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallWebRule}"');
-    RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallMcRule}"');
+    RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallOldRule}"');
+    RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallTcpRule}"');
+    RunTool(Netsh, 'advfirewall firewall delete rule name="{#FirewallUdpRule}"');
   end;
   if CurUninstallStep = usPostUninstall then
   begin

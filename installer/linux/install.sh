@@ -22,8 +22,10 @@ UPDATE_UNIT_FILE=/etc/systemd/system/worldfoundry-update.service
 UPDATE_PATH_FILE=/etc/systemd/system/worldfoundry-update.path
 CLI_LINK=/usr/local/bin/worldfoundry
 SERVICE_USER=worldfoundry
-MC_PORT_RANGE_DASH="25565-25575"
-MC_PORT_RANGE_COLON="25565:25575"
+# Default port ranges of the games (see installer/windows/worldfoundry.iss): Minecraft and Satisfactory on TCP,
+# Satisfactory, ARK, Project Zomboid and the Steam query ports on UDP. RCON stays closed.
+GAME_TCP_RANGES="25565-25575 7777-7790 8888-8899"
+GAME_UDP_RANGES="7777-7790 16261-16280 27015-27030"
 
 PORT=3000
 OPEN_FIREWALL=0
@@ -39,7 +41,8 @@ Install or update WorldFoundry
   sudo ./install.sh [options]
 
   --port <port>      Web port on first installation (default 3000). On an update the configuration is kept.
-  --open-firewall    Open the web port and the Minecraft ports (TCP 25565-25575) in ufw or firewalld
+  --open-firewall    Open the web port and the default game server ports in ufw or firewalld
+                     (TCP 25565-25575, 7777-7790, 8888-8899; UDP 7777-7790, 16261-16280, 27015-27030)
   --no-start         Set up the service but do not start it
   --upgrade          Update an existing installation (used by the update service): no port, firewall or credentials
   -h, --help         this help
@@ -136,11 +139,11 @@ if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
   info "System user $SERVICE_USER created."
 fi
 
-# Stop a running service (waits until the Minecraft servers have saved and stopped)
+# Stop a running service (waits until the game servers have saved and stopped)
 was_active=0
 if systemctl is-active --quiet worldfoundry.service; then
   was_active=1
-  info "Stopping the running service (Minecraft servers are shut down cleanly, this can take up to three minutes) ..."
+  info "Stopping the running service (game servers are shut down cleanly, this can take up to three minutes) ..."
   systemctl stop worldfoundry.service
 fi
 
@@ -168,8 +171,6 @@ chmod 0755 "$staging/worldfoundry"
 if [ -d "$INSTALL_DIR" ]; then mv "$INSTALL_DIR" "$INSTALL_DIR.old"; fi
 mv "$staging" "$INSTALL_DIR"
 rm -rf "$INSTALL_DIR.old"
-# Versions before the English rename shipped the readme as LIESMICH.txt (the swap above already drops it; kept for safety)
-rm -f "$INSTALL_DIR/LIESMICH.txt"
 
 # Create the configuration on first installation only
 created=0
@@ -238,15 +239,29 @@ if [ "$OPEN_FIREWALL" -eq 1 ] && [ "$UPGRADE" -eq 0 ]; then
   : >"$FIREWALL_STATE.tmp"
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
     ufw allow "$configured_port/tcp" comment 'WorldFoundry Web' >/dev/null
-    ufw allow "$MC_PORT_RANGE_COLON/tcp" comment 'WorldFoundry Minecraft' >/dev/null
-    printf 'ufw %s/tcp\nufw %s/tcp\n' "$configured_port" "$MC_PORT_RANGE_COLON" >>"$FIREWALL_STATE.tmp"
-    firewall_note="ufw: TCP $configured_port and $MC_PORT_RANGE_DASH opened."
+    printf 'ufw %s/tcp\n' "$configured_port" >>"$FIREWALL_STATE.tmp"
+    for range in $GAME_TCP_RANGES; do
+      ufw allow "$(printf '%s' "$range" | tr '-' ':')/tcp" comment 'WorldFoundry game servers' >/dev/null
+      printf 'ufw %s/tcp\n' "$(printf '%s' "$range" | tr '-' ':')" >>"$FIREWALL_STATE.tmp"
+    done
+    for range in $GAME_UDP_RANGES; do
+      ufw allow "$(printf '%s' "$range" | tr '-' ':')/udp" comment 'WorldFoundry game servers' >/dev/null
+      printf 'ufw %s/udp\n' "$(printf '%s' "$range" | tr '-' ':')" >>"$FIREWALL_STATE.tmp"
+    done
+    firewall_note="ufw: web port TCP $configured_port and the game server ports opened."
   elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
     firewall-cmd --permanent --add-port="$configured_port/tcp" >/dev/null
-    firewall-cmd --permanent --add-port="$MC_PORT_RANGE_DASH/tcp" >/dev/null
+    printf 'firewalld %s/tcp\n' "$configured_port" >>"$FIREWALL_STATE.tmp"
+    for range in $GAME_TCP_RANGES; do
+      firewall-cmd --permanent --add-port="$range/tcp" >/dev/null
+      printf 'firewalld %s/tcp\n' "$range" >>"$FIREWALL_STATE.tmp"
+    done
+    for range in $GAME_UDP_RANGES; do
+      firewall-cmd --permanent --add-port="$range/udp" >/dev/null
+      printf 'firewalld %s/udp\n' "$range" >>"$FIREWALL_STATE.tmp"
+    done
     firewall-cmd --reload >/dev/null
-    printf 'firewalld %s/tcp\nfirewalld %s/tcp\n' "$configured_port" "$MC_PORT_RANGE_DASH" >>"$FIREWALL_STATE.tmp"
-    firewall_note="firewalld: TCP $configured_port and $MC_PORT_RANGE_DASH opened."
+    firewall_note="firewalld: web port TCP $configured_port and the game server ports opened."
   else
     firewall_note="No active firewall (ufw/firewalld) found, nothing changed."
   fi
@@ -303,7 +318,7 @@ info ""
 info " Data and servers:  $DATA_DIR"
 info " Configuration:     $CONF_FILE"
 info " Log:               journalctl -u worldfoundry -f"
-info " Ports:             web TCP $web_port, Minecraft TCP $MC_PORT_RANGE_DASH (depending on the server)"
+info " Ports:             web TCP $web_port; each game server shows its ports on its page"
 [ -n "$firewall_note" ] && info " Firewall:          $firewall_note"
 if [ "$OPEN_FIREWALL" -eq 0 ] && [ "$UPGRADE" -eq 0 ]; then
   info " Firewall:          unchanged (use --open-firewall or open the ports by hand)"

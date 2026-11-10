@@ -55,7 +55,7 @@ done
 [ "$(id -u)" -eq 0 ] || die "Please run as root, for example: sudo ./uninstall.sh"
 
 if [ "$PURGE" -eq 1 ] && [ "$ASSUME_YES" -eq 0 ]; then
-  info "WARNING: --purge irreversibly deletes all Minecraft servers, worlds and backups in $DATA_DIR"
+  info "WARNING: --purge irreversibly deletes all game servers, worlds and backups in $DATA_DIR"
   info "as well as the configuration in $CONF_DIR."
   printf 'Type "yes" to confirm: '
   read -r answer || answer=""
@@ -64,7 +64,7 @@ fi
 
 if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
   if systemctl is-active --quiet worldfoundry.service; then
-    info "Stopping the service (Minecraft servers are shut down cleanly, this can take up to three minutes) ..."
+    info "Stopping the service (game servers are shut down cleanly, this can take up to three minutes) ..."
     systemctl stop worldfoundry.service || warn "The service could not be stopped cleanly."
   fi
   systemctl disable worldfoundry.service >/dev/null 2>&1 || true

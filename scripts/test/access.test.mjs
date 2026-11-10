@@ -1,4 +1,4 @@
-// Access on the home network, the "not an official Minecraft product" notice and password reset in the installation packages
+// Access on the home network, the "not an official product" notices and password reset in the installation packages
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -35,34 +35,23 @@ test('Notice: the text appears everywhere people see it', async () => {
     const text = (await read(file)).toUpperCase();
     for (const sentence of sentences) assert.ok(text.includes(sentence.toUpperCase()), `${file}: ${sentence}`);
   }
-  // Welcome and finish page of the installer: English by default, German as the second language
+  // Welcome and finish page of the installer carry the general notice and the Minecraft one
   const iss = await read('installer', 'windows', 'worldfoundry.iss');
-  assert.match(iss, /^english\.WelcomeLabel2=.*NOT AN OFFICIAL MINECRAFT PRODUCT/m);
-  assert.match(iss, /^english\.FinishedLabel=.*NOT AN OFFICIAL MINECRAFT PRODUCT/m);
-  assert.match(iss, /^english\.FinishedLabelNoIcons=.*NOT AN OFFICIAL MINECRAFT PRODUCT/m);
-  assert.match(iss, /^english\.Disclaimer=NOT AN OFFICIAL MINECRAFT PRODUCT/m);
-  assert.match(iss, /^german\.WelcomeLabel2=.*Kein offizielles Minecraft-Produkt/m);
-  assert.match(iss, /^german\.FinishedLabel=.*Kein offizielles Minecraft-Produkt/m);
-  assert.match(iss, /^german\.Disclaimer=Kein offizielles Minecraft-Produkt/m);
+  for (const key of ['WelcomeLabel2', 'FinishedLabel', 'FinishedLabelNoIcons', 'Disclaimer']) {
+    assert.match(iss, new RegExp(`^english\\.${key}=.*not an official product of any game publisher.*NOT AN OFFICIAL MINECRAFT PRODUCT`, 'm'), key);
+  }
 });
 
-test('Installer: English is the default language, German the second one, and every German message has an English twin', async () => {
+test('Installer: English only, and every custom message the script uses exists', async () => {
   const iss = await read('installer', 'windows', 'worldfoundry.iss');
   const languages = [...iss.matchAll(/^Name: "(\w+)"; MessagesFile:/gm)].map((match) => match[1]);
-  assert.deepEqual(languages, ['english', 'german'], 'english first (default and fallback), german second');
-  for (const section of ['Messages', 'CustomMessages']) {
-    const start = iss.indexOf(`[${section}]`);
-    const end = iss.indexOf('\n[', start + 1);
-    const body = iss.slice(start, end);
-    const keys = (language) => new Set([...body.matchAll(new RegExp(`^${language}\\.(\\w+)=`, 'gm'))].map((match) => match[1]));
-    const english = keys('english');
-    const german = keys('german');
-    assert.ok(english.size > 0 && german.size > 0, section);
-    assert.deepEqual([...english].sort(), [...german].sort(), `${section}: english.* and german.* must match`);
-  }
-  // every custom message that the script uses exists
+  assert.deepEqual(languages, ['english']);
+  assert.doesNotMatch(iss, /^german\./m);
   const custom = new Set([...iss.matchAll(/^english\.(\w+)=/gm)].map((match) => match[1]));
   for (const match of iss.matchAll(/(?:CustomMessage\('|\{cm:)(\w+)/g)) assert.ok(custom.has(match[1]), `custom message ${match[1]}`);
+  // the firewall task opens the ports of every game, not only Minecraft
+  assert.match(iss, /#define TcpPortRange "25565-25575,7777-7790,8888-8899"/);
+  assert.match(iss, /#define UdpPortRange "7777-7790,16261-16280,27015-27030"/);
 });
 
 test('Credentials: home network addresses, password notice and the Minecraft notice', () => {
@@ -76,35 +65,28 @@ test('Credentials: home network addresses, password notice and the Minecraft not
   for (const part of ['Addresses on the home network', 'http://192.168.178.20:3000', 'also the first password', 'README.txt', DISCLAIMER]) assert.ok(text.includes(part), part);
 });
 
-test('Renamed files: credentials.txt and README.txt, with migration of the old names', async () => {
+test('File names: credentials.txt and README.txt', async () => {
   const iss = await read('installer', 'windows', 'worldfoundry.iss');
   assert.match(iss, /Result := DataDir \+ '\\credentials\.txt';/);
-  // upgrade: Zugangsdaten.txt is renamed (or deleted if credentials.txt already exists), and the ACL is applied to the new name
-  assert.match(iss, /Result := DataDir \+ '\\Zugangsdaten\.txt';/);
-  assert.match(iss, /RenameFile\(LegacyCredentialsFile, CredentialsFile\)/);
-  assert.match(iss, /DeleteFile\(LegacyCredentialsFile\)/);
+  // only administrators can read the credentials file
   assert.match(iss, /procedure SecureCredentialsFile;[\s\S]*?RunIcacls\('"' \+ CredentialsFile \+ '" \/inheritance:r/);
-  assert.match(iss, /Type: files; Name: "\{app\}\\LIESMICH\.txt"/);
   assert.match(iss, /Excludes: "\\start-portable\.cmd,\\README\.txt"/);
-  assert.match(iss, /\{#StartMenuFolder\}\\Passwort zurücksetzen\.lnk/, 'shortcuts of older versions are removed on uninstall');
+  assert.match(iss, /\{#StartMenuFolder\}\\Reset Password\.lnk/, 'the shortcuts are removed on uninstall');
   const install = await read('installer', 'linux', 'install.sh');
   assert.match(install, /THIRD-PARTY-NOTICES\.txt README\.txt uninstall\.sh/);
-  assert.match(install, /rm -f "\$INSTALL_DIR\/LIESMICH\.txt"/);
   for (const unit of ['worldfoundry.service', 'worldfoundry-update.service', 'worldfoundry-update.path']) {
     assert.match(await read('installer', 'linux', unit), /^Documentation=file:\/\/\/opt\/worldfoundry\/README\.txt$/m, unit);
   }
   const packager = await read('scripts', 'package.mjs');
   assert.match(packager, /'README\.txt'/);
-  assert.ok(!packager.includes('LIESMICH'), 'the packager no longer ships LIESMICH.txt');
-  // portable ZIP: "data" is the new folder, "daten" of older versions keeps being used
+  // portable ZIP: data, servers and configuration live in "data" next to the scripts
   for (const script of ['start-portable.cmd', 'reset-password.cmd']) {
     const cmd = await read('installer', 'windows', script);
     assert.match(cmd, /set "DATAROOT=%~dp0data"/, script);
-    assert.match(cmd, /if not exist "%~dp0data\\" if exist "%~dp0daten\\" set "DATAROOT=%~dp0daten"/, script);
   }
   const portable = await read('installer', 'windows', 'start-portable.cmd');
   assert.match(portable, /--credentials-file "%DATAROOT%\\credentials\.txt"/);
-  assert.match(portable, /ren "%DATAROOT%\\Zugangsdaten\.txt" credentials\.txt/);
+  assert.doesNotMatch(portable, /daten|Zugangsdaten/);
 });
 
 test('Restart: exit code 75 in the application, the systemd unit and the portable start', async () => {

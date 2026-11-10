@@ -22,7 +22,7 @@ Optional, through environment variables or a configuration file (template: `.env
 
 | Variable               | Default                          | Meaning                                                                                   |
 | ---------------------- | -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `HOST`                 | `0.0.0.0`                        | Address the server binds to. A setting under **System > Netzwerk & Zugriff** (Network & access) takes precedence (see [Access on the home network](#access-on-the-home-network)) |
+| `HOST`                 | `0.0.0.0`                        | Address the server binds to. A setting under **System > Network & access** (Network & access) takes precedence (see [Access on the home network](#access-on-the-home-network)) |
 | `PORT`                 | `3000`                           | HTTP port, can also be changed in the web interface                                       |
 | `CONFIG_FILE`          | `<project>/.env`                 | Path of the configuration file (only as a real environment variable, not inside the file itself) |
 | `DATA_DIR`             | `<project>/data`                 | Database, Java runtimes (`runtimes/`) and backups (`backups/`)                            |
@@ -76,23 +76,22 @@ The application does not require a repository. Migrations (`drizzle/`) live in t
 At start, WorldFoundry names the addresses in the log, for example:
 
 ```
-Weboberfläche erreichbar unter: http://192.168.178.20:3000 (Rechnername: http://MCPC:3000; VPN/virtuell: http://172.28.16.1:3000 [vEthernet (WSL (Hyper-V firewall))])
+Web interface available at: http://192.168.178.20:3000 (Host name: http://MYPC:3000; VPN/virtual: http://172.28.16.1:3000 [vEthernet (WSL (Hyper-V firewall))])
 ```
 
-(The log line is in German: "Web interface reachable at ... (computer name: ...; VPN/virtual: ...)".)
 
-The same addresses are shown under **System > Netzwerk & Zugriff**, at the end of the installation (Windows installer, `install.sh`), in `credentials.txt` (credentials file) and in `GET /api/health` (`lanUrls`, only when logged in). Only IPv4 addresses of real network adapters are shown, private ranges (192.168/16, 10/8, 172.16/12) first, without loopback and without link-local addresses (169.254/16). Adapters of WSL, Hyper-V, Docker, VirtualBox, VMware, Tailscale, ZeroTier, WireGuard and other VPNs appear separately as "VPN/virtual", so that the address for the devices on the home network comes first. If WorldFoundry binds to a single address, only that one is named; for `127.0.0.1`, only "this computer".
+The same addresses are shown under **System > Network & access**, at the end of the installation (Windows installer, `install.sh`), in `credentials.txt` (credentials file) and in `GET /api/health` (`lanUrls`, only when logged in). Only IPv4 addresses of real network adapters are shown, private ranges (192.168/16, 10/8, 172.16/12) first, without loopback and without link-local addresses (169.254/16). Adapters of WSL, Hyper-V, Docker, VirtualBox, VMware, Tailscale, ZeroTier, WireGuard and other VPNs appear separately as "VPN/virtual", so that the address for the devices on the home network comes first. If WorldFoundry binds to a single address, only that one is named; for `127.0.0.1`, only "this computer".
 
-**Settings in the web interface** (System > Netzwerk & Zugriff, stored in the database, taking precedence over `HOST`, `PORT` and `ALLOWED_HOSTS` of the configuration file, which remains as a fallback):
+**Settings in the web interface** (System > Network & access, stored in the database, taking precedence over `HOST`, `PORT` and `ALLOWED_HOSTS` of the configuration file, which remains as a fallback):
 
 | Setting | Meaning |
 | --- | --- |
-| Lauschen auf (Listen on) | all network adapters (`0.0.0.0`), one of the detected addresses of this computer, or `127.0.0.1` (this computer only). An address that does not belong to the computer is rejected. |
+| Listen on | all network adapters (`0.0.0.0`), one of the detected addresses of this computer, or `127.0.0.1` (this computer only). An address that does not belong to the computer is rejected. |
 | Web-Port | 1 to 65535; must be free (a real bind test like when starting a Minecraft server) and must not belong to a Minecraft server. The port WorldFoundry is currently listening on does not count as occupied. |
-| Weitere erlaubte Rechnernamen (Further allowed host names) | e.g. `minecraft.fritz.box`; extends the host check (see [Security](#security)) in addition to `ALLOWED_HOSTS`. |
+| Other allowed host names | e.g. `minecraft.fritz.box`; extends the host check (see [Security](#security)) in addition to `ALLOWED_HOSTS`. |
 | Öffentliche Adresse (Public address) | optional, shown to everyone as the address (`minecraft.fritz.box:3000` or a full `http://` address); its host name is allowed automatically. |
 
-Changes apply only after a restart. **Jetzt neu starten** (Restart now) first shows the new address, stops all running Minecraft servers with the normal stop logic (the world is saved), remembers which ones were running, ends WorldFoundry with exit code 75 and starts the servers again after the restart. The browser switches to the new address by itself as soon as it answers. Who starts WorldFoundry again afterwards?
+Changes apply only after a restart. **Restart now** first shows the new address, stops all running Minecraft servers with the normal stop logic (the world is saved), remembers which ones were running, ends WorldFoundry with exit code 75 and starts the servers again after the restart. The browser switches to the new address by itself as soon as it answers. Who starts WorldFoundry again afterwards?
 
 | Installation | Restart after exit code 75 |
 | --- | --- |
@@ -103,7 +102,7 @@ Changes apply only after a restart. **Jetzt neu starten** (Restart now) first sh
 
 **Safety net against lock-out:** If the saved address does not exist at start (adapter disconnected, address changed by the router), WorldFoundry listens on `0.0.0.0` instead, writes a warning to the log and shows it as a notice on the system page. If the saved port is in use, WorldFoundry takes the port from the configuration file. Only if that one is also in use does start abort with the usual message. The address actually used is stored in `<DATA_DIR>/network.json`; the installer and the update service check there whether the application answers.
 
-**Fixed address:** So that the computer's IP address does not change, assign a fixed address in the router (DHCP reservation). FRITZ!Box: **Heimnetz > Netzwerk >** **edit** the device in the list and enable **"Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen"** (always assign the same IPv4 address to this network device). Alternatively, use a name such as `minecraft.fritz.box` in the router and enter it in the interface under "Weitere erlaubte Rechnernamen".
+**Fixed address:** So that the computer's IP address does not change, assign a fixed address in the router (DHCP reservation). FRITZ!Box: **Home Network > Network**, edit the device in the list and enable **"Always assign this network device the same IPv4 address"**. Alternatively, use a name such as `minecraft.fritz.box` in the router and enter it in the interface under "Other allowed host names".
 
 **Firewall:** If other devices cannot reach the page, the firewall is probably blocking the web port. On Windows (administrator PowerShell, adjust the port if needed):
 
@@ -122,21 +121,21 @@ If the port is already in use at start (and no fallback is possible), start abor
 | TCP 3000 (`PORT`)         | Web interface and API                           | Devices on the LAN that should manage servers |
 | TCP 25565 (per server)    | Minecraft server; further servers need further ports (default of the installation: 25565-25575) | Players |
 
-- **LAN access:** By default WorldFoundry listens on `0.0.0.0` and is therefore reachable in the whole network as soon as the firewall allows the port. The address is `http://<computer name>:3000` or `http://<IP address>:3000`; at start the reachable addresses are named in the log. If the interface should be reachable under a name of your own, enter the name in `ALLOWED_HOSTS` of the configuration file (see [Security](#security)). Local only: `HOST=127.0.0.1` (or "Nur dieser Rechner" in the web interface). Details and settings: [Access on the home network](#access-on-the-home-network).
+- **LAN access:** By default WorldFoundry listens on `0.0.0.0` and is therefore reachable in the whole network as soon as the firewall allows the port. The address is `http://<computer name>:3000` or `http://<IP address>:3000`; at start the reachable addresses are named in the log. If the interface should be reachable under a name of your own, enter the name in `ALLOWED_HOSTS` of the configuration file (see [Security](#security)). Local only: `HOST=127.0.0.1` (or "This computer only" in the web interface). Details and settings: [Access on the home network](#access-on-the-home-network).
 - **VM:** The VM needs a network bridge (bridged) or port forwards of the hypervisor for TCP 3000 and the Minecraft ports; in the default "NAT" mode it cannot be reached from outside.
 - **Players from the internet:** Forward only the Minecraft ports (e.g. TCP 25565) on the router to the computer. **Never expose the web port 3000 to the internet:** the interface is unencrypted (HTTP) and can start programs. Anyone who wants to use it from outside should use a VPN.
-- The login by token or password is the only protective layer, so do not pass it on. If you suspect it has leaked, change the password (System > Passwort), change the token in the configuration file (at least 8 characters) and restart the service.
+- The login by token or password is the only protective layer, so do not pass it on. If you suspect it has leaked, change the password (System > Password), change the token in the configuration file (at least 8 characters) and restart the service.
 
 ## Web interface password
 
-`AUTH_TOKEN` enables a login. The token from the configuration (generated randomly by the installer) is the **first password**. Under **System > Passwort** (Password) you can set your own (at least 10 characters, strength indicator):
+`AUTH_TOKEN` enables a login. The token from the configuration (generated randomly by the installer) is the **first password**. Under **System > Password** (Password) you can set your own (at least 10 characters, strength indicator):
 
 - **Stored** is only a scrypt hash (N=2^15, r=8, p=1, random salt per password, compared with `timingSafeEqual`) in the database (`app_settings`), never the password itself.
 - **Applies to the login in the browser.** Once a password is set, only it opens the web interface, no longer the token.
 - **The token (`AUTH_TOKEN`) remains the machine access** for scripts and the API (`Authorization: Bearer <token>`), also for the update service (health check) and the CI tests. A password change does not touch it; it changes only in the configuration file. The password itself is not a bearer token.
 - **Changing** requires the current password (before the first change, the token); wrong entries count like wrong logins (5 in 5 minutes, then `429`, per IP address). Afterwards **all other sessions are invalid** (the session value follows the password) and open WebSockets are disconnected; the browser that made the change gets a new cookie and stays logged in.
 - **Without `AUTH_TOKEN` and without a password**, the first start creates a random password. It is printed once on the console (not into the log) and written to `initial-password.txt` in the data folder, readable only by the owner of that folder. Sign in with it and set your own under **System > Password**; the file is deleted as soon as another password is set.
-- **Forgotten?** Only on the computer itself, never over the network: Linux `sudo worldfoundry reset-password`, Windows Start menu **Reset Password** (German installer: "Passwort zurücksetzen"; asks for administrator rights), in general `node app/backend/dist/cli.js reset-password` with the rights of the service. The command writes a new random password to the database and displays it (`--password-stdin` reads your own from standard input). The running service does not need to be stopped for this: it re-reads the hash at every login and at least once per second, so all old sessions end immediately.
+- **Forgotten?** Only on the computer itself, never over the network: Linux `sudo worldfoundry reset-password`, Windows Start menu **Reset Password** (asks for administrator rights), in general `node app/backend/dist/cli.js reset-password` with the rights of the service. The command writes a new random password to the database and displays it (`--password-stdin` reads your own from standard input). The running service does not need to be stopped for this: it re-reads the hash at every login and at least once per second, so all old sessions end immediately.
 
 ## Security
 

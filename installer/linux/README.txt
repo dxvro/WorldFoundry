@@ -5,7 +5,7 @@ NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR 
 Install or update (as root, in the extracted folder):
 
   sudo ./install.sh                  # port 3000, firewall unchanged
-  sudo ./install.sh --open-firewall  # additionally ufw/firewalld: TCP 3000 and 25565-25575
+  sudo ./install.sh --open-firewall  # additionally ufw/firewalld: the web port and the default game ports
   sudo ./install.sh --port 8080      # different web port on first installation
 
 The script creates the system user "worldfoundry", installs to /opt/worldfoundry, stores data in
@@ -19,7 +19,8 @@ sets up the systemd service "worldfoundry", starts it and finally shows the addr
 
 Addresses: During installation and at startup (journalctl -u worldfoundry) the addresses on the home network are
 listed, e.g. http://192.168.178.20:3000. Port, address and further computer names can be changed in the web interface
-under "System > Network & access". Firewall: open the web port and the Minecraft ports (--open-firewall).
+under "System > Network & access". Firewall: open the web port and the game server ports (--open-firewall). SteamCMD games
+(Project Zomboid, Satisfactory, ARK) need 32-bit libraries: sudo apt install lib32gcc-s1
 
 Password: The access token is the first password; you can set your own under "System". If you forget it:
 
