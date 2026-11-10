@@ -124,7 +124,7 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
     expect(settings).toMatchObject({ profile: 'servertest', udpPort: 16262 });
 
     await waitFor(async () => (await call<{ server: { installState: string } }>('GET', `/api/servers/${id}`)).body.server.installState === 'installed' || undefined, 15_000);
-    const steamArgs = JSON.parse(await readFile(path.join(HERE, '.last-steamcmd-args.json'), 'utf8')) as string[];
+    const steamArgs = JSON.parse(await readFile(path.join(t.dir, 'servers', id, 'steamcmd-args.json'), 'utf8')) as string[];
     expect(steamArgs).toEqual(['+force_install_dir', path.join(t.dir, 'servers', id, 'server'), '+login', 'anonymous', '+app_update', '380870', 'validate', '+quit']);
     const ini = readIniValues(await readFile(path.join(t.dir, 'servers', id, 'data', 'Server', 'servertest.ini'), 'utf8'));
     expect([ini.get('DefaultPort'), ini.get('UDPPort'), ini.get('PublicName')]).toEqual(['16261', '16262', 'Knox']);

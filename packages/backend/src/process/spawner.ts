@@ -6,6 +6,8 @@ export interface SpawnRequest {
   command: string;
   args: readonly string[];
   cwd: string;
+  // extra variables on top of the environment of WorldFoundry
+  env?: Record<string, string>;
 }
 
 export interface ProcessSpawner {
@@ -21,8 +23,8 @@ export function killWindowsTree(pid: number): Promise<void> {
 }
 
 export const realSpawner: ProcessSpawner = {
-  spawn: ({ command, args, cwd }) =>
-    spawn(command, [...args], { cwd, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }),
+  spawn: ({ command, args, cwd, env }) =>
+    spawn(command, [...args], { cwd, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], ...(env === undefined ? {} : { env: { ...process.env, ...env } }) }),
   async killTree(child) {
     if (child.pid === undefined || child.exitCode !== null) return;
     if (process.platform === 'win32') await killWindowsTree(child.pid);

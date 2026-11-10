@@ -53,7 +53,7 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'satisfactory',
     name: 'Satisfactory',
-    availability: 'planned',
+    availability: 'available',
     rightsHolders: ['Coffee Stain Studios AB', 'Coffee Stain Publishing AB'],
     disclaimer: notA('Satisfactory', 'Coffee Stain Studios or Coffee Stain Publishing'),
     eula: { name: 'Steam Subscriber Agreement', url: 'https://store.steampowered.com/subscriber_agreement/' },

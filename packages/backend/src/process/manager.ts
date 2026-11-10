@@ -40,6 +40,7 @@ export interface ProcessManagerOptions {
   probePort?: PortProbe;
   platform?: NodeJS.Platform;
   stopTimeoutMs?: number;
+  readinessIntervalMs?: number;
   startWarningMs?: number;
   closeGraceMs?: number;
   metricsIntervalMs?: number;
@@ -107,6 +108,7 @@ export class ProcessManager implements ServerRuntimeGuard {
   private readonly logger: Logger;
   private readonly platform: NodeJS.Platform;
   private readonly stopTimeoutMs: number;
+  private readonly readinessIntervalMs: number;
   private readonly startWarningMs: number;
   private readonly closeGraceMs: number;
   private readonly probe: PortProbe;
@@ -117,6 +119,7 @@ export class ProcessManager implements ServerRuntimeGuard {
     this.logger = options.logger ?? silentLogger;
     this.platform = options.platform ?? process.platform;
     this.stopTimeoutMs = options.stopTimeoutMs ?? 60_000;
+    this.readinessIntervalMs = options.readinessIntervalMs ?? 2_000;
     this.startWarningMs = options.startWarningMs ?? 5 * 60_000;
     this.closeGraceMs = options.closeGraceMs ?? 1500;
     this.probe = options.probePort ?? probePort;
@@ -319,7 +322,8 @@ export class ProcessManager implements ServerRuntimeGuard {
       instance.redact = plan.redact ?? [];
       this.pushSystem(instance, plan.startLine);
       for (const warning of plan.notes) this.pushSystem(instance, msg('START_NOTE', { note: warning }));
-      await this.spawnServer(instance, plan.command, plan.args, plan.cwd ?? serverDir, port);
+      await this.spawnServer(instance, plan.command, plan.args, plan.cwd ?? serverDir, port, plan.env);
+      if (plan.readiness !== undefined) this.pollReadiness(instance, plan.readiness);
     } finally {
       instance.reservedPort = null;
     }
@@ -337,10 +341,10 @@ export class ProcessManager implements ServerRuntimeGuard {
     return { status: this.snapshot(instance), warnings: textsOf(plan.notes), warningRefs: refsOf(plan.notes) };
   }
 
-  private async spawnServer(instance: Instance, command: string, args: string[], cwd: string, port: number): Promise<void> {
+  private async spawnServer(instance: Instance, command: string, args: string[], cwd: string, port: number, env?: Record<string, string>): Promise<void> {
     let child: ServerProcess;
     try {
-      child = this.options.spawner.spawn({ command, args, cwd });
+      child = this.options.spawner.spawn({ command, args, cwd, ...(env === undefined ? {} : { env }) });
     } catch (error) {
       this.failStart(instance, error);
       throw this.startError(error);
@@ -555,11 +559,7 @@ export class ProcessManager implements ServerRuntimeGuard {
     const event = instance.game?.classifyLine(text) ?? null;
     if (event === null) return;
     if (event.type === 'done') {
-      if (instance.status.state === 'starting') {
-        instance.wasOnline = true;
-        this.clearTimer(instance, 'warnTimer');
-        this.update(instance, { state: 'online', ...statusMessage(null) });
-      }
+      this.markOnline(instance);
     } else if (event.type === 'join') {
       instance.players.add(event.name);
       this.update(instance, {});
@@ -639,7 +639,7 @@ export class ProcessManager implements ServerRuntimeGuard {
     const child = instance.child;
     const command = instance.game?.stopCommand ?? null;
     if (child !== null && command !== null && child.stdin.writable) child.stdin.write(`${command}\n`);
-    else if (child !== null && command === null) child.kill('SIGTERM');
+    else if (child !== null && command === null) child.kill(instance.game?.stopSignal ?? 'SIGTERM');
     else void this.forceKill(instance);
   }
 
@@ -693,6 +693,29 @@ export class ProcessManager implements ServerRuntimeGuard {
         this.logger.error({ err: error }, 'Console listener failed');
       }
     }
+  }
+
+  private markOnline(instance: Instance): void {
+    if (instance.status.state !== 'starting') return;
+    instance.wasOnline = true;
+    this.clearTimer(instance, 'warnTimer');
+    this.update(instance, { state: 'online', ...statusMessage(null) });
+  }
+
+  // For games without a ready line: asks the game itself until it answers, as long as this process is starting
+  private pollReadiness(instance: Instance, ready: () => Promise<boolean>): void {
+    const child = instance.child;
+    const tick = (): void => {
+      if (instance.child !== child || instance.status.state !== 'starting') return;
+      ready()
+        .catch(() => false)
+        .then((ok) => {
+          if (instance.child !== child) return;
+          if (ok) this.markOnline(instance);
+          else if (instance.status.state === 'starting') setTimeout(tick, this.readinessIntervalMs).unref();
+        });
+    };
+    setTimeout(tick, this.readinessIntervalMs).unref();
   }
 
   private armStartWarning(instance: Instance): void {

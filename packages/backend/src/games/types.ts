@@ -99,6 +99,10 @@ export interface LaunchPlan {
   cwd?: string;
   // secrets in the command line that must never show up in the console
   redact?: string[];
+  // extra environment variables (a separate home folder, so the save games of two servers stay apart)
+  env?: Record<string, string>;
+  // asked every few seconds while the server starts; true means players can join (for games whose log has no clear line)
+  readiness?: () => Promise<boolean>;
 }
 
 export type StartPlan =
@@ -122,8 +126,10 @@ export interface GameAdapter {
   planStart(server: Server, dir: string, options: { resumed: boolean }): Promise<StartPlan>;
   // Readiness and players from one console line
   classifyLine(line: string): LineEvent | null;
-  // The console line that saves and exits; null when the game has none and the process gets a signal
+  // The console line that saves and exits; null when the game has none and the process gets `stopSignal`
   readonly stopCommand: string | null;
+  // SIGTERM when absent; on Windows a signal ends the process at once
+  readonly stopSignal?: NodeJS.Signals;
 
   // The folders a backup holds
   backupLayout(server: Server, dir: string): Promise<BackupLayout>;

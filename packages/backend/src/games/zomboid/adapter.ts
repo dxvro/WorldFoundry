@@ -9,6 +9,7 @@ import { AppError } from '../../http/errors.js';
 import { msg } from '../../messages.js';
 import type { LineEvent } from '../../process/patterns.js';
 import type { SteamCmd } from '../../steam/steamcmd.js';
+import { portsOf, takenPorts } from '../ports.js';
 import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { readIniValues, setIniValues } from './ini.js';
@@ -147,7 +148,7 @@ export class ZomboidAdapter implements GameAdapter {
     if (port === udpPort) throw new AppError(422, 'PORT_INVALID', 'DefaultPort and UDPPort must differ.');
     for (const other of others) {
       if (other.id === server.id) continue;
-      const used = new Set([other.port, ...(other.game === 'zomboid' ? [parseZomboidSettings(other).udpPort] : [])]);
+      const used = new Set(portsOf(other));
       for (const candidate of [port, udpPort]) {
         if (used.has(candidate)) throw new AppError(409, 'PORT_IN_USE', `Port ${candidate} is already used by the server "${other.name}".`, { port: candidate }, { port: candidate });
       }
@@ -162,11 +163,7 @@ export class ZomboidAdapter implements GameAdapter {
 
   async createColumns(raw: unknown, others: Server[]): Promise<Partial<Server>> {
     const input = CreateZomboidSchema.parse(raw);
-    const taken = new Set<number>();
-    for (const other of others) {
-      taken.add(other.port);
-      if (other.game === 'zomboid') taken.add(parseZomboidSettings(other).udpPort);
-    }
+    const taken = takenPorts(others);
     let port = input.port ?? DEFAULT_GAME_PORT;
     if (input.port === undefined) while (taken.has(port) || taken.has(port + 1)) port += 2;
     const udpPort = input.udpPort ?? port + 1;

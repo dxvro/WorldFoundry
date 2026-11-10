@@ -19,6 +19,8 @@ import { CurseForgeClient, type CurseForgeApi } from './curseforge/client.js';
 import { CurseForgeService } from './curseforge/service.js';
 import { MinecraftAdapter } from './games/minecraft/adapter.js';
 import { ZomboidAdapter } from './games/zomboid/adapter.js';
+import { SatisfactoryAdapter } from './games/satisfactory/adapter.js';
+import { FicsitClient, FicsitService, type FicsitApi } from './games/satisfactory/ficsit.js';
 import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
 import { ManagedRuntimes } from './java/managed.js';
@@ -59,6 +61,11 @@ export interface ServiceOptions {
   steamCmd?: SteamCmd;
   udpProbe?: (port: number) => Promise<boolean>;
   workshopApi?: WorkshopApi;
+  satisfactoryHealth?: (port: number) => Promise<boolean>;
+  ficsitApi?: FicsitApi;
+  // downloads of ficsit.app files in tests
+  ficsitFetch?: typeof fetch;
+  readinessIntervalMs?: number;
   logger?: Logger;
   // Phase 2 compatibility: replaces the process manager as the guard seen by the mod service
   runtimeGuard?: ServerRuntimeGuard;
@@ -106,6 +113,7 @@ export interface Services {
   curseforge: CurseForgeService;
   configFiles: ConfigFilesService;
   workshop: ZomboidWorkshopService;
+  ficsit: FicsitService;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -178,7 +186,12 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
     ...(options.udpProbe === undefined ? {} : { probeUdp: options.udpProbe }),
   });
-  const games = new GameAdapters([minecraft, zomboid]);
+  const satisfactory = new SatisfactoryAdapter({
+    steam,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
+    ...(options.satisfactoryHealth === undefined ? {} : { health: options.satisfactoryHealth }),
+  });
+  const games = new GameAdapters([minecraft, zomboid, satisfactory]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};
@@ -191,6 +204,7 @@ export function createServices(options: ServiceOptions): Services {
     bus,
     logger,
     stopTimeoutMs: config.stopTimeoutMs,
+    ...(options.readinessIntervalMs === undefined ? {} : { readinessIntervalMs: options.readinessIntervalMs }),
     ...(options.platform === undefined ? {} : { platform: options.platform }),
     ...(options.portProbe === undefined ? {} : { probePort: options.portProbe }),
     ...(options.readSamples === undefined ? {} : { readSamples: options.readSamples }),
@@ -370,5 +384,14 @@ export function createServices(options: ServiceOptions): Services {
   });
   const configFiles = new ConfigFilesService({ db, serversDir: config.serversDir, lock, bus, games, guard });
   const workshop = new ZomboidWorkshopService({ db, serversDir: config.serversDir, lock, guard, api: options.workshopApi ?? new SteamWorkshopClient(options.fetch ?? fetch) });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  const ficsit = new FicsitService({
+    db,
+    serversDir: config.serversDir,
+    lock,
+    guard,
+    api: options.ficsitApi ?? new FicsitClient(options.fetch ?? fetch, userAgent),
+    ...(options.ficsitFetch === undefined ? {} : { fetch: options.ficsitFetch }),
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
+  });
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }
