@@ -19,6 +19,8 @@ import { contentNames, ModsTab } from './server/ModsTab';
 import { PlayersTab } from './server/PlayersTab';
 import { StoreTab } from './server/StoreTab';
 import { ZomboidSettingsTab } from './server/ZomboidSettingsTab';
+import { FilesTab } from './server/FilesTab';
+import { WorkshopTab } from './server/WorkshopTab';
 import { zomboidSettings } from '../games/zomboid';
 import { WorldTab } from './server/WorldTab';
 
@@ -61,15 +63,18 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
   const allTabs: Array<{ id: ServerTab; label: string }> = [
     { id: 'console', label: t.server.tabs.console },
     { id: 'config', label: t.server.tabs.config },
+    { id: 'files', label: t.server.tabs.files },
+    { id: 'workshop', label: t.server.tabs.workshop },
     { id: 'world', label: t.server.tabs.world },
     { id: 'players', label: t.server.tabs.players },
     { id: 'mods', label: names.plural },
     { id: 'store', label: names.store },
     { id: 'backups', label: t.server.tabs.backups },
   ];
-  // other games have the console and their own settings so far
   const minecraft = server.game === 'minecraft';
-  const tabs = minecraft ? allTabs : allTabs.filter((entry) => entry.id === 'console' || entry.id === 'config');
+  const ZOMBOID_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'workshop', 'backups'];
+  const MINECRAFT_TABS: readonly ServerTab[] = ['console', 'config', 'world', 'players', 'mods', 'store', 'backups'];
+  const tabs = allTabs.filter((entry) => (minecraft ? MINECRAFT_TABS : ZOMBOID_TABS).includes(entry.id));
   const zomboid = zomboidSettings(server);
   const waitingForJava = status.state === 'preparing' ? preparingMajor(status.message, status.messageRef) : null;
 
@@ -162,7 +167,9 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         {!minecraft ? null : tab === 'players' ? <PlayersTab key={server.id} server={server} status={status} /> : null}
         {!minecraft ? null : tab === 'mods' ? <ModsTab key={server.id} server={server} status={status} /> : null}
         {!minecraft ? null : tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}
-        {!minecraft ? null : tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'files' && !minecraft ? <FilesTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'workshop' && server.game === 'zomboid' ? <WorkshopTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
       </div>
     </div>
   );

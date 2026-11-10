@@ -151,6 +151,51 @@ export const modsApi = {
     (await request<{ categories: Category[] }>('/api/modrinth/categories', signal === undefined ? {} : { signal })).categories,
 };
 
+export interface ConfigFileInfo {
+  key: string;
+  label: string;
+  description: string;
+  path: string;
+  format: 'ini' | 'lua' | 'json' | 'text';
+  exists: boolean;
+  sizeBytes: number;
+}
+
+export const configFilesApi = {
+  list: async (id: string, signal?: AbortSignal): Promise<ConfigFileInfo[]> =>
+    (await request<{ files: ConfigFileInfo[] }>(`${server(id)}/config-files`, signal === undefined ? {} : { signal })).files,
+  read: (id: string, key: string, signal?: AbortSignal): Promise<{ file: ConfigFileInfo; text: string }> =>
+    request(`${server(id)}/config-files/${enc(key)}`, signal === undefined ? {} : { signal }),
+  write: (id: string, key: string, text: string): Promise<{ file: ConfigFileInfo; text: string }> =>
+    request(`${server(id)}/config-files/${enc(key)}`, { method: 'PUT', body: { text } }),
+};
+
+export interface WorkshopItem {
+  id: string;
+  found: boolean;
+  title: string | null;
+  previewUrl: string | null;
+  sizeBytes: number | null;
+  updatedAt: number | null;
+  modIds: string[];
+  mapFolders: string[];
+  forZomboid: boolean;
+}
+
+export interface WorkshopView {
+  items: WorkshopItem[];
+  mods: string[];
+  maps: string[];
+  detailsError: string | null;
+}
+
+export const workshopApi = {
+  get: (id: string, signal?: AbortSignal): Promise<WorkshopView> => request(`${server(id)}/workshop`, signal === undefined ? {} : { signal }),
+  save: (id: string, input: { items: string[]; mods: string[]; maps: string[] }): Promise<WorkshopView> =>
+    request(`${server(id)}/workshop`, { method: 'PUT', body: input }),
+  lookup: async (query: string): Promise<WorkshopItem> => (await request<{ item: WorkshopItem }>('/api/workshop/lookup', { query: { q: query } })).item,
+};
+
 export const backupsApi = {
   list: (id: string, signal?: AbortSignal): Promise<BackupListView> => request(`${server(id)}/backups`, signal === undefined ? {} : { signal }),
   create: async (id: string, includeConfig?: boolean): Promise<BackupView> =>

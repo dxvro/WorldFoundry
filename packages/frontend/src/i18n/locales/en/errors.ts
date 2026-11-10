@@ -45,6 +45,11 @@ export const errors = {
   codes: {
     GAME_NOT_FOUND: 'This game is not known to WorldFoundry.',
     GAME_SETTINGS_INVALID: 'The stored settings of this server are damaged.',
+    BACKUP_NEEDS_STOP: 'This game can only be backed up while the server is stopped. Please stop it first.',
+    WORKSHOP_ID_INVALID: 'Please enter a Workshop id or the link of a Workshop item.',
+    WORKSHOP_NOT_FOUND: 'This Workshop item was not found or is not public.',
+    WORKSHOP_WRONG_GAME: 'This Workshop item is not for Project Zomboid.',
+    CONFIG_FILE_TOO_LARGE: 'The file is too large to be edited here.',
     GAME_FEATURE_UNSUPPORTED: (p: Details) => (text(p.game) === undefined ? 'This part of WorldFoundry is not available for this game yet.' : `This part of WorldFoundry is not available for ${p.game} servers yet.`),
     STEAMCMD_FAILED: (p: Details) => (opt(p, 'reason') === 'lib32' ? 'SteamCMD needs 32-bit libraries on Linux. On Debian or Ubuntu install them with: sudo apt install lib32gcc-s1' : 'SteamCMD did not confirm the installation. The details are in the installation log.'),
     GAME_NOT_AVAILABLE: (p: Details) => (text(p.game) === undefined ? 'Servers for this game cannot be created yet.' : `Servers for ${p.game} cannot be created yet.`),

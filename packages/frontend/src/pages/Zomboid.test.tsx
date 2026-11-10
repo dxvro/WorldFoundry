@@ -47,6 +47,93 @@ describe('Project Zomboid wizard', () => {
   });
 });
 
+describe('Project Zomboid settings files', () => {
+  it('edits a file as text and saves it', async () => {
+    const files = [
+      { key: 'ini', label: 'Server settings', description: 'Name, password', path: 'data/Server/knox.ini', format: 'ini', exists: true, sizeBytes: 20 },
+      { key: 'sandbox', label: 'Sandbox settings', description: 'World rules', path: 'data/Server/knox_SandboxVars.lua', format: 'lua', exists: false, sizeBytes: 0 },
+    ];
+    api = mockApi({
+      ...baseRoutes(zomboidServer()),
+      'GET /api/servers/srv-1/config-files': () => ({ body: { files } }),
+      'GET /api/servers/srv-1/config-files/ini': () => ({ body: { file: files[0], text: 'PublicName=Knox\n' } }),
+      'GET /api/servers/srv-1/config-files/sandbox': () => ({ body: { file: files[1], text: '' } }),
+      'PUT /api/servers/srv-1/config-files/ini': (call) => ({ body: { file: files[0], text: (call.body as { text: string }).text } }),
+    });
+    window.history.replaceState(null, '', '/servers/srv-1/files');
+    const user = userEvent.setup();
+    render(<App />);
+    const editor = await screen.findByLabelText('Text of Server settings');
+    await vi.waitFor(() => expect(editor).toHaveValue('PublicName=Knox\n'));
+    expect(screen.getByText('data/Server/knox.ini')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save file' })).toBeDisabled();
+    await user.clear(editor);
+    await user.type(editor, 'PublicName=Louisville');
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save file' }));
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(api.callsTo('PUT /api/servers/srv-1/config-files/ini').map((call) => call.body)).toEqual([{ text: 'PublicName=Louisville' }]);
+
+    await user.click(screen.getByRole('tab', { name: 'Sandbox settings' }));
+    expect(await screen.findByText(/This file does not exist yet/)).toBeInTheDocument();
+  });
+
+  it('is read-only while the server runs', async () => {
+    mockApi({
+      ...baseRoutes(zomboidServer({ status: { ...offline, state: 'online', pid: 1, startedAt: 1, port: 16261 } })),
+      'GET /api/servers/srv-1/config-files': () => ({ body: { files: [{ key: 'ini', label: 'Server settings', description: '', path: 'data/Server/knox.ini', format: 'ini', exists: true, sizeBytes: 1 }] } }),
+      'GET /api/servers/srv-1/config-files/ini': () => ({ body: { file: { key: 'ini' }, text: 'A=1\n' } }),
+    });
+    window.history.replaceState(null, '', '/servers/srv-1/files');
+    render(<App />);
+    expect(await screen.findByText(/Stop the server to change its settings files/)).toBeInTheDocument();
+    expect(await screen.findByLabelText('Text of Server settings')).toHaveAttribute('readonly');
+  });
+});
+
+describe('Project Zomboid Steam Workshop', () => {
+  it('adds an item with its suggested mod id and map, orders the lists and saves them', async () => {
+    const item = (id: string, title: string, modIds: string[], mapFolders: string[] = []) => ({ id, found: true, title, previewUrl: null, sizeBytes: 1024, updatedAt: 1, modIds, mapFolders, forZomboid: true });
+    api = mockApi({
+      ...baseRoutes(zomboidServer()),
+      'GET /api/servers/srv-1/workshop': () => ({ body: { items: [item('111', 'Brita', ['Brita'])], mods: ['Brita'], maps: ['Muldraugh, KY'], detailsError: null } }),
+      'GET /api/workshop/lookup': () => ({ body: { item: item('222', 'Raven Creek', ['RavenCreek'], ['RavenCreek']) } }),
+      'PUT /api/servers/srv-1/workshop': (call) => {
+        const body = call.body as { items: string[]; mods: string[]; maps: string[] };
+        return { body: { items: body.items.map((id) => item(id, id === '111' ? 'Brita' : 'Raven Creek', [])), mods: body.mods, maps: body.maps, detailsError: null } };
+      },
+    });
+    window.history.replaceState(null, '', '/servers/srv-1/workshop');
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByText('Brita', { selector: 'p' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Workshop id or link'), 'https://steamcommunity.com/sharedfiles/filedetails/?id=222');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('Raven Creek', { selector: 'p' })).toBeInTheDocument();
+    expect(api.callsTo('GET /api/workshop/lookup')[0]?.url).toContain('q=https%3A%2F%2Fsteamcommunity.com');
+    const mods = screen.getByRole('list', { name: 'Mod ids' });
+    expect(within(mods).getAllByRole('listitem').map((row) => row.textContent)).toEqual(['Brita', 'RavenCreek']);
+    await user.click(screen.getByRole('button', { name: 'Move Raven Creek up' }));
+    await user.click(screen.getByRole('button', { name: 'Save lists' }));
+    expect(await screen.findByText(/The server downloads the items on its next start/)).toBeInTheDocument();
+    expect(api.callsTo('PUT /api/servers/srv-1/workshop').map((call) => call.body)).toEqual([{ items: ['222', '111'], mods: ['Brita', 'RavenCreek'], maps: ['RavenCreek', 'Muldraugh, KY'] }]);
+  });
+});
+
+describe('Project Zomboid backups', () => {
+  it('offers backups without the Minecraft options and only while stopped', async () => {
+    mockApi({
+      ...baseRoutes(zomboidServer({ status: { ...offline, state: 'online', pid: 1, startedAt: 1, port: 16261 } })),
+      'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 0, freeBytes: null, running: false } }),
+    });
+    window.history.replaceState(null, '', '/servers/srv-1/backups');
+    render(<App />);
+    expect(await screen.findByText(/backed up while the server is stopped/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create backup' })).toBeDisabled();
+    expect(screen.queryByText(/Include configuration files/)).not.toBeInTheDocument();
+  });
+});
+
 describe('Project Zomboid server page', () => {
   it('has the console and its own settings only, with the ports and the hidden admin password', async () => {
     api = mockApi({
@@ -61,7 +148,7 @@ describe('Project Zomboid server page', () => {
     expect(screen.getByText('Steam branch public')).toBeInTheDocument();
     expect(screen.getByText('UDP 16261 and 16262')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Steam Workshop', 'Backups']);
 
     expect(screen.getByText('data/Server/knox.ini')).toBeInTheDocument();
     expect(screen.queryByText('secret-admin-pw')).not.toBeInTheDocument();

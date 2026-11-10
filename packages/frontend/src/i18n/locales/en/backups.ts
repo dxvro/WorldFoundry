@@ -34,6 +34,8 @@ export const backups = {
     save: 'Save schedule',
   },
   main: {
+    descriptionOffline: 'The world, the player database and the server settings are backed up while the server is stopped. The archives are stored in the data folder and can be downloaded.',
+    stopFirstTitle: 'Stop the server first: this game can only be backed up while it is stopped',
     title: 'World backups',
     descriptionRunning:
       'The server is running: saving is paused briefly (save-off, save-all flush), the world is backed up, and saving is turned back on afterwards (save-on). The server keeps running meanwhile.',

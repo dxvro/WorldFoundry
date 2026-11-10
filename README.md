@@ -11,7 +11,7 @@ WorldFoundry runs dedicated game servers on one of your own computers and is ope
 | Game | Status | Server files | Mods |
 | --- | --- | --- | --- |
 | Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
-| Project Zomboid | Early: install, start, stop, console, settings. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop planned |
+| Project Zomboid | Early: install, start, stop, console, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
 | Satisfactory | Planned | SteamCMD, anonymous login | ficsit.app |
 | ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
 

@@ -29,7 +29,7 @@ export function parseKeepLast(text: string): number | null {
   return value >= 1 && value <= 100 ? value : null;
 }
 
-function BackupRow({ serverId, backup, locked, onRestore, onDelete, onExport }: { serverId: string; backup: BackupView; locked: boolean; onRestore: () => void; onDelete: () => void; onExport: () => void }): ReactNode {
+function BackupRow({ serverId, backup, locked, onRestore, onDelete, onExport }: { serverId: string; backup: BackupView; locked: boolean; onRestore: () => void; onDelete: () => void; onExport: (() => void) | null }): ReactNode {
   const { t } = useI18n();
   const r = t.backups.row;
   return (
@@ -58,9 +58,11 @@ function BackupRow({ serverId, backup, locked, onRestore, onDelete, onExport }: 
               <Download aria-hidden className="size-4 shrink-0" />
               {r.download}
             </a>
-            <Button size="sm" icon={FileDown} title={r.exportTitle} onClick={onExport}>
-              {r.exportAsWorld}
-            </Button>
+            {onExport === null ? null : (
+              <Button size="sm" icon={FileDown} title={r.exportTitle} onClick={onExport}>
+                {r.exportAsWorld}
+              </Button>
+            )}
             <Button size="sm" icon={RotateCcw} disabled={locked} title={locked ? r.restoreLocked : r.restoreTitle} onClick={onRestore}>
               {r.restore}
             </Button>
@@ -157,7 +159,7 @@ function ScheduleSection({ server, schedule, onSaved }: { server: ServerView; sc
             )}
           </Field>
         </div>
-        <Toggle
+        {server.game !== 'minecraft' ? null : <Toggle
           checked={includeConfig}
           onChange={(value) => {
             setIncludeConfig(value);
@@ -165,7 +167,7 @@ function ScheduleSection({ server, schedule, onSaved }: { server: ServerView; sc
           }}
           label={s.includeConfig}
           description={s.includeConfigHint}
-        />
+        />}
         {error === null ? null : <ErrorNotice error={error} title={s.saveFailed} />}
         {saved ? <Notice tone="success">{s.saved}</Notice> : null}
         <Button type="submit" variant="primary" icon={Save} loading={saving} disabled={!dirty || keep === null}>
@@ -199,7 +201,9 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
   const running = status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
   const writing = data?.running === true || backups.some((backup) => backup.status === 'running');
   const withConfig = includeConfig ?? data?.schedule.includeConfig ?? false;
-  const busyServer = status.state === 'preparing' || status.state === 'starting' || status.state === 'stopping';
+  // other games have no safe "pause saving": their backups run while the server is stopped
+  const minecraft = server.game === 'minecraft';
+  const busyServer = status.state === 'preparing' || status.state === 'starting' || status.state === 'stopping' || (!minecraft && running);
 
   const create = async (): Promise<void> => {
     setCreating(true);
@@ -249,22 +253,24 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
       <Section
         title={m.title}
         description={
-          running
-            ? m.descriptionRunning
-            : m.descriptionStopped
+          !minecraft
+            ? m.descriptionOffline
+            : running
+              ? m.descriptionRunning
+              : m.descriptionStopped
         }
         action={
-          <Button variant="primary" icon={Archive} loading={creating || writing} disabled={busyServer} title={busyServer ? m.busyTitle : undefined} onClick={() => void create()}>
+          <Button variant="primary" icon={Archive} loading={creating || writing} disabled={busyServer} title={busyServer ? (!minecraft && running ? m.stopFirstTitle : m.busyTitle) : undefined} onClick={() => void create()}>
             {m.create}
           </Button>
         }
       >
-        <label className="mb-3 flex cursor-pointer items-start gap-3">
+        {!minecraft ? null : <label className="mb-3 flex cursor-pointer items-start gap-3">
           <input type="checkbox" checked={withConfig} onChange={(event) => setIncludeConfig(event.target.checked)} className="mt-1 size-5 shrink-0 accent-[var(--color-accent)]" />
           <span>
             {m.includeConfig} <span className="hint block">{m.includeConfigHint}</span>
           </span>
-        </label>
+        </label>}
         {error === null ? null : <ErrorNotice error={error} title={m.createFailed} />}
         {data === undefined ? null : (
           <p className="num hint flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -324,14 +330,14 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
                   setDeleteError(null);
                   setDeleteTarget(backup);
                 }}
-                onExport={() => setExportTarget(backup)}
+                onExport={minecraft ? () => setExportTarget(backup) : null}
               />
             ))}
           </ul>
         </section>
       )}
 
-      <WorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} />
+      {minecraft ? <WorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} /> : null}
 
       {data === undefined ? null : <ScheduleSection server={server} schedule={data.schedule} onSaved={list.reload} />}
 
