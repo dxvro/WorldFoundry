@@ -119,7 +119,8 @@ export class SteamCmd {
     }
     onLine('Downloading SteamCMD from Valve ...');
     const url = STEAMCMD_DOWNLOAD[this.platform];
-    const staging = path.join(this.options.dir, '.staging');
+    // next to the target, not inside it: the target is replaced as a whole once the download is unpacked
+    const staging = `${this.options.dir}.staging`;
     await rm(staging, { recursive: true, force: true });
     try {
       // Valve publishes no checksum for this file; it is fetched over HTTPS from Valve's CDN only, and SteamCMD

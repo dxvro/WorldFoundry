@@ -1,15 +1,17 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
+import { writeTarGz } from '../src/archive/tar.js';
 import { classifyZomboidLine } from '../src/games/zomboid/adapter.js';
 import { readIniValues, setIniValues } from '../src/games/zomboid/ini.js';
 import { SteamWorkshopClient, mapFoldersOf, modIdsOf, workshopIdOf, type WorkshopDetails } from '../src/games/zomboid/workshop.js';
 import { createInstallerRunner } from '../src/installer/runner.js';
 import { realSpawner } from '../src/process/spawner.js';
-import { buildAppUpdateArgs, parseProgress, SteamCmd } from '../src/steam/steamcmd.js';
+import { buildAppUpdateArgs, parseProgress, STEAMCMD_DOWNLOAD, SteamCmd } from '../src/steam/steamcmd.js';
 import { FakeModrinth } from './fake-modrinth.js';
 import { createTestDb, testConfig, type TestDb } from './helpers.js';
 import { waitFor } from './server-env.js';
@@ -29,6 +31,36 @@ describe('SteamCMD helpers', () => {
     expect(parseProgress(' Update state (0x61) downloading, progress: 45.12 (1234 / 5678)')).toBe(45.12);
     expect(parseProgress(' Update state (0x81) verifying update, progress: 3.00 (1 / 2)')).toBe(3);
     expect(parseProgress('Success!')).toBeNull();
+  });
+
+  it('downloads SteamCMD from Valve into its folder on first use', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'wf-steamcmd-'));
+    try {
+      const archive = path.join(root, 'steamcmd_linux.tar.gz');
+      const now = Date.now();
+      await writeTarGz(archive, [
+        { kind: 'bytes', name: 'steamcmd.sh', data: Buffer.from('#!/bin/sh\n'), mtimeMs: now, mode: 0o755 },
+        { kind: 'dir', name: 'linux32', mtimeMs: now, mode: 0o755 },
+        { kind: 'bytes', name: 'linux32/steamcmd', data: Buffer.from('binary'), mtimeMs: now, mode: 0o644 },
+      ]);
+      const body = await readFile(archive);
+      const requested: string[] = [];
+      const fakeFetch = (async (url: string | URL | Request) => {
+        requested.push(String(url));
+        return new Response(body, { status: 200, headers: { 'content-length': String(body.length) } });
+      }) as typeof fetch;
+      // the folder already exists from an earlier, failed attempt
+      const dir = path.join(root, 'data', 'steamcmd');
+      await mkdir(dir, { recursive: true });
+      const lines: string[] = [];
+      await new SteamCmd({ dir, platform: 'linux', fetch: fakeFetch, runner: createInstallerRunner(realSpawner) }).prepare(new AbortController().signal, (line) => lines.push(line));
+      expect(requested).toEqual([STEAMCMD_DOWNLOAD.linux]);
+      expect(await readFile(path.join(dir, 'steamcmd.sh'), 'utf8')).toBe('#!/bin/sh\n');
+      expect(await readFile(path.join(dir, 'linux32', 'steamcmd'), 'utf8')).toBe('binary');
+      expect(lines).toContain('SteamCMD is ready.');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
 
