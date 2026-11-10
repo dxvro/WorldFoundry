@@ -21,6 +21,8 @@ import { CurseForgeService } from './curseforge/service.js';
 import { MinecraftAdapter } from './games/minecraft/adapter.js';
 import { ZomboidAdapter } from './games/zomboid/adapter.js';
 import { SatisfactoryAdapter } from './games/satisfactory/adapter.js';
+import { ArkAdapter, type Rcon } from './games/ark/adapter.js';
+import { ArkModsService } from './games/ark/mods.js';
 import { FicsitClient, FicsitService, type FicsitApi } from './games/satisfactory/ficsit.js';
 import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
@@ -64,6 +66,7 @@ export interface ServiceOptions {
   workshopApi?: WorkshopApi;
   satisfactoryHealth?: (port: number) => Promise<boolean>;
   satisfactoryPlayers?: (port: number) => Promise<number | null>;
+  rcon?: Rcon;
   ficsitApi?: FicsitApi;
   // downloads of ficsit.app files in tests
   ficsitFetch?: typeof fetch;
@@ -117,6 +120,7 @@ export interface Services {
   workshop: ZomboidWorkshopService;
   ficsit: FicsitService;
   gamePlayers: GamePlayersService;
+  arkMods: ArkModsService;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -195,7 +199,12 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.satisfactoryHealth === undefined ? {} : { health: options.satisfactoryHealth }),
     ...(options.satisfactoryPlayers === undefined ? {} : { playerCount: options.satisfactoryPlayers }),
   });
-  const games = new GameAdapters([minecraft, zomboid, satisfactory]);
+  const ark = new ArkAdapter({
+    steam,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
+    ...(options.rcon === undefined ? {} : { rcon: options.rcon }),
+  });
+  const games = new GameAdapters([minecraft, zomboid, satisfactory, ark]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};
@@ -387,7 +396,9 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.restart?.delayMs === undefined ? {} : { delayMs: options.restart.delayMs }),
   });
   const configFiles = new ConfigFilesService({ db, serversDir: config.serversDir, lock, bus, games, guard });
-  const workshop = new ZomboidWorkshopService({ db, serversDir: config.serversDir, lock, guard, api: options.workshopApi ?? new SteamWorkshopClient(options.fetch ?? fetch) });
+  const workshopClient = options.workshopApi ?? new SteamWorkshopClient(options.fetch ?? fetch);
+  const workshop = new ZomboidWorkshopService({ db, serversDir: config.serversDir, lock, guard, api: workshopClient });
+  const arkMods = new ArkModsService({ db, serversDir: config.serversDir, lock, guard, api: workshopClient, adapter: ark });
   const ficsit = new FicsitService({
     db,
     serversDir: config.serversDir,
@@ -398,5 +409,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }

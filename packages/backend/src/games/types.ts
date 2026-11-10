@@ -142,6 +142,8 @@ export interface GameAdapter {
   playerList?(server: Server, dir: string): Promise<{ names: string[] | null; count: number | null }>;
   // What the Players tab offers for one player; the core sends the command
   readonly playerActions?: readonly PlayerAction[];
+  // turns what the user typed into what the commands need (ARK: the Steam id of a player)
+  resolvePlayer?(serverId: string, nameOrId: string): string;
 
   // Settings files the interface offers as text; none for Minecraft, which has its own editors
   configFiles?(server: Server, dir: string): ConfigFile[];

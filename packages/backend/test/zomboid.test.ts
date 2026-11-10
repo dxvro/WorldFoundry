@@ -100,7 +100,7 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
       javaStandardRoots: [],
       portProbe: async () => 'free',
       udpProbe: async () => true,
-      workshopApi: { details: async (ids) => ids.map((id) => workshop.get(id) ?? { id, found: false, title: null, previewUrl: null, sizeBytes: null, updatedAt: null, modIds: [], mapFolders: [], forZomboid: false }) },
+      workshopApi: { details: async (ids) => ids.map((id) => workshop.get(id) ?? { id, found: false, title: null, previewUrl: null, sizeBytes: null, updatedAt: null, modIds: [], mapFolders: [], forZomboid: false, appId: null }) },
       steamCmd: new SteamCmd({ dir: path.join(t.dir, 'steamcmd'), runner: createInstallerRunner(realSpawner), configuredPath: steamScript }),
     });
     await app.ready();
@@ -229,7 +229,7 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
   }, 60_000);
 
   it('keeps the Workshop items, mod ids and maps of the ini in order', async () => {
-    const item = (id: string, title: string, modIds: string[], mapFolders: string[] = []): WorkshopDetails => ({ id, found: true, title, previewUrl: null, sizeBytes: 10, updatedAt: 1, modIds, mapFolders, forZomboid: true });
+    const item = (id: string, title: string, modIds: string[], mapFolders: string[] = []): WorkshopDetails => ({ id, found: true, title, previewUrl: null, sizeBytes: 10, updatedAt: 1, modIds, mapFolders, forZomboid: true, appId: 108600 });
     workshop.set('111', item('111', 'Brita Weapons', ['Brita']));
     workshop.set('222', item('222', 'Raven Creek', ['RavenCreek'], ['RavenCreek']));
     workshop.set('333', { ...item('333', 'Not PZ', []), forZomboid: false });

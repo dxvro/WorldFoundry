@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { GameAdapters } from '../src/games/adapters.js';
 import { ServerEnv } from './server-env.js';
 
 interface GamesBody {
@@ -36,10 +37,11 @@ describe('the game of a server', () => {
     await env.services.install.idle();
   });
 
-  it('refuses a game without an adapter and creates nothing', async () => {
-    const res = await create({ game: 'ark' });
-    expect(res.status).toBe(422);
-    expect(res.body.error).toMatchObject({ code: 'GAME_NOT_AVAILABLE', params: { game: 'ARK: Survival Evolved' } });
-    expect((await env.call<{ servers: unknown[] }>('GET', '/api/servers')).body.servers).toHaveLength(0);
+  it('refuses a game whose adapter is missing (a newer database opened by an older version)', () => {
+    expect(() => new GameAdapters([]).get('ark')).toThrowError(expect.objectContaining({ code: 'GAME_NOT_AVAILABLE', params: { game: 'ARK: Survival Evolved' } }));
+  });
+
+  it('refuses an unknown game', async () => {
+    expect((await create({ game: 'tetris' })).status).toBe(422);
   });
 });

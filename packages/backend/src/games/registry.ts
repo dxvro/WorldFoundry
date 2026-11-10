@@ -68,7 +68,7 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'ark',
     name: 'ARK: Survival Evolved',
-    availability: 'planned',
+    availability: 'available',
     rightsHolders: ['Studio Wildcard', 'Snail Games USA'],
     disclaimer: notA('ARK', 'Studio Wildcard or Snail Games'),
     eula: { name: 'Steam Subscriber Agreement', url: 'https://store.steampowered.com/subscriber_agreement/' },

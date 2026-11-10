@@ -44,7 +44,7 @@ export class GamePlayersService {
     const name = rawName.trim();
     if (!PLAYER_NAME.test(name)) throw new AppError(422, 'PLAYER_NAME_INVALID', 'Invalid player name: 1 to 64 characters, no quotes or backslashes.');
     if (this.options.manager.status(serverId).state !== 'online') throw new AppError(409, 'SERVER_NOT_RUNNING', 'The server is not running.');
-    const command = action.command(name);
+    const command = action.command(adapter.resolvePlayer?.(serverId, name) ?? name);
     await this.options.manager.sendCommand(serverId, command);
     return { sent: command };
   }

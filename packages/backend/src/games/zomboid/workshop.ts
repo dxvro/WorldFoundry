@@ -42,6 +42,8 @@ export interface WorkshopDetails {
   mapFolders: string[];
   // false: the item belongs to another game
   forZomboid: boolean;
+  // the Steam app the item belongs to; null when Steam did not say
+  appId: number | null;
 }
 
 export interface WorkshopApi {
@@ -91,6 +93,7 @@ export class SteamWorkshopClient implements WorkshopApi {
         modIds: modIdsOf(description),
         mapFolders: mapFoldersOf(description),
         forZomboid: found ? detail.consumer_app_id === undefined || detail.consumer_app_id === ZOMBOID_WORKSHOP_APP : false,
+        appId: found ? (detail.consumer_app_id ?? null) : null,
       };
     });
   }
@@ -150,7 +153,7 @@ export class ZomboidWorkshopService {
       items = await this.options.api.details(ids);
     } catch (error) {
       detailsError = error instanceof Error ? error.message : String(error);
-      items = ids.map((id) => ({ id, found: false, title: null, previewUrl: null, sizeBytes: null, updatedAt: null, modIds: [], mapFolders: [], forZomboid: true }));
+      items = ids.map((id) => ({ id, found: false, title: null, previewUrl: null, sizeBytes: null, updatedAt: null, modIds: [], mapFolders: [], forZomboid: true, appId: null }));
     }
     const maps = split(values.get('Map'));
     return { items, mods: split(values.get('Mods')), maps: maps.length === 0 ? [DEFAULT_MAP] : maps, detailsError };

@@ -18,6 +18,16 @@ if (process.env.FAKE_STEAM === 'fail') {
   process.exit(8);
 }
 mkdirSync(dir, { recursive: true });
+if (appId === '376030') {
+  // ARK: Survival Evolved
+  const bin = path.join(dir, 'ShooterGame', 'Binaries', 'Linux');
+  mkdirSync(bin, { recursive: true });
+  const fake = path.join(path.dirname(new URL(import.meta.url).pathname), 'fake-ark.mjs');
+  writeFileSync(path.join(bin, 'ShooterGameServer'), `#!/bin/bash\nexec "${process.execPath}" "${fake}" "$@"\n`);
+  chmodSync(path.join(bin, 'ShooterGameServer'), 0o755);
+  console.log(`Success! App '${appId}' fully installed.`);
+  process.exit(0);
+}
 if (appId === '1690800') {
   // Satisfactory: the shipping binary is started directly
   const bin = path.join(dir, 'Engine', 'Binaries', 'Linux');

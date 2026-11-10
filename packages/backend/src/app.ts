@@ -17,6 +17,7 @@ import { registerConfigFileRoutes } from './http/routes/config-files.js';
 import { registerWorkshopRoutes } from './http/routes/workshop.js';
 import { registerFicsitRoutes } from './http/routes/ficsit.js';
 import { registerGamePlayerRoutes } from './http/routes/game-players.js';
+import { registerArkModRoutes } from './http/routes/ark-mods.js';
 import { registerNetworkRoutes } from './http/routes/network.js';
 import { registerPlayerRoutes } from './http/routes/players.js';
 import { registerServerRoutes } from './http/routes/servers.js';
@@ -105,6 +106,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   registerWorkshopRoutes(app, services.workshop);
   registerFicsitRoutes(app, services.ficsit);
   registerGamePlayerRoutes(app, services.gamePlayers);
+  registerArkModRoutes(app, services.arkMods);
   registerWorldIoRoutes(app, context);
 
   // Boot sequence: recover whatever the last run left half done, then start the background services. The

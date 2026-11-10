@@ -88,6 +88,16 @@ export class SteamCmd {
     this.platform = options.platform ?? process.platform;
   }
 
+  // the folder SteamCMD lives in (ARK copies it for -automanagedmods)
+  get directory(): string {
+    return this.options.configuredPath === undefined ? this.options.dir : path.dirname(this.options.configuredPath);
+  }
+
+  // downloads SteamCMD when it is missing, without running anything
+  prepare(signal: AbortSignal, onLine: (line: string) => void): Promise<void> {
+    return this.lock.run('steamcmd', () => this.ensure(signal, onLine));
+  }
+
   private get executable(): string {
     if (this.options.configuredPath !== undefined) return this.options.configuredPath;
     return path.join(this.options.dir, this.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh');
