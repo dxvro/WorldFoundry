@@ -96,6 +96,14 @@ export interface ZomboidAdapterOptions {
 export class ZomboidAdapter implements GameAdapter {
   readonly definition = gameDefinition('zomboid');
   readonly stopCommand = 'quit';
+  // admin commands of the server console; names are quoted, so spaces work
+  readonly playerActions = [
+    { id: 'kick', label: 'Kick', confirm: false, command: (name: string) => `kickuser "${name}"` },
+    { id: 'ban', label: 'Ban', confirm: true, command: (name: string) => `banuser "${name}"` },
+    { id: 'unban', label: 'Unban', confirm: false, command: (name: string) => `unbanuser "${name}"` },
+    { id: 'admin', label: 'Make admin', confirm: true, command: (name: string) => `setaccesslevel "${name}" admin` },
+    { id: 'user', label: 'Remove admin rights', confirm: false, command: (name: string) => `setaccesslevel "${name}" none` },
+  ] as const;
   private readonly platform: NodeJS.Platform;
 
   constructor(private readonly options: ZomboidAdapterOptions) {

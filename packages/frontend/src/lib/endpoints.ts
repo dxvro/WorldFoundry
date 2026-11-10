@@ -221,6 +221,18 @@ export const ficsitApi = {
   remove: (id: string, reference: string): Promise<{ removed: string }> => request(`${server(id)}/ficsit/mods/${enc(reference)}`, { method: 'DELETE' }),
 };
 
+export interface GamePlayersView {
+  online: string[];
+  count: number | null;
+  actions: Array<{ id: string; label: string; confirm: boolean }>;
+  running: boolean;
+}
+
+export const gamePlayersApi = {
+  get: (id: string, signal?: AbortSignal): Promise<GamePlayersView> => request(`${server(id)}/game-players`, signal === undefined ? {} : { signal }),
+  act: (id: string, action: string, name: string): Promise<{ sent: string }> => request(`${server(id)}/game-players/${enc(action)}`, { method: 'POST', body: { name } }),
+};
+
 export const backupsApi = {
   list: (id: string, signal?: AbortSignal): Promise<BackupListView> => request(`${server(id)}/backups`, signal === undefined ? {} : { signal }),
   create: async (id: string, includeConfig?: boolean): Promise<BackupView> =>

@@ -14,6 +14,7 @@ import { createInstallerRunner, type InstallerRunner } from './installer/runner.
 import { InstallService } from './installer/service.js';
 import { GameAdapters } from './games/adapters.js';
 import { ConfigFilesService } from './games/config-files.js';
+import { GamePlayersService } from './games/players.js';
 import { SteamWorkshopClient, ZomboidWorkshopService, type WorkshopApi } from './games/zomboid/workshop.js';
 import { CurseForgeClient, type CurseForgeApi } from './curseforge/client.js';
 import { CurseForgeService } from './curseforge/service.js';
@@ -62,6 +63,7 @@ export interface ServiceOptions {
   udpProbe?: (port: number) => Promise<boolean>;
   workshopApi?: WorkshopApi;
   satisfactoryHealth?: (port: number) => Promise<boolean>;
+  satisfactoryPlayers?: (port: number) => Promise<number | null>;
   ficsitApi?: FicsitApi;
   // downloads of ficsit.app files in tests
   ficsitFetch?: typeof fetch;
@@ -114,6 +116,7 @@ export interface Services {
   configFiles: ConfigFilesService;
   workshop: ZomboidWorkshopService;
   ficsit: FicsitService;
+  gamePlayers: GamePlayersService;
   java: JavaService;
   manager: ProcessManager;
   install: InstallService;
@@ -190,6 +193,7 @@ export function createServices(options: ServiceOptions): Services {
     steam,
     ...(options.platform === undefined ? {} : { platform: options.platform }),
     ...(options.satisfactoryHealth === undefined ? {} : { health: options.satisfactoryHealth }),
+    ...(options.satisfactoryPlayers === undefined ? {} : { playerCount: options.satisfactoryPlayers }),
   });
   const games = new GameAdapters([minecraft, zomboid, satisfactory]);
 
@@ -393,5 +397,6 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.ficsitFetch === undefined ? {} : { fetch: options.ficsitFetch }),
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  const gamePlayers = new GamePlayersService({ db, games, manager });
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
 }

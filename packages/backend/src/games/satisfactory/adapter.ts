@@ -82,10 +82,47 @@ export function healthCheck(port: number, timeoutMs = 3000): Promise<boolean> {
   });
 }
 
+function apiCall(port: number, fn: string, data: Record<string, unknown> | null, token: string | null, timeoutMs = 3000): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(data === null ? { function: fn } : { function: fn, data });
+    const headers: Record<string, string | number> = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) };
+    if (token !== null) headers['Authorization'] = `Bearer ${token}`;
+    const request = https.request({ host: '127.0.0.1', port, path: '/api/v1', method: 'POST', rejectUnauthorized: false, timeout: timeoutMs, headers }, (response) => {
+      let text = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk: string) => {
+        if (text.length < 100_000) text += chunk;
+      });
+      response.on('end', () => {
+        try {
+          resolve(text === '' ? null : JSON.parse(text));
+        } catch {
+          reject(new Error('invalid answer'));
+        }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('timeout')));
+    request.on('error', reject);
+    request.end(body);
+  });
+}
+
+// Players online, through the HTTPS API: a client login works without a password unless the owner set a
+// client protection password; then the number stays unknown.
+export async function satisfactoryPlayerCount(port: number): Promise<number | null> {
+  const login = (await apiCall(port, 'PasswordlessLogin', { minimumPrivilegeLevel: 'Client' }, null)) as { data?: { authenticationToken?: unknown } } | null;
+  const token = login?.data?.authenticationToken;
+  if (typeof token !== 'string') return null;
+  const state = (await apiCall(port, 'QueryServerState', null, token)) as { data?: { serverGameState?: { numConnectedPlayers?: unknown } } } | null;
+  const count = state?.data?.serverGameState?.numConnectedPlayers;
+  return typeof count === 'number' ? count : null;
+}
+
 export interface SatisfactoryAdapterOptions {
   steam: SteamCmd;
   platform?: NodeJS.Platform;
   health?: (port: number) => Promise<boolean>;
+  playerCount?: (port: number) => Promise<number | null>;
   // %LOCALAPPDATA% on Windows, where the server keeps its saves whatever the working folder
   localAppData?: string;
 }
@@ -103,6 +140,10 @@ export class SatisfactoryAdapter implements GameAdapter {
 
   classifyLine(): LineEvent | null {
     return null;
+  }
+
+  async playerList(server: Server): Promise<{ names: string[] | null; count: number | null }> {
+    return { names: null, count: await (this.options.playerCount ?? satisfactoryPlayerCount)(server.port) };
   }
 
   private get platformDir(): string {

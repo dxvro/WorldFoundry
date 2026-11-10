@@ -33,7 +33,6 @@ export const zomboid = {
     saved: 'Saved. The change applies on the next start.',
     autostart: 'Start with WorldFoundry',
     autostartHint: 'Starts this server when WorldFoundry starts.',
-    comingSoon: 'Player lists for Project Zomboid are in progress.',
   },
 };
 
@@ -77,4 +76,20 @@ export const workshop = {
   stopFirst: 'Stop the server to change its Workshop items.',
   detailsFailed: 'The details could not be loaded from the Steam Workshop; the lists are shown anyway.',
   mapFolders: (folders: string) => `Map folder: ${folders}`,
+};
+
+export const gamePlayers = {
+  online: 'Online',
+  nobody: 'Nobody is online.',
+  countOnly: (n: number) => (n === 1 ? '1 player online' : `${n} players online`),
+  countUnknown: 'The game does not report players while a client password is set.',
+  offline: 'The server is not running. Players and commands are available while it runs.',
+  byName: 'Player by name',
+  byNameHint: 'Also for players who are offline, for example to unban someone.',
+  nameLabel: 'Player name',
+  confirmTitle: (action: string, name: string) => `${action}: ${name}?`,
+  confirmBody: 'The command is sent to the server console right away.',
+  sent: (command: string) => `Sent: ${command}`,
+  noActions: 'This game offers no player commands through WorldFoundry.',
+  actionLabel: (action: string, name: string) => `${action} ${name}`,
 };

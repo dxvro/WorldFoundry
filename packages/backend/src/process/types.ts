@@ -16,6 +16,8 @@ export interface RuntimeStatus {
   port: number | null;
   cpuPercent: number | null;
   rssBytes: number | null;
+  // players online when the game reports a number but no names (Satisfactory); null when unknown
+  playerCount?: number | null;
 }
 
 export type ConsoleStream = 'stdout' | 'stderr' | 'system' | 'input';

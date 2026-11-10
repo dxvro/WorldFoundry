@@ -134,6 +134,15 @@ export interface GameAdapter {
   // The folders a backup holds
   backupLayout(server: Server, dir: string): Promise<BackupLayout>;
 
+  // For games that read no console input (ARK: RCON): sends one command and returns the answer as lines
+  sendCommand?(server: Server, dir: string, command: string): Promise<string[]>;
+  // A clean stop through the game's own channel; when it fails the core falls back to stopCommand / stopSignal
+  stop?(server: Server, dir: string): Promise<void>;
+  // Asked every few seconds while the server is online, for games whose log does not show players
+  playerList?(server: Server, dir: string): Promise<{ names: string[] | null; count: number | null }>;
+  // What the Players tab offers for one player; the core sends the command
+  readonly playerActions?: readonly PlayerAction[];
+
   // Settings files the interface offers as text; none for Minecraft, which has its own editors
   configFiles?(server: Server, dir: string): ConfigFile[];
   // Checks a new text of a file before it is written; returns columns of the server row that change with it
@@ -149,4 +158,13 @@ export interface ConfigFile {
   // relative to the server folder, for display
   display: string;
   format: 'ini' | 'lua' | 'json' | 'text';
+}
+
+export interface PlayerAction {
+  id: string;
+  label: string;
+  // asked again before the command is sent
+  confirm: boolean;
+  // the console command; `name` is already checked against `nameRule`
+  command: (name: string) => string;
 }

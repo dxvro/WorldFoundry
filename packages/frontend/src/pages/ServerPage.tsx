@@ -22,6 +22,7 @@ import { ZomboidSettingsTab } from './server/ZomboidSettingsTab';
 import { FilesTab } from './server/FilesTab';
 import { WorkshopTab } from './server/WorkshopTab';
 import { FicsitTab } from './server/FicsitTab';
+import { GamePlayersTab } from './server/GamePlayersTab';
 import { SatisfactorySettingsTab } from './server/SatisfactorySettingsTab';
 import { satisfactorySettings } from '../games/satisfactory';
 import { zomboidSettings } from '../games/zomboid';
@@ -76,9 +77,9 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     { id: 'backups', label: t.server.tabs.backups },
   ];
   const minecraft = server.game === 'minecraft';
-  const ZOMBOID_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'workshop', 'backups'];
+  const ZOMBOID_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'players', 'workshop', 'backups'];
   const MINECRAFT_TABS: readonly ServerTab[] = ['console', 'config', 'world', 'players', 'mods', 'store', 'backups'];
-  const SATISFACTORY_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'ficsit', 'backups'];
+  const SATISFACTORY_TABS: readonly ServerTab[] = ['console', 'config', 'files', 'players', 'ficsit', 'backups'];
   const shown = minecraft ? MINECRAFT_TABS : server.game === 'satisfactory' ? SATISFACTORY_TABS : ZOMBOID_TABS;
   const tabs = allTabs.filter((entry) => shown.includes(entry.id));
   const satisfactory = satisfactorySettings(server);
@@ -117,7 +118,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
           {status.startedAt !== null && (status.state === 'online' || status.state === 'starting') ? <span className="num">{t.server.header.runningSince(formatDuration(Date.now() - status.startedAt))}</span> : null}
           <span className="num inline-flex items-center gap-1.5">
             <Users aria-hidden className="size-4" />
-            {status.players.length === 0 ? t.server.header.noPlayers : status.players.join(', ')}
+            {status.players.length > 0 ? status.players.join(', ') : (status.playerCount ?? null) !== null ? t.gamePlayers.countOnly(status.playerCount ?? 0) : t.server.header.noPlayers}
           </span>
         </p>
         <ActionBar server={server} status={status} actions={actions} />
@@ -180,6 +181,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
           <ZomboidSettingsTab key={server.id} server={server} />
         )}
         {!minecraft ? null : tab === 'world' ? <WorldTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'players' && !minecraft ? <GamePlayersTab key={server.id} server={server} status={status} /> : null}
         {!minecraft ? null : tab === 'players' ? <PlayersTab key={server.id} server={server} status={status} /> : null}
         {!minecraft ? null : tab === 'mods' ? <ModsTab key={server.id} server={server} status={status} /> : null}
         {!minecraft ? null : tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}

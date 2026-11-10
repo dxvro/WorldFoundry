@@ -134,6 +134,41 @@ describe('Project Zomboid backups', () => {
   });
 });
 
+describe('Project Zomboid players', () => {
+  it('lists online players, sends a kick at once and asks before a ban', async () => {
+    const online = { ...offline, state: 'online', pid: 1, startedAt: 1, port: 16261, players: ['Rick'] };
+    api = mockApi({
+      ...baseRoutes(zomboidServer({ status: online })),
+      'GET /api/servers/srv-1/game-players': () => ({
+        body: {
+          online: ['Rick'],
+          count: null,
+          running: true,
+          actions: [
+            { id: 'kick', label: 'Kick', confirm: false },
+            { id: 'ban', label: 'Ban', confirm: true },
+          ],
+        },
+      }),
+      'POST /api/servers/srv-1/game-players/kick': () => ({ body: { sent: 'kickuser "Rick"' } }),
+      'POST /api/servers/srv-1/game-players/ban': () => ({ body: { sent: 'banuser "Negan"' } }),
+    });
+    window.history.replaceState(null, '', '/servers/srv-1/players');
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Kick Rick' }));
+    expect(await screen.findByText('Sent: kickuser "Rick"')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Player name'), 'Negan');
+    await user.click(within(screen.getByRole('region', { name: 'Player by name' })).getByRole('button', { name: 'Ban' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Ban: Negan?' });
+    expect(api.callsTo('POST /api/servers/srv-1/game-players/ban')).toHaveLength(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Ban' }));
+    expect(await screen.findByText('Sent: banuser "Negan"')).toBeInTheDocument();
+    expect(api.callsTo('POST /api/servers/srv-1/game-players/ban').map((call) => call.body)).toEqual([{ name: 'Negan' }]);
+  });
+});
+
 describe('Project Zomboid server page', () => {
   it('has the console and its own settings only, with the ports and the hidden admin password', async () => {
     api = mockApi({
@@ -148,7 +183,7 @@ describe('Project Zomboid server page', () => {
     expect(screen.getByText('Steam branch public')).toBeInTheDocument();
     expect(screen.getByText('UDP 16261 and 16262')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Steam Workshop', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Steam Workshop', 'Players', 'Backups']);
 
     expect(screen.getByText('data/Server/knox.ini')).toBeInTheDocument();
     expect(screen.queryByText('secret-admin-pw')).not.toBeInTheDocument();

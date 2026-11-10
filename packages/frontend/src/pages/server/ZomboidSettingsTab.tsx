@@ -88,7 +88,6 @@ export function ZomboidSettingsTab({ server }: { server: ServerView }): ReactNod
           </Button>
         </div>
       </Section>
-      <Notice tone="info">{z.comingSoon}</Notice>
     </div>
   );
 }

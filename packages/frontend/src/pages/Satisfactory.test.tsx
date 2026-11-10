@@ -53,7 +53,7 @@ describe('Satisfactory server page', () => {
     expect(await screen.findByRole('heading', { name: 'Factory' })).toBeInTheDocument();
     expect(screen.getByText('Port 7777 (TCP+UDP), 8888 (TCP)')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Mods (ficsit.app)', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Mods (ficsit.app)', 'Players', 'Backups']);
 
     expect(await screen.findByText('No mods installed yet.')).toBeInTheDocument();
     expect(screen.getByText('Game build 491200')).toBeInTheDocument();

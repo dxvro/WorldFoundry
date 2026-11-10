@@ -19,7 +19,7 @@ import { password } from './password';
 import { update } from './update';
 import { messages } from './messages';
 import { games } from './games';
-import { workshop, zomboid, zomboidFiles } from './zomboid';
+import { gamePlayers, workshop, zomboid, zomboidFiles } from './zomboid';
 import { ficsit, satisfactory } from './satisfactory';
 
 export const en = {
@@ -47,6 +47,7 @@ export const en = {
   zomboid,
   zomboidFiles,
   workshop,
+  gamePlayers,
   satisfactory,
   ficsit,
 };

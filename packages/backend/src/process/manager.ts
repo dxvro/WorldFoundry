@@ -69,6 +69,11 @@ class Instance {
   javaPath: string | null = null;
   // the adapter of the running process: console lines and the stop command
   game: GameAdapter | null = null;
+  // the row and folder of the running server, for adapters that talk to it (RCON, HTTPS API)
+  server: Server | null = null;
+  dir = '';
+  playerCount: number | null = null;
+  playerTimer: NodeJS.Timeout | null = null;
   // never shown in the console (an admin password on the command line)
   redact: string[] = [];
 
@@ -109,6 +114,7 @@ export class ProcessManager implements ServerRuntimeGuard {
   private readonly platform: NodeJS.Platform;
   private readonly stopTimeoutMs: number;
   private readonly readinessIntervalMs: number;
+  private readonly playerIntervalMs: number;
   private readonly startWarningMs: number;
   private readonly closeGraceMs: number;
   private readonly probe: PortProbe;
@@ -120,6 +126,7 @@ export class ProcessManager implements ServerRuntimeGuard {
     this.platform = options.platform ?? process.platform;
     this.stopTimeoutMs = options.stopTimeoutMs ?? 60_000;
     this.readinessIntervalMs = options.readinessIntervalMs ?? 2_000;
+    this.playerIntervalMs = options.readinessIntervalMs === undefined ? 15_000 : options.readinessIntervalMs * 4;
     this.startWarningMs = options.startWarningMs ?? 5 * 60_000;
     this.closeGraceMs = options.closeGraceMs ?? 1500;
     this.probe = options.probePort ?? probePort;
@@ -231,6 +238,18 @@ export class ProcessManager implements ServerRuntimeGuard {
     if (/[\r\n\u0000]/.test(command)) {
       throw new AppError(422, 'INVALID_COMMAND', 'The command must not contain line breaks.');
     }
+    const adapter = instance.game;
+    if (adapter?.sendCommand !== undefined && instance.server !== null) {
+      this.pushLine(instance, 'input', command);
+      let answer: string[];
+      try {
+        answer = await adapter.sendCommand(instance.server, instance.dir, command);
+      } catch (error) {
+        throw error instanceof AppError ? error : new AppError(502, 'COMMAND_FAILED', 'The server did not take the command.');
+      }
+      for (const line of answer) this.handleLine(instance, 'stdout', line);
+      return;
+    }
     const child = instance.child;
     if (child === null || !child.stdin.writable) throw notRunning();
     child.stdin.write(`${command}\n`);
@@ -319,6 +338,8 @@ export class ProcessManager implements ServerRuntimeGuard {
       this.resetInstance(instance, port);
       instance.javaPath = plan.javaPath;
       instance.game = adapter;
+      instance.server = server;
+      instance.dir = serverDir;
       instance.redact = plan.redact ?? [];
       this.pushSystem(instance, plan.startLine);
       for (const warning of plan.notes) this.pushSystem(instance, msg('START_NOTE', { note: warning }));
@@ -520,6 +541,9 @@ export class ProcessManager implements ServerRuntimeGuard {
 
   private resetInstance(instance: Instance, port: number | null): void {
     instance.players.clear();
+    instance.playerCount = null;
+    if (instance.playerTimer !== null) clearTimeout(instance.playerTimer);
+    instance.playerTimer = null;
     instance.expectedExit = false;
     instance.wasOnline = false;
     instance.finalized = false;
@@ -637,10 +661,26 @@ export class ProcessManager implements ServerRuntimeGuard {
     this.pushSystem(instance, notice);
     this.markStopping(instance);
     const child = instance.child;
-    const command = instance.game?.stopCommand ?? null;
-    if (child !== null && command !== null && child.stdin.writable) child.stdin.write(`${command}\n`);
-    else if (child !== null && command === null) child.kill(instance.game?.stopSignal ?? 'SIGTERM');
-    else void this.forceKill(instance);
+    const adapter = instance.game;
+    const fallback = (): void => {
+      if (instance.child !== child || child === null || child.exitCode !== null) return;
+      const command = adapter?.stopCommand ?? null;
+      if (command !== null && child.stdin.writable) child.stdin.write(`${command}\n`);
+      else if (command === null) child.kill(adapter?.stopSignal ?? 'SIGTERM');
+      else void this.forceKill(instance);
+    };
+    if (child === null) {
+      void this.forceKill(instance);
+      return;
+    }
+    if (adapter?.stop !== undefined && instance.server !== null) {
+      adapter.stop(instance.server, instance.dir).catch((error: unknown) => {
+        this.logger.warn({ err: error, serverId: instance.serverId }, 'The clean stop of the game failed; stopping the process instead');
+        fallback();
+      });
+      return;
+    }
+    fallback();
   }
 
   private async forceKill(instance: Instance): Promise<void> {
@@ -662,7 +702,7 @@ export class ProcessManager implements ServerRuntimeGuard {
   // ---- state + output ----------------------------------------------------------------------
 
   private snapshot(instance: Instance): RuntimeStatus {
-    return { ...instance.status, players: [...instance.players] };
+    return { ...instance.status, players: [...instance.players], playerCount: instance.playerCount };
   }
 
   private update(instance: Instance, patch: Partial<RuntimeStatus>): void {
@@ -700,6 +740,35 @@ export class ProcessManager implements ServerRuntimeGuard {
     instance.wasOnline = true;
     this.clearTimer(instance, 'warnTimer');
     this.update(instance, { state: 'online', ...statusMessage(null) });
+    this.pollPlayers(instance);
+  }
+
+  // Games that report players only when asked (RCON, HTTPS API)
+  private pollPlayers(instance: Instance): void {
+    const adapter = instance.game;
+    const server = instance.server;
+    if (adapter?.playerList === undefined || server === null) return;
+    const child = instance.child;
+    const tick = (): void => {
+      instance.playerTimer = null;
+      if (instance.child !== child || instance.status.state !== 'online') return;
+      adapter
+        .playerList?.(server, instance.dir)
+        .then((result) => {
+          if (instance.child !== child) return;
+          if (result.names !== null) {
+            instance.players.clear();
+            for (const name of result.names) instance.players.add(name);
+          }
+          instance.playerCount = result.count;
+          this.update(instance, {});
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (instance.child === child && instance.status.state === 'online') instance.playerTimer = setTimeout(tick, this.playerIntervalMs);
+        });
+    };
+    tick();
   }
 
   // For games without a ready line: asks the game itself until it answers, as long as this process is starting
@@ -734,6 +803,8 @@ export class ProcessManager implements ServerRuntimeGuard {
   }
 
   private clearTimers(instance: Instance): void {
+    if (instance.playerTimer !== null) clearTimeout(instance.playerTimer);
+    instance.playerTimer = null;
     this.clearTimer(instance, 'stopTimer');
     this.clearTimer(instance, 'warnTimer');
     this.clearTimer(instance, 'closeTimer');

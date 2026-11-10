@@ -135,6 +135,13 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
     await waitFor(async () => ((await status()).state === 'online' && (await status()).players.length > 0) || undefined, 10_000);
     expect((await status()).players).toEqual(['Rick']);
 
+    const players = await call<{ online: string[]; actions: Array<{ id: string; confirm: boolean }>; running: boolean }>('GET', `/api/servers/${id}/game-players`);
+    expect(players.body).toMatchObject({ online: ['Rick'], running: true });
+    expect(players.body.actions.map((action) => action.id)).toEqual(['kick', 'ban', 'unban', 'admin', 'user']);
+    expect((await call('POST', `/api/servers/${id}/game-players/kick`, { name: 'Rick' })).body).toEqual({ sent: 'kickuser "Rick"' });
+    expect((await call('POST', `/api/servers/${id}/game-players/ban`, { name: 'Ri"ck' })).body).toMatchObject({ error: { code: 'PLAYER_NAME_INVALID' } });
+    expect((await call('POST', `/api/servers/${id}/game-players/explode`, { name: 'Rick' })).status).toBe(404);
+
     const args = JSON.parse(await readFile(path.join(t.dir, 'servers', id, 'server', 'fake-zomboid-args.json'), 'utf8')) as string[];
     expect(args).toEqual(['-servername', 'servertest', `-cachedir=${path.join(t.dir, 'servers', id, 'data')}`, '-adminpassword', settings.adminPassword]);
     const vm = JSON.parse(await readFile(path.join(t.dir, 'servers', id, 'server', 'ProjectZomboid64.json'), 'utf8')) as { vmArgs: string[] };

@@ -91,6 +91,7 @@ describe.runIf(process.platform === 'linux')('a Satisfactory server', () => {
       portProbe: async () => 'free',
       steamCmd: new SteamCmd({ dir: path.join(t.dir, 'steamcmd'), runner: createInstallerRunner(realSpawner), configuredPath: steamScript }),
       satisfactoryHealth: async () => (await readdirReady(t.dir)),
+      satisfactoryPlayers: async () => 3,
       readinessIntervalMs: 50,
       ficsitApi: fakeApi,
       ficsitFetch: (async (input: string | URL | Request) => {
@@ -136,6 +137,8 @@ describe.runIf(process.platform === 'linux')('a Satisfactory server', () => {
     expect((await call('POST', `/api/servers/${id}/start`)).status).toBe(200);
     const status = async () => (await call<{ server: { status: { state: string } } }>('GET', `/api/servers/${id}`)).body.server.status;
     await waitFor(async () => (await status()).state === 'online' || undefined, 10_000);
+    await waitFor(async () => (await call<{ server: { status: { playerCount: number | null } } }>('GET', `/api/servers/${id}`)).body.server.status.playerCount === 3 || undefined, 10_000);
+    expect((await call('GET', `/api/servers/${id}/game-players`)).body).toMatchObject({ online: [], count: 3, actions: [], running: true });
     const run = JSON.parse(await readFile(path.join(t.dir, 'servers', id, 'server', 'fake-satisfactory.json'), 'utf8')) as { args: string[]; home: string };
     expect(run.args).toEqual(['FactoryGame', '-Port=7777', '-ReliablePort=8888', '-log', '-unattended']);
     expect(run.home).toBe(path.join(t.dir, 'servers', id, 'home'));
