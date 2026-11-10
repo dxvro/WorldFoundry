@@ -1,33 +1,30 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { INITIAL_PASSWORD_FILE, ensureInitialPassword, removeInitialPasswordFile } from '../src/auth/first-start.js';
 import { verifyPassword } from '../src/auth/password.js';
 import { PasswordStore } from '../src/auth/store.js';
-import { openDb, type DbHandle } from '../src/db/client.js';
-import { runMigrations } from '../src/db/migrate.js';
+import { createTestDb, type TestDb } from './helpers.js';
 
 const cost = { N: 2 ** 4, r: 8, p: 1 };
+let t: TestDb;
 let dir: string;
-let handle: DbHandle;
 beforeEach(async () => {
-  dir = await mkdtemp(path.join(os.tmpdir(), 'wf-first-start-'));
-  handle = await openDb(path.join(dir, 'worldfoundry.db'));
-  await runMigrations(handle.db);
+  // the helper removes the folder with retries: Windows keeps the SQLite files locked for a moment after closing
+  t = await createTestDb();
+  dir = t.dir;
 });
 afterEach(async () => {
-  handle.close();
-  await rm(dir, { recursive: true, force: true });
+  await t.cleanup();
 });
 
-const run = (authToken?: string) => ensureInitialPassword({ db: handle.db, dataDir: dir, authToken, cost });
+const run = (authToken?: string) => ensureInitialPassword({ db: t.db, dataDir: dir, authToken, cost });
 
 describe('first start', () => {
   it('creates a password when there is neither a token nor a password, stores only its hash and writes it to a private file', async () => {
     const result = await run();
     expect(result?.password).toMatch(/^[A-Za-z0-9]{16}$/);
-    const record = await new PasswordStore(handle.db).load();
+    const record = await new PasswordStore(t.db).load();
     expect(record).not.toBeNull();
     expect(record).not.toContain(result?.password);
     expect(await verifyPassword(result?.password ?? '', record ?? '')).toBe(true);
@@ -38,15 +35,15 @@ describe('first start', () => {
 
   it('does nothing on every later start', async () => {
     const first = await run();
-    const record = await new PasswordStore(handle.db).load();
+    const record = await new PasswordStore(t.db).load();
     expect(await run()).toBeNull();
-    expect(await new PasswordStore(handle.db).load()).toBe(record);
+    expect(await new PasswordStore(t.db).load()).toBe(record);
     expect(await readFile(path.join(dir, INITIAL_PASSWORD_FILE), 'utf8')).toContain(first?.password);
   });
 
   it('does nothing when AUTH_TOKEN is the sign-in', async () => {
     expect(await run('a-long-token')).toBeNull();
-    expect(await new PasswordStore(handle.db).load()).toBeNull();
+    expect(await new PasswordStore(t.db).load()).toBeNull();
     await expect(stat(path.join(dir, INITIAL_PASSWORD_FILE))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 

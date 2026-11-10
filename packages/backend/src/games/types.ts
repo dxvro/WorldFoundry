@@ -18,6 +18,8 @@ export interface ModSourceInfo {
   name: string;
   url: string;
   requiresKey: boolean;
+  // true while the source is being built: listed, but not usable in the interface yet
+  inProgress?: boolean;
   // what works without a key, when `requiresKey` only limits the source instead of blocking it
   note?: string;
 }

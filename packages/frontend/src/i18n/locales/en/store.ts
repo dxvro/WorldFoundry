@@ -1,4 +1,8 @@
 export const store = {
+  curseforge: {
+    title: 'CurseForge: in progress',
+    body: 'Installing from CurseForge is being built and is not available yet. Mods and plugins come from Modrinth for now.',
+  },
   sort: {
     relevance: 'Relevance',
     downloads: 'Downloads',

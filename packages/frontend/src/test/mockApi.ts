@@ -100,7 +100,7 @@ export const gamesFixture = (): Record<string, unknown> => ({
       ports: [{ purpose: 'Game', port: 25565, protocol: 'tcp' }],
       modSources: [
         { id: 'modrinth', name: 'Modrinth', url: 'https://modrinth.com', requiresKey: false },
-        { id: 'curseforge', name: 'CurseForge', url: 'https://www.curseforge.com/minecraft', requiresKey: true, note: 'Needs your own free CurseForge API key.' },
+        { id: 'curseforge', name: 'CurseForge', url: 'https://www.curseforge.com/minecraft', requiresKey: true, inProgress: true, note: 'In progress.' },
       ],
     }),
     game('zomboid', 'Project Zomboid', 'planned', 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.'),

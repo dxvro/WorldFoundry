@@ -60,6 +60,7 @@ export function GameCard({ game, serverCount }: { game: GameDefinition; serverCo
                   {source.name}
                   <ExternalLink aria-hidden className="size-3.5" />
                 </a>
+                {source.inProgress === true ? <span className="chip chip-busy ml-2">{t.games.inProgress}</span> : null}
                 {source.requiresKey ? <span className="chip ml-2">{t.games.needsKey}</span> : null}
                 {source.note === undefined ? null : <p className="hint">{source.note}</p>}
               </li>

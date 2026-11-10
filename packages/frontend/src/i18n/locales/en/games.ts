@@ -26,6 +26,7 @@ export const games = {
   platform: { win32: 'Windows', linux: 'Linux' },
   port: (purpose: string, port: number, protocol: string) => `${purpose}: ${port} (${protocol.toUpperCase()})`,
   needsKey: 'own API key needed',
+  inProgress: 'In progress',
   legalTitle: 'Trademarks and affiliation',
   legalBody:
     'WorldFoundry is free, open-source software (GPL-3.0) made by volunteers. All game names, logos and trademarks belong to their owners and are used only to say what WorldFoundry works with. None of the companies named on this page has made, approved or sponsored WorldFoundry.',

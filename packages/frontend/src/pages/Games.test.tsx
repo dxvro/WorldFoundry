@@ -43,6 +43,7 @@ describe('games page', () => {
     expect(minecraft.getByRole('link', { name: 'Modrinth' })).toHaveAttribute('href', 'https://modrinth.com');
     // a source that needs a key says so: WorldFoundry ships none
     expect(minecraft.getByText('own API key needed')).toBeInTheDocument();
+    expect(minecraft.getByText('In progress')).toBeInTheDocument();
     expect(minecraft.getByRole('link', { name: 'License of Minecraft: Java Edition' })).toHaveAttribute('rel', expect.stringContaining('noopener'));
 
     const zomboid = within(cards[1] as HTMLElement);
@@ -99,5 +100,17 @@ describe('servers and their game', () => {
     open('/servers/srv-1');
     expect(await screen.findByRole('heading', { name: 'Survival' })).toBeInTheDocument();
     expect(await screen.findByText(MINECRAFT)).toBeInTheDocument();
+  });
+});
+
+describe('mod store', () => {
+  it('says that CurseForge is in progress', async () => {
+    open('/servers/srv-1/store', {
+      'GET /api/servers/srv-1/mods': () => ({ body: { mods: [] } }),
+      'GET /api/servers/srv-1/mods/search': () => ({ body: { hits: [], total: 0, offset: 0, limit: 20 } }),
+      'GET /api/modrinth/categories': () => ({ body: { categories: [] } }),
+    });
+    expect(await screen.findByText('CurseForge: in progress')).toBeInTheDocument();
+    expect(screen.getByText(/Installing from CurseForge is being built/)).toBeInTheDocument();
   });
 });

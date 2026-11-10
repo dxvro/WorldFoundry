@@ -124,6 +124,9 @@ export function StoreTab({ server, status }: { server: ServerView; status: Runti
       <Notice tone="info" title={t.store.filterNotice.title(names.plural)}>
         {t.store.filterNotice.body(server.mcVersion, loaderText, names.plural, server.name)}
       </Notice>
+      <Notice tone="info" title={t.store.curseforge.title}>
+        {t.store.curseforge.body}
+      </Notice>
 
       {locked ? (
         <Notice tone="warn" title={t.store.locked.title} action={<Link to={serverPath(server.id)} className="link-btn">{t.store.locked.action}</Link>}>

@@ -10,7 +10,7 @@ WorldFoundry runs dedicated game servers on one of your own computers and is ope
 
 | Game | Status | Server files | Mods |
 | --- | --- | --- | --- |
-| Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge planned (needs your own API key) |
+| Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
 | Project Zomboid | Planned | SteamCMD, anonymous login | Steam Workshop |
 | Satisfactory | Planned | SteamCMD, anonymous login | ficsit.app |
 | ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
