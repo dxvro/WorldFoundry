@@ -196,6 +196,31 @@ export const workshopApi = {
   lookup: async (query: string): Promise<WorkshopItem> => (await request<{ item: WorkshopItem }>('/api/workshop/lookup', { query: { q: query } })).item,
 };
 
+export interface FicsitMod {
+  reference: string;
+  name: string;
+  version: string;
+  dependency: boolean;
+  requires: Record<string, string>;
+}
+
+export interface FicsitHit {
+  reference: string;
+  name: string;
+  summary: string;
+  logo: string | null;
+  downloads: number;
+  installed: boolean;
+}
+
+export const ficsitApi = {
+  list: (id: string, signal?: AbortSignal): Promise<{ mods: FicsitMod[]; gameBuild: number | null }> => request(`${server(id)}/ficsit/mods`, signal === undefined ? {} : { signal }),
+  search: (id: string, query: string, offset: number, signal?: AbortSignal): Promise<{ hits: FicsitHit[]; total: number; offset: number; limit: number }> =>
+    request(`${server(id)}/ficsit/search`, { query: { query, offset }, ...(signal === undefined ? {} : { signal }) }),
+  install: (id: string, reference: string): Promise<{ installed: FicsitMod[] }> => request(`${server(id)}/ficsit/mods`, { method: 'POST', body: { reference } }),
+  remove: (id: string, reference: string): Promise<{ removed: string }> => request(`${server(id)}/ficsit/mods/${enc(reference)}`, { method: 'DELETE' }),
+};
+
 export const backupsApi = {
   list: (id: string, signal?: AbortSignal): Promise<BackupListView> => request(`${server(id)}/backups`, signal === undefined ? {} : { signal }),
   create: async (id: string, includeConfig?: boolean): Promise<BackupView> =>

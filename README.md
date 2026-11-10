@@ -4,7 +4,7 @@
 
 WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
-**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid has its first version; the other games are being built. To try WorldFoundry, run it from source (see below).
+**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid and Satisfactory have their first versions; ARK is being built. To try WorldFoundry, run it from source (see below).
 
 ## Games
 
@@ -12,7 +12,7 @@ WorldFoundry runs dedicated game servers on one of your own computers and is ope
 | --- | --- | --- | --- |
 | Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
 | Project Zomboid | Early: install, start, stop, console, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
-| Satisfactory | Planned | SteamCMD, anonymous login | ficsit.app |
+| Satisfactory | Early: install, start, clean stop (Linux), readiness through the server API, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | ficsit.app (server builds, mod loader, dependencies) |
 | ARK: Survival Evolved | Planned | SteamCMD, anonymous login | Steam Workshop |
 
 - **Minecraft:** NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
@@ -37,6 +37,10 @@ WorldFoundry ships no game files, logos or artwork. Every server is downloaded o
 ## Project Zomboid and other Steam games
 
 WorldFoundry downloads SteamCMD from Valve into its data folder on first use and always logs in anonymously; no Steam account is needed. To use an existing SteamCMD, set `STEAMCMD_PATH`. On 64-bit Linux SteamCMD needs 32-bit libraries: on Debian or Ubuntu `sudo apt install lib32gcc-s1`. Each Zomboid server keeps the program (`server/`) apart from its world and settings (`data/`). The in-game admin password is created by WorldFoundry and shown in the server's settings.
+
+## Satisfactory
+
+On Linux every Satisfactory server gets its own home folder (`home/` in the server folder), so save games of several servers stay apart, and stopping sends SIGINT so the game saves and quits. On Windows the game keeps its saves in `%LOCALAPPDATA%\FactoryGame` for every server of the computer, and stopping ends the process at once. After the first start, claim the server in the game (Server Manager); WorldFoundry does not know its admin password.
 
 ## How it works
 

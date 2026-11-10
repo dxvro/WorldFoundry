@@ -10,7 +10,7 @@ export const server = {
     body: 'This server does not exist (any more). It may have been deleted.',
   },
   back: 'Overview',
-  tabs: { console: 'Console', config: 'Configuration', files: 'Settings files', workshop: 'Steam Workshop', world: 'World settings', players: 'Players', backups: 'Backups' },
+  tabs: { console: 'Console', config: 'Configuration', files: 'Settings files', workshop: 'Steam Workshop', ficsit: 'Mods (ficsit.app)', world: 'World settings', players: 'Players', backups: 'Backups' },
   header: {
     minecraft: (version: string) => `Minecraft ${version}`,
     port: (port: number) => `Port ${port}`,

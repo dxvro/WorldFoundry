@@ -32,7 +32,7 @@ describe('games page', () => {
     open('/games');
     expect(await screen.findByRole('heading', { name: 'Games', level: 1 })).toBeInTheDocument();
     const cards = await screen.findAllByTestId('game-card');
-    expect(cards).toHaveLength(3);
+    expect(cards).toHaveLength(4);
 
     const minecraft = within(cards[0] as HTMLElement);
     expect(minecraft.getByRole('heading', { name: 'Minecraft: Java Edition' })).toBeInTheDocument();
@@ -52,7 +52,7 @@ describe('games page', () => {
     expect(zomboid.getByText('Downloaded with SteamCMD (app 1, anonymous login)')).toBeInTheDocument();
     expect(zomboid.getByRole('button', { name: 'Create a server' })).toBeInTheDocument();
 
-    const ark = within(cards[2] as HTMLElement);
+    const ark = within(cards[3] as HTMLElement);
     expect(ark.getByText(ARK)).toBeInTheDocument();
     expect(ark.getByText('Planned')).toBeInTheDocument();
     expect(ark.queryByRole('button', { name: 'Create a server' })).not.toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('games page', () => {
     expect(screen.queryByTestId('game-card')).not.toBeInTheDocument();
     if (working !== undefined) api.set('GET /api/games', working);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findAllByTestId('game-card')).toHaveLength(3);
+    expect(await screen.findAllByTestId('game-card')).toHaveLength(4);
   });
 });
 

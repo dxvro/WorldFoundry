@@ -93,7 +93,7 @@ const game = (id: string, name: string, availability: string, disclaimer: string
   ...extra,
 });
 
-// what GET /api/games answers: two available games and one planned
+// what GET /api/games answers: three available games and one planned
 export const gamesFixture = (): Record<string, unknown> => ({
   games: [
     game('minecraft', 'Minecraft: Java Edition', 'available', 'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.', {
@@ -105,6 +105,7 @@ export const gamesFixture = (): Record<string, unknown> => ({
       ],
     }),
     game('zomboid', 'Project Zomboid', 'available', 'Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.'),
+    game('satisfactory', 'Satisfactory', 'available', 'Not an official Satisfactory product. Not approved by or associated with Coffee Stain Studios or Coffee Stain Publishing.'),
     game('ark', 'ARK: Survival Evolved', 'planned', 'Not an official ARK product. Not approved by or associated with Studio Wildcard or Snail Games.'),
   ],
 });

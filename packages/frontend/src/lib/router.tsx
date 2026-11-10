@@ -2,7 +2,7 @@ import type { GameId } from '@worldfoundry/backend/contract';
 import { isGameId } from '../games/look';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
-export const SERVER_TABS = ['console', 'config', 'files', 'workshop', 'world', 'players', 'mods', 'store', 'backups'] as const;
+export const SERVER_TABS = ['console', 'config', 'files', 'workshop', 'ficsit', 'world', 'players', 'mods', 'store', 'backups'] as const;
 export type ServerTab = (typeof SERVER_TABS)[number];
 
 export type Route =
