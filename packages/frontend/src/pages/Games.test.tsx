@@ -120,6 +120,11 @@ describe('servers and their game', () => {
     const group = await screen.findByRole('region', { name: 'Minecraft: Java Edition servers' });
     expect(within(group).getByRole('heading', { name: /Minecraft: Java Edition/ })).toBeInTheDocument();
     expect(within(group).getByText('Survival')).toBeInTheDocument();
+    // the menu groups the servers by game as well, so servers with the same name stay apart
+    const menu = screen.getByRole('complementary');
+    const menuGroup = within(menu).getByRole('group', { name: 'Minecraft: Java Edition servers' });
+    expect(within(menuGroup).getByText('Minecraft')).toBeInTheDocument();
+    expect(within(menuGroup).getByRole('link', { name: /Survival/ })).toHaveAttribute('href', '/servers/srv-1');
   });
 
   it('shows the disclaimer of the game on the page of a server', async () => {

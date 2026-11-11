@@ -1,6 +1,9 @@
 import { Gamepad2, LayoutGrid, LogOut, Plus, Settings, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth/AuthProvider';
+import { useGames } from '../games/GamesProvider';
+import { GameTile } from '../games/GameTile';
+import { GAME_LOOK, GAME_ORDER } from '../games/look';
 import { useI18n } from '../i18n';
 import { useLive } from '../live/LiveProvider';
 import { Link, serverPath, useRouter } from '../lib/router';
@@ -59,6 +62,7 @@ function ConnectionBanner(): ReactNode {
 export function AppShell({ children }: { children: ReactNode }): ReactNode {
   const { route } = useRouter();
   const { state, statusFor } = useLive();
+  const { nameOf } = useGames();
   const { t } = useI18n();
   const servers = state.servers ?? [];
   const isNew = route.name === 'new' || route.name === 'new-game' || route.name === 'new-world';
@@ -92,19 +96,32 @@ export function AppShell({ children }: { children: ReactNode }): ReactNode {
           {servers.length === 0 ? (
             <p className="px-3 py-1 hint">{state.servers === null ? t.shell.loadingServers : t.shell.noServers}</p>
           ) : (
-            <ul className="flex flex-col gap-0.5">
-              {servers.map((server) => {
-                const active = route.name === 'server' && route.id === server.id;
-                return (
-                  <li key={server.id}>
-                    <Link to={serverPath(server.id)} className={navClass(active)} aria-current={active ? 'page' : undefined}>
-                      <StatusLed server={server} status={statusFor(server)} />
-                      <span className="truncate">{server.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            // one group per game, in the order of the games page, so that equal names are told apart
+            <div className="flex flex-col gap-3">
+              {GAME_ORDER.filter((game) => servers.some((server) => server.game === game)).map((game) => (
+                <div key={game} role="group" aria-label={t.games.groupLabel(nameOf(game))}>
+                  <h3 className="flex items-center gap-2 px-3 pb-1 pt-1 text-xs font-medium text-dim">
+                    <GameTile game={game} size="sm" />
+                    <span className="truncate">{GAME_LOOK[game].shortName}</span>
+                  </h3>
+                  <ul className="flex flex-col gap-0.5">
+                    {servers
+                      .filter((server) => server.game === game)
+                      .map((server) => {
+                        const active = route.name === 'server' && route.id === server.id;
+                        return (
+                          <li key={server.id}>
+                            <Link to={serverPath(server.id)} className={navClass(active)} aria-current={active ? 'page' : undefined}>
+                              <StatusLed server={server} status={statusFor(server)} />
+                              <span className="truncate">{server.name}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           )}
         </div>
         <div className="space-y-2 border-t border-line p-3">
