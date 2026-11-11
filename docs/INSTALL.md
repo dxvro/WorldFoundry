@@ -38,10 +38,13 @@ This guide covers installing the ready-made packages on **Windows** and **Linux*
 | 3000 (`PORT`) | TCP | Web interface and API. Can be changed in the web interface. | Devices on your LAN that manage servers |
 | 25565-25575 | TCP | Minecraft servers (one port each) | Players |
 | 16261-16280 | UDP | Project Zomboid servers (two ports each) | Players |
-| 7777-7790 | TCP and UDP | Satisfactory (game port, TCP and UDP) and ARK (game and peer port, UDP) | Players |
+| 7777-7790 | TCP and UDP | Satisfactory (game port, TCP and UDP), Terraria (TCP), ARK and ARK: Survival Ascended (UDP) | Players |
 | 8888-8899 | TCP | Satisfactory reliable port | Players |
-| 27015-27030 | UDP | ARK query port (server list) | Players |
-| 27020+ | TCP | ARK RCON. Used only by WorldFoundry on this computer: never open or forward it. | Nobody |
+| 2456-2470 | UDP | Valheim (game port and the query port after it) | Players |
+| 8211-8221 | UDP | Palworld game port | Players |
+| 26900-26910 | TCP and UDP | 7 Days to Die (game port and the two ports after it) | Players |
+| 27015-27030 | UDP | Steam query ports of ARK and Palworld (server list) | Players |
+| 27020+, 8081+, 8212+ | TCP | RCON (ARK, ARK: Survival Ascended), telnet (7 Days to Die), REST API (Palworld). Used only by WorldFoundry on this computer: never forward them to the internet. | Nobody |
 
 The installers open the player ports above for private networks when you choose the firewall task. Each server shows its own ports on its page.
 
@@ -113,7 +116,7 @@ Each package contains the official Node.js LTS runtime (only the executable, ver
 5. Read the welcome page and click **Next**. It repeats the disclaimer.
 
 6. On the task page, choose the optional tasks:
-   - **Windows Firewall**: creates inbound rules for **private** networks only: one for the web port (3000, or the port in the configuration) and two for the default game server ports (TCP 25565-25575, 7777-7790, 8888-8899; UDP 7777-7790, 16261-16280, 27015-27030). Without this task, other devices on the LAN cannot reach the computer while the Windows firewall is on. Recommended.
+   - **Windows Firewall**: creates inbound rules for **private** networks only: one for the web port (3000, or the port in the configuration) and two for the default game server ports (TCP 25565-25575, 7777-7790, 8888-8899, 26900-26910; UDP 2456-2470, 7777-7790, 8211-8221, 16261-16280, 26900-26910, 27015-27030). Without this task, other devices on the LAN cannot reach the computer while the Windows firewall is on. Recommended.
    - **Start menu shortcut**: opens the web interface in your browser.
 
 7. Click **Install**. The installer copies the files, writes the configuration, registers the service `worldfoundry`, starts it, and waits until the web interface responds.
@@ -157,8 +160,8 @@ If you did not select the task (or use the portable version), run this in an **a
 
 ```powershell
 New-NetFirewallRule -DisplayName "WorldFoundry" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -Profile Private
-New-NetFirewallRule -DisplayName "WorldFoundry - Game servers (TCP)" -Direction Inbound -Protocol TCP -LocalPort 25565-25575,7777-7790,8888-8899 -Action Allow -Profile Private
-New-NetFirewallRule -DisplayName "WorldFoundry - Game servers (UDP)" -Direction Inbound -Protocol UDP -LocalPort 7777-7790,16261-16280,27015-27030 -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "WorldFoundry - Game servers (TCP)" -Direction Inbound -Protocol TCP -LocalPort 25565-25575,7777-7790,8888-8899,26900-26910 -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "WorldFoundry - Game servers (UDP)" -Direction Inbound -Protocol UDP -LocalPort 2456-2470,7777-7790,8211-8221,16261-16280,26900-26910,27015-27030 -Action Allow -Profile Private
 ```
 
 If you change the web port in the web interface, the installer rule does not follow automatically. Run the installer again (it keeps your data and updates the rule to the current port), or add a rule for the new port by hand.
@@ -340,8 +343,12 @@ sudo ufw allow 3000/tcp
 sudo ufw allow 25565:25575/tcp
 sudo ufw allow 7777:7790/tcp
 sudo ufw allow 8888:8899/tcp
+sudo ufw allow 26900:26910/tcp
+sudo ufw allow 2456:2470/udp
 sudo ufw allow 7777:7790/udp
+sudo ufw allow 8211:8221/udp
 sudo ufw allow 16261:16280/udp
+sudo ufw allow 26900:26910/udp
 sudo ufw allow 27015:27030/udp
 ```
 
@@ -349,8 +356,8 @@ With `firewalld`:
 
 ```bash
 sudo firewall-cmd --permanent --add-port=3000/tcp
-sudo firewall-cmd --permanent --add-port=25565-25575/tcp --add-port=7777-7790/tcp --add-port=8888-8899/tcp
-sudo firewall-cmd --permanent --add-port=7777-7790/udp --add-port=16261-16280/udp --add-port=27015-27030/udp
+sudo firewall-cmd --permanent --add-port=25565-25575/tcp --add-port=7777-7790/tcp --add-port=8888-8899/tcp --add-port=26900-26910/tcp
+sudo firewall-cmd --permanent --add-port=2456-2470/udp --add-port=7777-7790/udp --add-port=8211-8221/udp --add-port=16261-16280/udp --add-port=26900-26910/udp --add-port=27015-27030/udp
 sudo firewall-cmd --reload
 ```
 

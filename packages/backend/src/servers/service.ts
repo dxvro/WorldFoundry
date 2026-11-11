@@ -181,6 +181,31 @@ export class ServerService {
     return { server: await this.get(id), restartRequired };
   }
 
+  // Game settings that can change after creation (world, password, player limit …): the adapter checks and merges
+  // them; the change applies on the next start, so the server must be stopped.
+  async updateGameSettings(id: string, input: unknown): Promise<ServerDto> {
+    const current = await this.row(id);
+    const adapter = this.options.games.forServer(current);
+    if (adapter.applySettings === undefined) throw new AppError(409, 'GAME_FEATURE_UNSUPPORTED', 'The settings of this game are changed in its settings files.');
+    const running = (): AppError => new AppError(409, 'SERVER_RUNNING', 'The server is running. Please stop it before changing its settings.');
+    if (this.options.manager.isRunning(id)) throw running();
+    await this.options.lock.run(id, async () => {
+      if (this.options.manager.isRunning(id)) throw running();
+      const row = await this.row(id);
+      const others = (await this.options.db.select().from(servers)).filter((other) => other.id !== id);
+      const patch = await adapter.applySettings?.(row, input, others);
+      if (patch === undefined) return;
+      await this.options.db.transaction((tx) =>
+        tx
+          .update(servers)
+          .set({ ...(patch.gameSettings === undefined ? {} : { gameSettings: patch.gameSettings }), ...(patch.port === undefined ? {} : { port: patch.port }), updatedAt: new Date() })
+          .where(eq(servers.id, id)),
+      );
+    });
+    this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'updated' });
+    return this.get(id);
+  }
+
   // `backups` says what happens to the server's backup archives; it must be given when there are any
   async remove(id: string, backups?: BackupDisposal): Promise<void> {
     await this.row(id);

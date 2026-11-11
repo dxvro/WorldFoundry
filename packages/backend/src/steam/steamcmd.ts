@@ -51,6 +51,8 @@ export interface AppUpdateRequest {
   signal: AbortSignal;
   onLine: (line: string) => void;
   onProgress: (progress: SteamProgress) => void;
+  // download the files of another platform (ARK: Survival Ascended ships Windows binaries only)
+  platformType?: 'windows' | 'linux';
 }
 
 export interface SteamCmdOptions {
@@ -147,10 +149,11 @@ export function steamProgressMessage(game: string, progress: SteamProgress): Msg
 
 export const successLine = (appId: number): RegExp => new RegExp(String.raw`Success! App '${appId}' (?:fully installed|already up to date)`);
 
-export function buildAppUpdateArgs(appId: number, branch: string, dir: string, validate: boolean): string[] {
+export function buildAppUpdateArgs(appId: number, branch: string, dir: string, validate: boolean, platformType?: 'windows' | 'linux'): string[] {
   if (!BRANCH.test(branch) || branch.startsWith('-')) throw new AppError(422, 'STEAM_BRANCH_INVALID', 'The Steam branch name is invalid.');
   // force_install_dir must come before the login (https://github.com/ValveSoftware/steam-for-linux/issues/8298)
   return [
+    ...(platformType === undefined ? [] : ['+@sSteamCmdForcePlatformType', platformType]),
     '+force_install_dir',
     path.resolve(dir),
     '+login',
@@ -251,7 +254,7 @@ export class SteamCmd {
       let step: SteamStep | null = null;
       const result = await this.options.runner({
         javaPath: command,
-        args: [...prefix, ...buildAppUpdateArgs(request.appId, request.branch, request.dir, request.validate)],
+        args: [...prefix, ...buildAppUpdateArgs(request.appId, request.branch, request.dir, request.validate, request.platformType)],
         cwd: path.dirname(this.executable),
         timeoutMs: this.options.timeoutMs ?? RUN_TIMEOUT_MS,
         signal: request.signal,

@@ -22,6 +22,7 @@ import { games } from './games';
 import { gamePlayers, workshop, zomboid, zomboidFiles } from './zomboid';
 import { ficsit, satisfactory } from './satisfactory';
 import { ark } from './ark';
+import { hosted } from './hosted';
 
 export const en = {
   common,
@@ -50,6 +51,7 @@ export const en = {
   workshop,
   gamePlayers,
   satisfactory,
+  hosted,
   ficsit,
   ark,
 };

@@ -28,6 +28,36 @@ Satisfactory is a trademark of Coffee Stain Studios AB and Coffee Stain Publishi
 
 ARK and ARK: Survival Evolved are trademarks of Studio Wildcard and Snail Games USA. The dedicated server is downloaded with SteamCMD.
 
+## ARK: Survival Ascended
+
+**Not an official ARK: Survival Ascended product. Not approved by or associated with Studio Wildcard or Snail Games.**
+
+ARK: Survival Ascended is a trademark of Studio Wildcard and Snail Games USA. The dedicated server is downloaded with SteamCMD. On Linux it runs through GE-Proton, an open-source project (<https://github.com/GloriousEggroll/proton-ge-custom>) that does not endorse WorldFoundry. CurseForge is a service of Overwolf.
+
+## Valheim
+
+**Not an official Valheim product. Not approved by or associated with Iron Gate or Coffee Stain Publishing.**
+
+Valheim is a trademark of Iron Gate AB and Coffee Stain Publishing AB. The dedicated server is downloaded with SteamCMD.
+
+## 7 Days to Die
+
+**Not an official 7 Days to Die product. Not approved by or associated with The Fun Pimps.**
+
+7 Days to Die is a trademark of The Fun Pimps Entertainment LLC. The dedicated server is downloaded with SteamCMD.
+
+## Palworld
+
+**Not an official Palworld product. Not approved by or associated with Pocketpair.**
+
+Palworld is a trademark of Pocketpair, Inc. The dedicated server is downloaded with SteamCMD.
+
+## Terraria
+
+**Not an official Terraria product. Not approved by or associated with Re-Logic.**
+
+Terraria is a trademark of Re-Logic. The dedicated server is downloaded from terraria.org on your machine.
+
 ## Steam
 
 Steam, SteamCMD and the Steam Workshop are trademarks and services of Valve Corporation. WorldFoundry is not affiliated with Valve. SteamCMD is downloaded from Valve on your machine and used under the Steam Subscriber Agreement (<https://store.steampowered.com/subscriber_agreement/>), which you accept yourself.

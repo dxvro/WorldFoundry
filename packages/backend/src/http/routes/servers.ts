@@ -38,6 +38,11 @@ export function registerServerRoutes(app: FastifyInstance, { services, config }:
     return servers.update(serverId, UpdateServerSchema.parse(request.body));
   });
 
+  app.patch('/api/servers/:serverId/game-settings', async (request) => {
+    const { serverId } = serverParams.parse(request.params);
+    return { server: await servers.updateGameSettings(serverId, request.body ?? {}) };
+  });
+
   app.delete('/api/servers/:serverId', async (request) => {
     const { serverId } = serverParams.parse(request.params);
     const { confirm, backups } = deleteQuery.parse(request.query);

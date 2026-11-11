@@ -6,9 +6,11 @@ export function portsOf(server: Pick<Server, 'port' | 'gameSettings'>): number[]
   const ports = [server.port];
   try {
     const settings = JSON.parse(server.gameSettings) as Record<string, unknown>;
-    for (const key of ['udpPort', 'reliablePort', 'peerPort', 'queryPort', 'rconPort']) {
+    for (const key of ['udpPort', 'reliablePort', 'peerPort', 'queryPort', 'rconPort', 'restPort', 'telnetPort', 'extraPorts']) {
       const value = settings[key];
       if (typeof value === 'number' && Number.isInteger(value)) ports.push(value);
+      // several ports in a row (7 Days to Die: the game port and the two after it)
+      if (Array.isArray(value)) for (const entry of value) if (typeof entry === 'number' && Number.isInteger(entry)) ports.push(entry);
     }
   } catch {
     // a damaged value is reported where the settings are read

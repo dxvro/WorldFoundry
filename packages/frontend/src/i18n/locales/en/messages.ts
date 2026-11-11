@@ -198,6 +198,7 @@ export const messages: MessageTexts = {
   GAME_IMPORT_ZOMBOID_SETTINGS_KEPT: 'The server settings of this server were kept; the save (and the player database, if it was included) was imported.',
   GAME_IMPORT_PORTS_KEPT: 'The imported settings named other ports; the ports of this server were written back.',
   GAME_IMPORT_SATISFACTORY_SAVES: (p) => `${p.count} save game(s) imported. The server loads the newest one: ${p.newest}.`,
+  GAME_IMPORT_WORLD_NAME: (p) => `The imported world is named ${p.found}, but this server loads ${p.current}. Choose the imported name in the settings of the server to play it.`,
   GAME_IMPORT_ARK_MAP: (p) => `The save is for the map ${p.found}, but this server runs ${p.map}. Choose the same map under Configuration, otherwise the server starts a new world.`,
   BACKUP_RESTORING: 'Restoring backup ...',
   BACKUP_RESTORED: 'Backup restored.',

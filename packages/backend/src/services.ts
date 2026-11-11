@@ -55,6 +55,11 @@ import { ExportService } from './worldio/export-service.js';
 import { ImportService } from './worldio/import-service.js';
 import { GameWorldService } from './worldio/game-world.js';
 import { CustomModsService } from './games/custom-mods.js';
+import { AsaAdapter } from './games/asa/adapter.js';
+import { ValheimAdapter } from './games/valheim/adapter.js';
+import { SevenDaysAdapter, type Telnet } from './games/sevendays/adapter.js';
+import { PalworldAdapter, type PalRest } from './games/palworld/adapter.js';
+import { TerrariaAdapter } from './games/terraria/adapter.js';
 
 export interface ServiceOptions {
   db: Db;
@@ -64,6 +69,10 @@ export interface ServiceOptions {
   curseforgeApi?: CurseForgeApi;
   // tests pass a SteamCMD that runs a fake program, and a UDP check that needs no free port
   steamCmd?: SteamCmd;
+  // stand-ins for the channels of the newer games (tests)
+  valheimPlayers?: (queryPort: number) => Promise<number | null>;
+  telnet?: Telnet;
+  palRest?: PalRest;
   udpProbe?: (port: number) => Promise<boolean>;
   workshopApi?: WorkshopApi;
   satisfactoryHealth?: (port: number) => Promise<boolean>;
@@ -208,7 +217,19 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
     ...(options.rcon === undefined ? {} : { rcon: options.rcon }),
   });
-  const games = new GameAdapters([minecraft, zomboid, satisfactory, ark]);
+  const plat = options.platform === undefined ? {} : { platform: options.platform };
+  const asa = new AsaAdapter({
+    steam,
+    protonRoot: path.join(config.dataDir, 'runtimes', 'proton'),
+    ...plat,
+    ...(options.rcon === undefined ? {} : { rcon: options.rcon }),
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+  });
+  const valheim = new ValheimAdapter({ steam, ...plat, ...(options.valheimPlayers === undefined ? {} : { playerCount: options.valheimPlayers }) });
+  const sevendays = new SevenDaysAdapter({ steam, ...plat, ...(options.telnet === undefined ? {} : { telnet: options.telnet }) });
+  const palworld = new PalworldAdapter({ steam, ...plat, ...(options.palRest === undefined ? {} : { rest: options.palRest }) });
+  const terraria = new TerrariaAdapter({ tmpDir: path.join(config.dataDir, 'tmp', 'terraria'), ...plat, ...(options.fetch === undefined ? {} : { fetch: options.fetch }) });
+  const games = new GameAdapters([minecraft, zomboid, satisfactory, ark, asa, valheim, sevendays, palworld, terraria]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};

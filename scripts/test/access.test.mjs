@@ -26,10 +26,10 @@ test('Notice: the text appears everywhere people see it', async () => {
   // The interface carries a general disclaimer that names every rights holder; the sentence of each game comes from
   // the registry and must be in README.md and TRADEMARKS.md word for word (Minecraft in capitals, as its owner asks).
   const enCommon = await read('packages', 'frontend', 'src', 'i18n', 'locales', 'en', 'common.ts');
-  for (const owner of ['Mojang', 'Microsoft', 'The Indie Stone', 'Coffee Stain', 'Studio Wildcard', 'Snail Games', 'Valve']) assert.ok(enCommon.includes(owner), `general disclaimer names ${owner}`);
+  for (const owner of ['Mojang', 'Microsoft', 'The Indie Stone', 'Coffee Stain', 'Studio Wildcard', 'Snail Games', 'Iron Gate', 'The Fun Pimps', 'Pocketpair', 'Re-Logic', 'Valve']) assert.ok(enCommon.includes(owner), `general disclaimer names ${owner}`);
   const registry = await read('packages', 'backend', 'src', 'games', 'registry.ts');
   const sentences = [...registry.matchAll(/disclaimer: notA\('([^']+)', '([^']+)'\)/g)].map((match) => `Not an official ${match[1]} product. Not approved by or associated with ${match[2]}.`);
-  assert.equal(sentences.length, 4, 'one disclaimer per game in the registry');
+  assert.equal(sentences.length, 9, 'one disclaimer per game in the registry');
   assert.ok(sentences[0].toUpperCase() === DISCLAIMER, 'the Minecraft sentence of the registry is the notice of the installers');
   for (const file of ['README.md', 'TRADEMARKS.md']) {
     const text = (await read(file)).toUpperCase();
@@ -50,8 +50,8 @@ test('Installer: English only, and every custom message the script uses exists',
   const custom = new Set([...iss.matchAll(/^english\.(\w+)=/gm)].map((match) => match[1]));
   for (const match of iss.matchAll(/(?:CustomMessage\('|\{cm:)(\w+)/g)) assert.ok(custom.has(match[1]), `custom message ${match[1]}`);
   // the firewall task opens the ports of every game, not only Minecraft
-  assert.match(iss, /#define TcpPortRange "25565-25575,7777-7790,8888-8899"/);
-  assert.match(iss, /#define UdpPortRange "7777-7790,16261-16280,27015-27030"/);
+  assert.match(iss, /#define TcpPortRange "25565-25575,7777-7790,8888-8899,26900-26910"/);
+  assert.match(iss, /#define UdpPortRange "2456-2470,7777-7790,8211-8221,16261-16280,26900-26910,27015-27030"/);
 });
 
 test('Credentials: home network addresses, password notice and the Minecraft notice', () => {

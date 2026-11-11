@@ -1,0 +1,100 @@
+// The newer games share one create wizard and one settings page; their texts live here per game.
+const name = { label: 'Server name', hint: 'Shown in the server list of the game.' };
+const password = { label: 'Server password', hint: 'Players need it to join. Leave empty for an open server.' };
+const maxPlayers = { label: 'Player limit', hint: '' };
+
+export const hosted = {
+  create: 'Create server',
+  creating: 'Creating …',
+  save: 'Save settings',
+  saved: 'Saved. The change applies on the next start.',
+  stopToEdit: 'Stop the server to change these settings.',
+  settingsTitle: 'Game settings',
+  settingsIntro: 'Set when the server was created; the change applies on the next start. Everything else is in the settings files.',
+  adminPassword: 'Admin password',
+  adminPasswordHint: 'For admin commands in the game. WorldFoundry also uses it to talk to the server.',
+  show: 'Show',
+  hide: 'Hide',
+  modIds: {
+    title: 'Mods (CurseForge)',
+    intro: 'Add the CurseForge project id of each mod (on the right of the mod page, "Project ID"). The server downloads the mods itself on its next start.',
+    label: 'CurseForge project id',
+    add: 'Add mod',
+    remove: (id: string) => `Remove mod ${id}`,
+    empty: 'No mods yet.',
+    invalid: 'A project id has digits only.',
+  },
+  asa: {
+    title: 'New ARK: Survival Ascended server',
+    documentTitle: 'New ARK: Survival Ascended server · WorldFoundry',
+    intro: 'SteamCMD downloads the dedicated server (about 13 GB). It needs a lot of memory: plan 16 GB or more.',
+    linuxNote: 'ARK: Survival Ascended has only a Windows server. On Linux WorldFoundry runs it through GE-Proton (open source, downloaded once from GitHub, about 0.6 GB). This works for many hosts, but it is new in WorldFoundry and not tested on every system.',
+    fields: { name, map: { label: 'Map', hint: 'Can be changed later.' }, maxPlayers, password },
+  },
+  valheim: {
+    title: 'New Valheim server',
+    documentTitle: 'New Valheim server · WorldFoundry',
+    intro: 'SteamCMD downloads the dedicated server (about 2 GB). Players join with the address and the password.',
+    fields: {
+      name,
+      world: { label: 'World name', hint: 'The world file (letters, digits, _ and -). A new world is created if it does not exist.' },
+      password: { label: 'Password', hint: 'At least 5 characters, not part of the server name. Valheim requires one.' },
+      public: { label: 'Show in the public server list', hint: 'Off: only players who know the address can find it.' },
+      crossplay: { label: 'Crossplay (Xbox and Game Pass players)', hint: 'Uses the PlayFab relay instead of a direct connection.' },
+    },
+  },
+  sevendays: {
+    title: 'New 7 Days to Die server',
+    documentTitle: 'New 7 Days to Die server · WorldFoundry',
+    intro: 'SteamCMD downloads the dedicated server (about 18 GB). All further game rules are in serverconfig.xml after the creation.',
+    fields: {
+      name,
+      world: { label: 'World', hint: 'Navezgane is the hand-made map; RWG generates a world from the seed (the first start then takes longer).' },
+      gameName: { label: 'Game name', hint: 'The save game; a new name starts a new game on the same world.' },
+      seed: { label: 'Seed (RWG)', hint: 'Only for random worlds.' },
+      worldSize: { label: 'World size (RWG)', hint: 'Only for random worlds.' },
+      maxPlayers,
+      password,
+    },
+  },
+  palworld: {
+    title: 'New Palworld server',
+    documentTitle: 'New Palworld server · WorldFoundry',
+    intro: 'SteamCMD downloads the dedicated server (about 5 GB). It needs 16 GB of memory for a smooth game with several players.',
+    fields: {
+      name,
+      maxPlayers,
+      password,
+      public: { label: 'Show in the community server list', hint: 'Off: players join with the address.' },
+    },
+  },
+  terraria: {
+    title: 'New Terraria server',
+    documentTitle: 'New Terraria server · WorldFoundry',
+    intro: 'WorldFoundry downloads the newest dedicated server from terraria.org. The world is created on the first start.',
+    fields: {
+      name,
+      world: { label: 'World name', hint: 'An existing world of this name is loaded, otherwise a new one is created.' },
+      size: { label: 'World size', hint: 'Only for a new world.' },
+      difficulty: { label: 'Difficulty', hint: 'Only for a new world.' },
+      maxPlayers,
+      password,
+    },
+  },
+  options: {
+    size: { 1: 'Small', 2: 'Medium', 3: 'Large' } as Record<number, string>,
+    difficulty: { 0: 'Classic', 1: 'Expert', 2: 'Master', 3: 'Journey' } as Record<number, string>,
+    sevendaysWorld: { Navezgane: 'Navezgane (hand-made map)', RWG: 'Random world (RWG)' } as Record<string, string>,
+    worldSize: { 6144: '6 km', 8192: '8 km', 10240: '10 km' } as Record<number, string>,
+    asaMap: {
+      TheIsland_WP: 'The Island',
+      ScorchedEarth_WP: 'Scorched Earth',
+      TheCenter_WP: 'The Center',
+      Aberration_WP: 'Aberration',
+      Extinction_WP: 'Extinction',
+      Astraeos_WP: 'Astraeos',
+      Ragnarok_WP: 'Ragnarok',
+      Valguero_WP: 'Valguero',
+    } as Record<string, string>,
+  },
+};

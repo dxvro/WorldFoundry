@@ -46,10 +46,11 @@
 #define FirewallWebRule "WorldFoundry - Web"
 #define FirewallTcpRule "WorldFoundry - Game servers (TCP)"
 #define FirewallUdpRule "WorldFoundry - Game servers (UDP)"
-; Default port ranges of the games: Minecraft 25565+, Satisfactory 7777+ and 8888+ (TCP and UDP),
-; Project Zomboid 16261+, ARK 7777+ and the Steam query ports 27015+ (UDP). RCON (27020+ TCP) stays closed.
-#define TcpPortRange "25565-25575,7777-7790,8888-8899"
-#define UdpPortRange "7777-7790,16261-16280,27015-27030"
+; Default port ranges of the games: Minecraft 25565+, Satisfactory 7777+ and 8888+ (TCP and UDP), Terraria 7777+ (TCP),
+; 7 Days to Die 26900+ (TCP and UDP), Project Zomboid 16261+, ARK and ARK: Survival Ascended 7777+, Valheim 2456+,
+; Palworld 8211+ and the Steam query ports 27015+ (UDP). RCON, telnet and REST (27020+, 8081+, 8212+ TCP) stay closed.
+#define TcpPortRange "25565-25575,7777-7790,8888-8899,26900-26910"
+#define UdpPortRange "2456-2470,7777-7790,8211-8221,16261-16280,26900-26910,27015-27030"
 ; firewall rule of versions that knew only Minecraft
 #define FirewallOldRule "WorldFoundry - Minecraft"
 #define StartMenuFolderName "WorldFoundry"

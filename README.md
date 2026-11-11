@@ -1,6 +1,6 @@
 # WorldFoundry
 
-> **WorldFoundry is an independent, free and open-source project. It is not an official product of any game publisher and is not approved by or associated with Mojang, Microsoft, The Indie Stone, Coffee Stain, Studio Wildcard, Snail Games or Valve.** The disclaimer of each game is in [TRADEMARKS.md](TRADEMARKS.md).
+> **WorldFoundry is an independent, free and open-source project. It is not an official product of any game publisher and is not approved by or associated with Mojang, Microsoft, The Indie Stone, Coffee Stain, Studio Wildcard, Snail Games, Iron Gate, The Fun Pimps, Pocketpair, Re-Logic or Valve.** The disclaimer of each game is in [TRADEMARKS.md](TRADEMARKS.md).
 
 WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
@@ -14,11 +14,21 @@ WorldFoundry runs dedicated game servers on one of your own computers and is ope
 | Project Zomboid | Early: install, start, stop, console, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
 | Satisfactory | Early: install, start, clean stop (Linux), readiness through the server API, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | ficsit.app (server builds, mod loader, dependencies) |
 | ARK: Survival Evolved | Early: install, start, RCON console, players with kick/ban, clean stop with SaveWorld, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ActiveMods, downloaded by the server) |
+| ARK: Survival Ascended | New: install (Windows files; on Linux through GE-Proton), RCON console, players with kick/ban, clean stop, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | CurseForge project ids (downloaded by the server) |
+| Valheim | New: install, start, clean stop (SIGINT), world, password and visibility as settings, admin lists, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | In progress (BepInEx) |
+| 7 Days to Die | New: install, telnet console, players with kick/ban, clean stop, serverconfig.xml, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Own mods (Mods folder) |
+| Palworld | New: install, REST API for readiness, players, kick/ban and clean stop, PalWorldSettings.ini, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Own mods (.pak) |
+| Terraria | New: install, console, players, clean stop with exit, serverconfig.txt, offline backups. Not yet tested against a real server | Download from terraria.org | In progress (tModLoader) |
 
 - **Minecraft:** NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 - **Project Zomboid:** Not an official Project Zomboid product. Not approved by or associated with The Indie Stone.
 - **Satisfactory:** Not an official Satisfactory product. Not approved by or associated with Coffee Stain Studios or Coffee Stain Publishing.
 - **ARK:** Not an official ARK product. Not approved by or associated with Studio Wildcard or Snail Games.
+- **ARK: Survival Ascended:** Not an official ARK: Survival Ascended product. Not approved by or associated with Studio Wildcard or Snail Games.
+- **Valheim:** Not an official Valheim product. Not approved by or associated with Iron Gate or Coffee Stain Publishing.
+- **7 Days to Die:** Not an official 7 Days to Die product. Not approved by or associated with The Fun Pimps.
+- **Palworld:** Not an official Palworld product. Not approved by or associated with Pocketpair.
+- **Terraria:** Not an official Terraria product. Not approved by or associated with Re-Logic.
 
 WorldFoundry ships no game files, logos or artwork. Every server is downloaded on your machine at installation, and you accept the license of each game yourself. WorldFoundry never accepts one for you.
 

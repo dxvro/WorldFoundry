@@ -59,6 +59,8 @@ Per server under `/api/servers/:serverId`; Fabric, Forge and NeoForge use `mods/
 - `PATCH /mods/:modId` with `{ enabled, force? }`: switches a mod or plugin on or off (see below)
 - `GET /mods/backups`: backups that updates left behind (size, associated mod, what would be cleaned up), `POST /mods/backups/cleanup` cleans up
 
+Game settings of ARK: Survival Ascended, Valheim, 7 Days to Die, Palworld and Terraria (world, password, player limit, map, mod ids …) change with `PATCH /servers/:serverId/game-settings` and a partial object of the fields the game allows; only while the server is stopped (`409 SERVER_RUNNING`), unknown fields give `400`. The change applies on the next start.
+
 Mods the user uploads as a file (not from a mod store), for every game, only while the server is stopped:
 
 - `GET /servers/:serverId/custom-mods` → `{ supported, accept, mods: [{ id, name, location, sizeBytes, active }] }` (Minecraft lists them with the other mods instead).

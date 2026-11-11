@@ -6,7 +6,7 @@ import type { LineEvent } from '../process/patterns.js';
 
 // Every game WorldFoundry knows. A game with availability 'planned' is listed with its disclaimer and facts, but no
 // server can be created for it yet.
-export const GAME_IDS = ['minecraft', 'zomboid', 'satisfactory', 'ark'] as const;
+export const GAME_IDS = ['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export type GameAvailability = 'available' | 'planned';
@@ -142,6 +142,9 @@ export interface GameAdapter {
   readonly worldImport?: WorldImportSupport;
   // Mods the user uploads as files (games/custom-mods.ts); absent: the game takes none
   readonly customMods?: CustomModSupport;
+  // Game settings that can change after creation (world, password, player limit …), checked and merged by the
+  // adapter; the core saves the result while the server is stopped. Absent: settings only change in the config files.
+  applySettings?(server: Server, input: unknown, others: Server[]): Promise<Partial<Server>>;
 
   // For games that read no console input (ARK: RCON): sends one command and returns the answer as lines
   sendCommand?(server: Server, dir: string, command: string): Promise<string[]>;

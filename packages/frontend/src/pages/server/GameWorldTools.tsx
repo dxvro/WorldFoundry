@@ -9,7 +9,7 @@ import { uploadGameWorld, type GameImportView } from '../../lib/world';
 import { ExportDialog } from './WorldTools';
 
 const runningStates: ReadonlySet<string> = new Set(['preparing', 'starting', 'online', 'stopping']);
-const ACCEPT: Record<string, string> = { satisfactory: '.sav,.zip,.tar.gz,.tgz' };
+const ACCEPT: Record<string, string> = { satisfactory: '.sav,.zip,.tar.gz,.tgz', terraria: '.wld,.zip,.tar.gz,.tgz' };
 
 // Export and import of the world for Project Zomboid, Satisfactory and ARK. The import becomes a backup of the server
 // and is restored like one, so the world before it is kept as a safety backup.

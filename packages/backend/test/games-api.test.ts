@@ -24,7 +24,7 @@ describe('GET /api/games', () => {
   it('lists every game with its disclaimer', async () => {
     const res = await env.call<GamesBody>('GET', '/api/games');
     expect(res.status).toBe(200);
-    expect(res.body.games.map((game) => game.id)).toEqual(['minecraft', 'zomboid', 'satisfactory', 'ark']);
+    expect(res.body.games.map((game) => game.id)).toEqual(['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria']);
     for (const game of res.body.games) expect(game.disclaimer).toMatch(/^Not an official /);
   });
 });

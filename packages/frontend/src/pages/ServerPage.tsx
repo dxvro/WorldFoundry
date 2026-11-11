@@ -29,6 +29,9 @@ import { SatisfactorySettingsTab } from './server/SatisfactorySettingsTab';
 import { satisfactorySettings } from '../games/satisfactory';
 import { zomboidSettings } from '../games/zomboid';
 import { WorldTab } from './server/WorldTab';
+import { AsaModsTab, HostedSettingsTab } from './server/HostedSettingsTab';
+import { CustomModsSection } from './server/CustomModsSection';
+import { isHosted } from '../games/hosted';
 import { OverviewTab } from './server/OverviewTab';
 import { GameTile } from '../games/GameTile';
 import { useLanHost } from '../lib/lan';
@@ -93,6 +96,11 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     zomboid: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     satisfactory: ['overview', 'console', 'players', 'ficsit', 'backups', 'config', 'files'],
     ark: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
+    asa: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
+    valheim: ['overview', 'console', 'players', 'backups', 'config', 'files'],
+    sevendays: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
+    palworld: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
+    terraria: ['overview', 'console', 'players', 'backups', 'config', 'files'],
   };
   const parts = PARTS[server.game] ?? PARTS.zomboid ?? [];
   const groupOf = (part: ServerTab): Group => GROUP_OF[part];
@@ -239,6 +247,8 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
           <SatisfactorySettingsTab key={server.id} server={server} status={status} />
         ) : server.game === 'ark' ? (
           <ArkSettingsTab key={server.id} server={server} status={status} />
+        ) : isHosted(server.game) ? (
+          <HostedSettingsTab key={server.id} server={server} status={status} game={server.game} />
         ) : (
           <ZomboidSettingsTab key={server.id} server={server} status={status} />
         )}
@@ -251,6 +261,8 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         {tab === 'ficsit' && server.game === 'satisfactory' ? <FicsitTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'ark' ? <ArkModsTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'zomboid' ? <WorkshopTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'workshop' && server.game === 'asa' ? <AsaModsTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'workshop' && (server.game === 'sevendays' || server.game === 'palworld') ? <CustomModsSection key={server.id} server={server} status={status} /> : null}
         {tab === 'backups' ? <BackupsTab key={server.id} server={server} status={status} /> : null}
       </div>
       <GameDisclaimer game={server.game} />

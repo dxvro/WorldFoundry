@@ -39,6 +39,39 @@ if (appId === '1690800') {
   console.log(`Success! App '${appId}' fully installed.`);
   process.exit(0);
 }
+const here = path.dirname(new URL(import.meta.url).pathname);
+const launcher = (file, fake) => {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `#!/bin/bash\nexec "${process.execPath}" "${path.join(here, fake)}" "$@"\n`);
+  chmodSync(file, 0o755);
+};
+const extra = {
+  // Valheim
+  896660: () => {
+    launcher(path.join(dir, 'valheim_server.x86_64'), 'fake-valheim.mjs');
+    mkdirSync(path.join(dir, 'linux64'), { recursive: true });
+  },
+  // ARK: Survival Ascended, as if it shipped a Linux build (Proton is not part of the tests)
+  2430930: () => {
+    launcher(path.join(dir, 'ShooterGame', 'Binaries', 'Linux', 'ArkAscendedServer'), 'fake-ark.mjs');
+    writeFileSync(path.join(path.dirname(dir), 'platform-type.txt'), args.includes('+@sSteamCmdForcePlatformType') ? args[args.indexOf('+@sSteamCmdForcePlatformType') + 1] : 'native');
+  },
+  // 7 Days to Die, with its config template
+  294420: () => {
+    launcher(path.join(dir, '7DaysToDieServer.x86_64'), 'fake-sevendays.mjs');
+    writeFileSync(path.join(dir, 'serverconfig.xml'), '<?xml version="1.0"?>\n<ServerSettings>\n\t<property name="ServerName" value="My Game Host"/>\n\t<property name="ServerPort" value="26900"/>\n\t<property name="DayNightLength" value="60"/>\n</ServerSettings>\n');
+  },
+  // Palworld, with its settings template
+  2394010: () => {
+    launcher(path.join(dir, 'PalServer.sh'), 'fake-palworld.mjs');
+    writeFileSync(path.join(dir, 'DefaultPalWorldSettings.ini'), '[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(Difficulty=None,DayTimeSpeedRate=1.000000,ServerName="Default Palworld Server",AdminPassword="",ServerPassword="",PublicPort=8211,RCONEnabled=False,RCONPort=25575,RESTAPIEnabled=False,RESTAPIPort=8212)\n');
+  },
+};
+if (extra[appId] !== undefined) {
+  extra[appId]();
+  console.log(`Success! App '${appId}' fully installed.`);
+  process.exit(0);
+}
 const server = path.join(path.dirname(new URL(import.meta.url).pathname), 'fake-zomboid.mjs');
 writeFileSync(path.join(dir, 'start-server.sh'), `#!/bin/bash\nexec "${process.execPath}" "${server}" "$@"\n`);
 chmodSync(path.join(dir, 'start-server.sh'), 0o755);

@@ -18,6 +18,8 @@ import { Overview } from './pages/Overview';
 import { SystemPage } from './pages/System';
 import { ServerPage } from './pages/ServerPage';
 import { SearchX } from 'lucide-react';
+import { HostedWizard } from './pages/HostedWizard';
+import { isHosted } from './games/hosted';
 
 function Routes(): ReactNode {
   const { route, visit, navigate } = useRouter();
@@ -32,6 +34,7 @@ function Routes(): ReactNode {
       if (route.game === 'zomboid') return <ZomboidWizard key={visit} />;
       if (route.game === 'satisfactory') return <SatisfactoryWizard key={visit} />;
       if (route.game === 'ark') return <ArkWizard key={visit} />;
+      if (isHosted(route.game)) return <HostedWizard key={`${route.game}-${visit}`} game={route.game} />;
       return <NewServer />;
     case 'games':
       return <GamesPage />;
