@@ -127,7 +127,7 @@ describe('the messages are rendered from their references', () => {
       ...baseRoutes(serverFixture({ status: { ...offline, state: 'online', pid: 1, startedAt: null, exitCode: null, port: 25565 } })),
       'GET /api/servers/srv-1/console/history': () => ({ body: { lines: [] } }),
     });
-    window.history.replaceState(null, '', '/servers/srv-1');
+    window.history.replaceState(null, '', '/servers/srv-1/console');
     render(<App />);
     const socket = await vi.waitFor(() => {
       const found = FakeSocket.instances.find((entry) => entry.url.includes('/console'));

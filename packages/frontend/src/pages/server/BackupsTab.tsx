@@ -1,7 +1,7 @@
 import { Archive, Download, FileDown, HardDrive, History, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Dialog } from '../../components/Dialog';
-import { Button, EmptyState, ErrorNotice, Field, LoadingBlock, Notice, Section, Spinner, Toggle, cx } from '../../components/ui';
+import { Button, ErrorNotice, Field, LoadingBlock, Notice, Section, Spinner, Toggle, cx } from '../../components/ui';
 import { renderOptionalRef, renderRef, useI18n } from '../../i18n';
 import { getCurrentDictionary } from '../../i18n/current';
 import { backupsApi } from '../../lib/endpoints';
@@ -311,9 +311,12 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
       ) : list.error !== null && data === undefined ? (
         <ErrorNotice error={list.error} title={t.backups.list.loadFailed} action={<Button size="sm" onClick={list.reload}>{t.common.retry}</Button>} />
       ) : backups.length === 0 ? (
-        <EmptyState icon={Archive} title={t.backups.list.emptyTitle}>
-          <p>{t.backups.list.emptyBody}</p>
-        </EmptyState>
+        <p className="panel flex items-center gap-3 p-4 text-dim">
+          <Archive aria-hidden className="size-5 shrink-0 text-faint" />
+          <span>
+            <strong className="font-medium text-ink">{t.backups.list.emptyTitle}.</strong> {t.backups.list.emptyBody}
+          </span>
+        </p>
       ) : (
         <section aria-label={t.backups.list.label} className="panel overflow-hidden">
           <ul className="divide-y divide-line">

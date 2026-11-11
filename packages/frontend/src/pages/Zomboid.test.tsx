@@ -181,9 +181,10 @@ describe('Project Zomboid server page', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Survival' })).toBeInTheDocument();
     expect(screen.getByText('Steam branch public')).toBeInTheDocument();
-    expect(screen.getByText('UDP 16261 and 16262')).toBeInTheDocument();
+    expect(screen.getByText('Join localhost:16261')).toHaveAttribute('title', 'UDP 16261 and 16262');
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Steam Workshop', 'Players', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Overview', 'Console', 'Players', 'Mods', 'World & backups', 'Settings']);
+    expect(within(screen.getByRole('navigation', { name: 'Parts of Settings' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['General', 'Settings files']);
 
     expect(screen.getByText('data/Server/knox.ini')).toBeInTheDocument();
     expect(screen.queryByText('secret-admin-pw')).not.toBeInTheDocument();
@@ -200,8 +201,9 @@ describe('Project Zomboid server page', () => {
     mockApi(baseRoutes(zomboidServer()));
     window.history.replaceState(null, '', '/');
     render(<App />);
-    const group = await screen.findByRole('region', { name: 'Project Zomboid servers' });
-    expect(within(group).getByText('Survival')).toBeInTheDocument();
-    expect(within(group).queryByText(/Minecraft/)).not.toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Servers' });
+    const row = within(table).getByRole('link', { name: /Survival/ }).closest('tr') as HTMLElement;
+    expect(within(row).getByText('Project Zomboid')).toBeInTheDocument();
+    expect(within(row).queryByText(/Minecraft/)).not.toBeInTheDocument();
   });
 });

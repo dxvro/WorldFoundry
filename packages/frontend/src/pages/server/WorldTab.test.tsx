@@ -157,20 +157,23 @@ describe('helpers', () => {
 });
 
 describe('integration in the server page', () => {
-  it('lists the tabs in order and opens the world settings from the configuration', async () => {
+  it('lists the areas in order and opens the world settings from the configuration', async () => {
     setup();
     const user = userEvent.setup();
     window.history.replaceState(null, '', '/servers/srv-1/config');
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'Server sections' });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'World settings', 'Players', 'Mods', 'Mod Store', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Overview', 'Console', 'Players', 'Mods', 'World & backups', 'Settings']);
+    expect(within(nav).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    const parts = screen.getByRole('navigation', { name: 'Parts of Settings' });
+    expect(within(parts).getAllByRole('link').map((link) => link.textContent)).toEqual(['General', 'World settings']);
     // the read-only list of other entries is gone; a link leads to the world tab instead
     expect(await screen.findByText(/1 more entry in the file can be viewed and edited in the "World settings" tab/)).toBeInTheDocument();
     expect(screen.queryByText(/display only/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Open world settings' }));
     expect(await screen.findByRole('region', { name: 'This world' })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/servers/srv-1/world');
-    expect(within(nav).getByRole('link', { name: 'World settings' })).toHaveAttribute('aria-current', 'page');
+    expect(within(screen.getByRole('navigation', { name: 'Parts of Settings' })).getByRole('link', { name: 'World settings' })).toHaveAttribute('aria-current', 'page');
   });
 });
 

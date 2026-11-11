@@ -115,11 +115,12 @@ describe('new server', () => {
 });
 
 describe('servers and their game', () => {
-  it('groups the overview by game', async () => {
+  it('shows the game of each server in the overview and groups the menu by game', async () => {
     open('/');
-    const group = await screen.findByRole('region', { name: 'Minecraft: Java Edition servers' });
-    expect(within(group).getByRole('heading', { name: /Minecraft: Java Edition/ })).toBeInTheDocument();
-    expect(within(group).getByText('Survival')).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Servers' });
+    const row = within(table).getByRole('link', { name: /Survival/ }).closest('tr') as HTMLElement;
+    expect(within(row).getByText(/Minecraft 1\.21/)).toBeInTheDocument();
+    expect(within(row).getByTestId('game-tile')).toBeInTheDocument();
     // the menu groups the servers by game as well, so servers with the same name stay apart
     const menu = screen.getByRole('complementary');
     const menuGroup = within(menu).getByRole('group', { name: 'Minecraft: Java Edition servers' });

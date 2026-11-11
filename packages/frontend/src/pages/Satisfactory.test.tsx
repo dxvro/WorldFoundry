@@ -51,9 +51,10 @@ describe('Satisfactory server page', () => {
     const user = userEvent.setup();
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Factory' })).toBeInTheDocument();
-    expect(screen.getByText('Port 7777 (TCP+UDP), 8888 (TCP)')).toBeInTheDocument();
+    expect(screen.getByText('Join localhost:7777')).toHaveAttribute('title', 'Port 7777 (TCP+UDP), 8888 (TCP)');
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Mods (ficsit.app)', 'Players', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Overview', 'Console', 'Players', 'Mods', 'World & backups', 'Settings']);
+    expect(within(nav).getByRole('link', { name: 'Mods' })).toHaveAttribute('aria-current', 'page');
 
     expect(await screen.findByText('No mods installed yet.')).toBeInTheDocument();
     expect(screen.getByText('Game build 491200')).toBeInTheDocument();

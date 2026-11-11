@@ -34,12 +34,11 @@ export const backups = {
     save: 'Save schedule',
   },
   main: {
-    descriptionOffline: 'The world, the player database and the server settings are backed up while the server is stopped. The archives are stored in the data folder and can be downloaded.',
+    descriptionOffline: 'World, players and settings, backed up while the server is stopped.',
     stopFirstTitle: 'Stop the server first: this game can only be backed up while it is stopped',
     title: 'World backups',
-    descriptionRunning:
-      'The server is running: saving is paused briefly (save-off, save-all flush), the world is backed up, and saving is turned back on afterwards (save-on). The server keeps running meanwhile.',
-    descriptionStopped: 'The world is backed up including the Nether and the End. The archives are stored in the data folder and can be downloaded.',
+    descriptionRunning: 'The server keeps running; saving pauses briefly during the backup.',
+    descriptionStopped: 'The world with the Nether and the End.',
     busyTitle: 'The server is starting or stopping',
     create: 'Create backup',
     includeConfig: 'Include configuration files',
@@ -61,7 +60,7 @@ export const backups = {
     loading: 'Loading backups …',
     loadFailed: 'The backups could not be loaded',
     emptyTitle: 'No backups yet',
-    emptyBody: 'A backup saves the world before something goes wrong. With a schedule they are created on their own.',
+    emptyBody: 'Create one now, or set a schedule below.',
     label: 'List of backups',
   },
   restoreDialog: {

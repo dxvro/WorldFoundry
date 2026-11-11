@@ -1,104 +1,33 @@
-import { useGames } from '../games/GamesProvider';
-import { GAME_LOOK, GAME_ORDER } from '../games/look';
-import { GameTile } from '../games/GameTile';
-import { Cpu, Globe, HardDrive, Plus, Server, Users } from 'lucide-react';
+import { Plus, Server } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { ActionBar, ActionFeedback, useServerActions } from '../components/ServerActions';
-import { LOADER_LABEL, Meter, StatusChip } from '../components/status';
+import { LOADER_LABEL, StatusChip } from '../components/status';
 import { Button, EmptyState, ErrorNotice, LoadingBlock, Notice } from '../components/ui';
+import { useGames } from '../games/GamesProvider';
+import { GameTile } from '../games/GameTile';
+import { GAME_ORDER } from '../games/look';
 import { renderOptionalRef, renderRef, useI18n } from '../i18n';
+import { formatDuration } from '../lib/format';
+import { useLanHost } from '../lib/lan';
+import { Link, serverPath, useRouter } from '../lib/router';
+import type { RuntimeStatus, ServerView } from '../lib/types';
 import { useLive } from '../live/LiveProvider';
 import type { CrashInfo, InstallProgress } from '../live/reducer';
-import { systemApi } from '../lib/endpoints';
-import { formatBytes, formatDuration, formatMb, formatPercent, plural } from '../lib/format';
-import { Link, serverPath, useRouter } from '../lib/router';
-import type { HealthInfo, RuntimeStatus, ServerView, SystemInfo } from '../lib/types';
-import { useQuery, type QueryState } from '../lib/useQuery';
 
-function lanHost(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
+function firstLine(text: string): string {
+  return text.split(/\r?\n/).find((line) => line.trim() !== '') ?? text;
 }
 
-function HostPanel({ health, system }: { health: QueryState<HealthInfo | null>; system: QueryState<SystemInfo> }): ReactNode {
-  const { t } = useI18n();
-  const urls = health.data?.lanUrls ?? [];
-  const info = system.data;
+// players a status knows: names when the game lists them, else the bare count of games that only count
+const playerCount = (status: RuntimeStatus): number => (status.players.length > 0 ? status.players.length : (status.playerCount ?? 0));
 
-  return (
-    <section aria-label={t.overview.hostPanel} className="panel grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr]">
-      <div className="min-w-0 space-y-1">
-        <h2 className="flex items-center gap-2 text-sm text-dim">
-          <Globe aria-hidden className="size-4" />
-          {t.overview.hostAddresses}
-        </h2>
-        {urls.length === 0 ? (
-          <p className="hint">{health.loading ? t.overview.determining : t.overview.noLanAddress}</p>
-        ) : (
-          <ul className="space-y-0.5">
-            {urls.map((url) => (
-              <li key={url} className="num select-all font-mono text-sm">
-                {url}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="min-w-0 space-y-1">
-        <h2 className="flex items-center gap-2 text-sm text-dim">
-          <HardDrive aria-hidden className="size-4" />
-          {t.overview.memory}
-        </h2>
-        {info === undefined ? (
-          <p className="hint">{system.loading ? t.overview.determining : t.overview.notAvailable}</p>
-        ) : (
-          <p className="num">
-            <span className="text-lg font-semibold">{formatMb(info.totalMemoryMb)}</span> <span className="text-dim">{t.overview.memoryFree(formatMb(info.freeMemoryMb))}</span>
-          </p>
-        )}
-      </div>
-      <div className="min-w-0 space-y-1 sm:col-span-2 xl:col-span-1">
-        <h2 className="flex items-center gap-2 text-sm text-dim">
-          <Cpu aria-hidden className="size-4" />
-          {t.overview.cpuAndJava}
-        </h2>
-        {info === undefined ? (
-          <p className="hint">{system.loading ? t.overview.determining : t.overview.notAvailable}</p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="num">{plural(info.cpuCount, t.overview.coreSingular, t.overview.corePlural)}</span>
-            {info.javaRuntimes.length === 0 ? (
-              <span className="chip chip-warn">{t.overview.noJava}</span>
-            ) : (
-              info.javaRuntimes.map((runtime) => (
-                <span key={runtime.path} className="chip" title={runtime.path}>
-                  Java {runtime.major}
-                </span>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function Summary({ servers, statuses }: { servers: ServerView[]; statuses: RuntimeStatus[] }): ReactNode {
+function Summary({ statuses }: { statuses: RuntimeStatus[] }): ReactNode {
   const { t } = useI18n();
-  const online = statuses.filter((status) => status.state === 'online').length;
-  const players = statuses.reduce((sum, status) => sum + status.players.length, 0);
+  const running = statuses.filter((status) => status.state === 'online' || status.state === 'starting').length;
+  const players = statuses.reduce((sum, status) => sum + playerCount(status), 0);
   return (
-    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-dim">
-      <span className="num">
-        <strong className="text-ink">{online}</strong> {t.overview.ofOnline(servers.length)}
-      </span>
-      <span className="num inline-flex items-center gap-1.5">
-        <Users aria-hidden className="size-4" />
-        <strong className="text-ink">{players}</strong> {players === 1 ? t.overview.playerSingular : t.overview.playerPlural}
-      </span>
+    <p className="num text-dim">
+      {t.overview.running(running)} · {t.overview.playersOnline(players)}
     </p>
   );
 }
@@ -111,112 +40,96 @@ interface RowProps {
   host: string | null;
 }
 
-function firstLine(text: string): string {
-  return text.split(/\r?\n/).find((line) => line.trim() !== '') ?? text;
+// What the status column says below the chip: install progress, a crash, the preparation or how long it runs
+function StatusDetail({ server, status, install, crash }: Omit<RowProps, 'host'>): ReactNode {
+  const { t } = useI18n();
+  const installErrorText = renderOptionalRef(server.installErrorRef, t, server.installError);
+  if (server.installState !== 'installed') {
+    if (server.installState === 'failed') {
+      return (
+        <p className="text-xs text-dim">
+          <span className="line-clamp-2">{installErrorText === undefined ? t.common.unknownError : firstLine(installErrorText)}</span>
+          <Link to={serverPath(server.id)}>{t.overview.detailsAgain}</Link>
+        </p>
+      );
+    }
+    if (install === undefined) return <p className="text-xs text-dim">{t.overview.waiting}</p>;
+    return (
+      <div className="space-y-1">
+        {install.percent === null ? null : (
+          <div className="h-1.5 w-40 max-w-full overflow-hidden rounded-full bg-line" aria-hidden>
+            <div className="h-full bg-warn" style={{ width: `${Math.max(2, Math.round(install.percent))}%` }} />
+          </div>
+        )}
+        <p className="num text-xs text-dim">
+          {renderRef(install.messageRef, t, install.message)}
+          {install.percent === null ? '' : ` (${Math.round(install.percent)} %)`}
+        </p>
+      </div>
+    );
+  }
+  if (status.state === 'crashed') {
+    return (
+      <p className="text-xs text-bad">
+        {status.exitCode === null ? (renderOptionalRef(status.messageRef, t, status.message) ?? t.overview.unexpectedStop) : t.overview.exitCode(status.exitCode)}{' '}
+        <Link to={serverPath(server.id)}>{crash === undefined ? t.overview.details : t.overview.detailsWithLog}</Link>
+      </p>
+    );
+  }
+  if (status.state === 'preparing') return <p className="num text-xs text-accent">{renderOptionalRef(status.messageRef, t, status.message) ?? t.overview.preparing}</p>;
+  if ((status.state === 'online' || status.state === 'starting') && status.startedAt !== null) {
+    return <p className="num text-xs text-faint">{t.overview.runningFor(formatDuration(Date.now() - status.startedAt))}</p>;
+  }
+  return null;
 }
 
 function ServerRow({ server, status, install, crash, host }: RowProps): ReactNode {
   const { t } = useI18n();
+  const { nameOf } = useGames();
   const actions = useServerActions(server.id);
-  const running = status.state !== 'offline' && status.state !== 'crashed';
-  const ramRatio = status.rssBytes === null ? null : status.rssBytes / (server.maxRamMb * 1024 * 1024);
-  const installed = server.installState === 'installed';
   const port = status.port ?? server.port;
-  const installErrorText = renderOptionalRef(server.installErrorRef, t, server.installError);
-
+  const players = playerCount(status);
+  const subtitle = server.game === 'minecraft' ? `${LOADER_LABEL[server.loader]} · ${t.overview.minecraftVersion(server.mcVersion)}` : nameOf(server.game);
   return (
-    <li className="panel">
-      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.5fr)_9rem_minmax(16rem,1.6fr)_minmax(0,1fr)_21.5rem] xl:items-center">
-        <div className="min-w-0 space-y-1">
-          <h3 className="text-base">
-            <Link to={serverPath(server.id)} className="text-ink hover:text-accent">
-              {server.name}
-            </Link>
-          </h3>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-dim">
-            {server.game === 'minecraft' ? (
-              <>
-                <span className="chip">{LOADER_LABEL[server.loader]}</span>
-                <span className="num">{t.overview.minecraftVersion(server.mcVersion)}</span>
-              </>
-            ) : (
-              <span className="chip">{GAME_LOOK[server.game].shortName}</span>
-            )}
-            <span className="num text-faint" title={host === null ? undefined : t.overview.connectTo(`${host}:${port}`)}>
-              {t.overview.portLabel(port)}
+    <>
+      <tr className="border-t border-line align-middle">
+        <td className="px-4 py-3">
+          <Link to={serverPath(server.id)} className="flex min-w-0 items-center gap-3 text-ink no-underline hover:text-accent">
+            <GameTile game={server.game} />
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{server.name}</span>
+              <span className="block truncate text-xs text-faint">{subtitle}</span>
             </span>
-          </p>
-        </div>
-
-        <div className="min-w-0 space-y-1">
-          <StatusChip server={server} status={status} />
-          {!installed ? (
-            <p className="text-sm text-dim">
-              {server.installState === 'failed' ? (
-                <>
-                  <span className="line-clamp-2">{installErrorText === undefined ? t.common.unknownError : firstLine(installErrorText)}</span>
-                  <Link to={serverPath(server.id)}>{t.overview.detailsAgain}</Link>
-                </>
-              ) : install === undefined ? (
-                t.overview.waiting
-              ) : (
-                <span className="num">
-                  {renderRef(install.messageRef, t, install.message)}
-                  {install.percent === null ? '' : ` (${Math.round(install.percent)} %)`}
-                </span>
-              )}
-            </p>
-          ) : status.state === 'crashed' ? (
-            <p className="text-sm text-bad">
-              {status.exitCode === null ? (renderOptionalRef(status.messageRef, t, status.message) ?? t.overview.unexpectedStop) : t.overview.exitCode(status.exitCode)}{' '}
-              <Link to={serverPath(server.id)}>{crash === undefined ? t.overview.details : t.overview.detailsWithLog}</Link>
-            </p>
-          ) : status.state === 'preparing' ? (
-            <p className="num text-sm text-accent">{renderOptionalRef(status.messageRef, t, status.message) ?? t.overview.preparing}</p>
-          ) : running && status.startedAt !== null ? (
-            <p className="num text-sm text-dim">{t.overview.runningFor(formatDuration(Date.now() - status.startedAt))}</p>
-          ) : null}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="num flex justify-between text-xs text-dim">
-              <span>CPU</span>
-              <span>{formatPercent(status.cpuPercent)}</span>
-            </p>
-            <Meter label={t.overview.cpuOf(server.name)} value={status.cpuPercent === null ? null : status.cpuPercent / 100} valueText={formatPercent(status.cpuPercent)} />
+          </Link>
+        </td>
+        <td className="px-3 py-3">
+          <div className="space-y-1">
+            <StatusChip server={server} status={status} />
+            <StatusDetail server={server} status={status} install={install} crash={crash} />
           </div>
-          <div className="min-w-0 space-y-1">
-            <p className="num flex justify-between gap-2 text-xs text-dim">
-              <span>RAM</span>
-              <span className="whitespace-nowrap">{status.rssBytes === null ? '–' : `${formatBytes(status.rssBytes)} / ${formatMb(server.maxRamMb)}`}</span>
-            </p>
-            <Meter label={t.overview.memoryOf(server.name)} value={ramRatio} valueText={status.rssBytes === null ? t.overview.notMeasured : formatBytes(status.rssBytes)} />
+        </td>
+        <td className="num px-3 py-3" title={status.players.length > 0 ? status.players.join(', ') : undefined}>
+          {status.state === 'online' ? players : <span className="text-faint">{t.overview.noPlayers}</span>}
+        </td>
+        <td className="num px-3 py-3 text-dim">
+          <span className="select-all whitespace-nowrap" title={t.overview.connectTo(`${host ?? ''}:${port}`)}>
+            {host === null ? t.overview.portLabel(port) : `${host}:${port}`}
+          </span>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex justify-end">
+            <ActionBar server={server} status={status} actions={actions} compact menu />
           </div>
-        </div>
-
-        <div className="min-w-0">
-          <p className="num flex items-center gap-1.5 text-sm">
-            <Users aria-hidden className="size-4 shrink-0 text-dim" />
-            <span>{plural(status.players.length, t.overview.playerSingular, t.overview.playerPlural)}</span>
-          </p>
-          {status.players.length > 0 ? (
-            <p className="truncate text-sm text-dim" title={status.players.join(', ')}>
-              {status.players.join(', ')}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="xl:flex xl:justify-end">
-          <ActionBar server={server} status={status} actions={actions} compact />
-        </div>
-      </div>
+        </td>
+      </tr>
       {actions.error !== null || actions.warnings.length > 0 ? (
-        <div className="border-t border-line p-4">
-          <ActionFeedback serverId={server.id} actions={actions} />
-        </div>
+        <tr>
+          <td colSpan={5} className="px-4 pb-3">
+            <ActionFeedback serverId={server.id} actions={actions} />
+          </td>
+        </tr>
       ) : null}
-    </li>
+    </>
   );
 }
 
@@ -224,30 +137,27 @@ export function Overview(): ReactNode {
   const { t } = useI18n();
   const { state, statusFor, listError, refresh } = useLive();
   const { navigate } = useRouter();
-  const { nameOf } = useGames();
+  const host = useLanHost();
   const servers = state.servers;
 
   useEffect(() => {
     document.title = t.overview.documentTitle;
   }, [t]);
 
-  const health = useQuery<HealthInfo | null>(() => systemApi.health().catch(() => null), []);
-  const system = useQuery((signal) => systemApi.system(false, signal), []);
-  const host = (health.data?.lanUrls ?? [])[0];
+  // one list, ordered like the games page and then by name; the tile in each row tells the games apart
+  const sorted = servers === null ? [] : [...servers].sort((a, b) => GAME_ORDER.indexOf(a.game) - GAME_ORDER.indexOf(b.game) || a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl">{t.overview.title}</h1>
-          {servers === null ? null : <Summary servers={servers} statuses={servers.map((server) => statusFor(server))} />}
+          {servers === null ? null : <Summary statuses={servers.map((server) => statusFor(server))} />}
         </div>
         <Button variant="primary" icon={Plus} onClick={() => navigate('/new')}>
           {t.shell.newServer}
         </Button>
       </div>
-
-      <HostPanel health={health} system={system} />
 
       {listError !== null && servers === null ? (
         <ErrorNotice error={new Error(listError)} title={t.overview.listLoadFailed} action={<Button size="sm" onClick={() => void refresh()}>{t.common.retry}</Button>} />
@@ -268,30 +178,26 @@ export function Overview(): ReactNode {
       ) : (
         <>
           {listError === null ? null : <Notice tone="warn">{t.overview.listStale(listError)}</Notice>}
-          {GAME_ORDER.filter((game) => servers.some((server) => server.game === game)).map((game) => {
-            const own = servers.filter((server) => server.game === game);
-            return (
-              <section key={game} aria-label={t.games.groupLabel(nameOf(game))} className="space-y-2">
-                <h2 className="flex items-center gap-2 text-sm font-medium text-dim">
-                  <GameTile game={game} size="sm" />
-                  {nameOf(game)}
-                  <span className="num text-faint">{own.length}</span>
-                </h2>
-                <ul className="space-y-3" aria-label={t.overview.serversLabel}>
-                  {own.map((server) => (
-                    <ServerRow
-                      key={server.id}
-                      server={server}
-                      status={statusFor(server)}
-                      install={state.installs[server.id]}
-                      crash={state.crashes[server.id]}
-                      host={host === undefined ? null : lanHost(host)}
-                    />
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
+          <div className="panel overflow-x-auto p-0">
+            <table className="w-full min-w-[46rem] border-collapse text-left" aria-label={t.overview.serversLabel}>
+              <thead>
+                <tr className="text-xs text-faint">
+                  <th scope="col" className="px-4 py-2.5 font-medium">{t.overview.columns.server}</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.status}</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.players}</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.join}</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">
+                    <span className="sr-only">{t.overview.columns.actions}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((server) => (
+                  <ServerRow key={server.id} server={server} status={statusFor(server)} install={state.installs[server.id]} crash={state.crashes[server.id]} host={host} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

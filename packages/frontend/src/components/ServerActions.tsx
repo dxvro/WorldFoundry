@@ -8,6 +8,7 @@ import { installMajorFor } from '../lib/java';
 import { serverPath, Link } from '../lib/router';
 import type { RuntimeStatus, ServerView } from '../lib/types';
 import { Dialog } from './Dialog';
+import { MoreMenu } from './MoreMenu';
 import { JavaProgress } from './JavaProgress';
 import { Button, ErrorNotice, Notice } from './ui';
 
@@ -65,9 +66,11 @@ interface ActionBarProps {
   status: Pick<RuntimeStatus, 'state'>;
   actions: ActionState;
   compact?: boolean;
+  // one main button (start, stop or cancel); restart and force stop go into a "…" menu
+  menu?: boolean;
 }
 
-export function ActionBar({ server, status, actions, compact = false }: ActionBarProps): ReactNode {
+export function ActionBar({ server, status, actions, compact = false, menu = false }: ActionBarProps): ReactNode {
   const { t } = useI18n();
   const [confirmKill, setConfirmKill] = useState(false);
   const { busy, run } = actions;
@@ -89,6 +92,20 @@ export function ActionBar({ server, status, actions, compact = false }: ActionBa
         <Button size={size} icon={X} title={labels.cancelStartTitle} loading={busy === 'stop'} disabled={busy !== null} onClick={() => void run('stop')}>
           {t.common.cancel}
         </Button>
+      ) : active && menu ? (
+        <>
+          <Button size={size} icon={Square} loading={busy === 'stop'} disabled={state === 'stopping' || busy !== null} onClick={() => void run('stop')}>
+            {labels.stop}
+          </Button>
+          <MoreMenu
+            label={t.common.moreActions}
+            size={size}
+            items={[
+              { label: labels.restart, disabled: state === 'stopping' || busy !== null, onSelect: () => void run('restart') },
+              { label: labels.kill, danger: true, disabled: busy !== null, onSelect: () => setConfirmKill(true) },
+            ]}
+          />
+        </>
       ) : active ? (
         <>
           <Button size={size} icon={Square} loading={busy === 'stop'} disabled={state === 'stopping' || busy !== null} onClick={() => void run('stop')}>

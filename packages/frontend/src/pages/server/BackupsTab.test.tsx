@@ -133,13 +133,13 @@ describe('backups tab', () => {
     await waitFor(() => expect(api.callsTo('DELETE /api/servers/srv-1/backups/b2')).toHaveLength(1));
   });
 
-  it('blocks restoring while the server runs and explains the save commands', async () => {
+  it('blocks restoring while the server runs and says that saving pauses briefly', async () => {
     setup({ ...offline, state: 'online', pid: 1, startedAt: Date.now(), port: 25565 });
     render(<App />);
     const rows = await screen.findAllByTestId('backup-row');
     const manual = rows.find((entry) => within(entry).queryByText('Manual') !== null) as HTMLElement;
     expect(within(manual).getByRole('button', { name: 'Restore' })).toBeDisabled();
-    expect(screen.getByText(/save-off, save-all flush/)).toBeInTheDocument();
+    expect(screen.getByText(/saving pauses briefly/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create backup' })).toBeEnabled();
   });
 
@@ -183,7 +183,8 @@ describe('backups tab', () => {
     setup();
     backups.length = 0;
     render(<App />);
-    expect(await screen.findByText('No backups yet')).toBeInTheDocument();
+    expect(await screen.findByText(/No backups yet/)).toBeInTheDocument();
+    expect(screen.getByText(/set a schedule below/)).toBeInTheDocument();
   });
 
   it('reads the list again when the backend reports a change', async () => {

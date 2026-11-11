@@ -50,9 +50,10 @@ describe('ARK server page', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Dino Land' })).toBeInTheDocument();
     expect(screen.getByText('Map Ragnarok')).toBeInTheDocument();
+    expect(screen.getByText('Join localhost:7777')).toHaveAttribute('title', 'Port 7777/7778 (UDP), query 27015');
     expect(screen.getByText('game 7777 UDP, peer 7778 UDP, query 27015 UDP, RCON 27020 TCP')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: /sections/i });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Console', 'Configuration', 'Settings files', 'Steam Workshop', 'Players', 'Backups']);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Overview', 'Console', 'Players', 'Mods', 'World & backups', 'Settings']);
     expect(screen.queryByText('ark-admin-pw')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Show' }));
     expect(screen.getByText('ark-admin-pw')).toBeInTheDocument();

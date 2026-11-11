@@ -50,8 +50,7 @@ export const zomboidFiles = {
 };
 
 export const workshop = {
-  intro:
-    'The server downloads Workshop items itself when it starts. An item can contain several mods: only the mod ids listed below are switched on. Order matters: dependencies first.',
+  intro: 'The server downloads Workshop items when it starts. Only the mod ids below are switched on, dependencies first.',
   add: 'Add',
   addLabel: 'Workshop id or link',
   addHint: 'For example 2392709985 or https://steamcommunity.com/sharedfiles/filedetails/?id=2392709985',

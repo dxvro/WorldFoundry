@@ -38,6 +38,10 @@ export const overview = {
     'The assistant guides you in a few steps through loader, version, port and memory. The installation then runs in the background.',
   listStale: (error: string) => `The list could not be updated recently: ${error}`,
   serversLabel: 'Servers',
+  columns: { server: 'Server', status: 'Status', players: 'Players', join: 'Join', actions: 'Actions' },
+  running: (count: number) => `${count} running`,
+  playersOnline: (count: number) => (count === 1 ? '1 player online' : `${count} players online`),
+  noPlayers: '–',
   install: {
     phases: {
       resolve: 'Determining the version',

@@ -55,7 +55,7 @@ const Row = memo(function Row({ row, needle }: { row: ConsoleRow; needle: string
   );
 });
 
-function CrashPanel({ status, lastLines }: { status: RuntimeStatus; lastLines: string[] }): ReactNode {
+export function CrashPanel({ status, lastLines }: { status: RuntimeStatus; lastLines: string[] }): ReactNode {
   const { t } = useI18n();
   return (
     <section aria-label={t.console.crash.label} className="space-y-2 rounded-lg border border-bad/50 bg-bad/10 p-3">

@@ -2,7 +2,7 @@ import type { GameId } from '@worldfoundry/backend/contract';
 import { isGameId } from '../games/look';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
-export const SERVER_TABS = ['console', 'config', 'files', 'workshop', 'ficsit', 'world', 'players', 'mods', 'store', 'backups'] as const;
+export const SERVER_TABS = ['overview', 'console', 'config', 'files', 'workshop', 'ficsit', 'world', 'players', 'mods', 'store', 'backups'] as const;
 export type ServerTab = (typeof SERVER_TABS)[number];
 
 export type Route =
@@ -32,13 +32,13 @@ export function parseRoute(pathname: string): Route {
     } catch {
       return { name: 'not-found' };
     }
-    const tab = parts[2] ?? 'console';
+    const tab = parts[2] ?? 'overview';
     return isTab(tab) ? { name: 'server', id, tab } : { name: 'not-found' };
   }
   return { name: 'not-found' };
 }
 
-export const serverPath = (id: string, tab: ServerTab = 'console'): string => `/servers/${encodeURIComponent(id)}${tab === 'console' ? '' : `/${tab}`}`;
+export const serverPath = (id: string, tab: ServerTab = 'overview'): string => `/servers/${encodeURIComponent(id)}${tab === 'overview' ? '' : `/${tab}`}`;
 
 interface RouterValue {
   route: Route;

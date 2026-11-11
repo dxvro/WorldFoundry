@@ -214,6 +214,18 @@ export interface FicsitHit {
   installed: boolean;
 }
 
+export interface ConsoleLineView {
+  seq: number;
+  time: number;
+  text: string;
+  stream: string;
+}
+
+export const consoleApi = {
+  history: (id: string, limit: number, signal?: AbortSignal): Promise<{ lines: ConsoleLineView[] }> =>
+    request(`${server(id)}/console/history`, { query: { limit }, ...(signal === undefined ? {} : { signal }) }),
+};
+
 export interface CustomModView {
   id: string;
   name: string;

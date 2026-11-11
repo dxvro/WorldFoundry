@@ -9,7 +9,8 @@ describe('parseRoute', () => {
     expect(parseRoute('/new/world')).toEqual({ name: 'new-world' });
     expect(parseRoute('/new/tetris')).toEqual({ name: 'not-found' });
     expect(parseRoute('/games')).toEqual({ name: 'games' });
-    expect(parseRoute('/servers/abc')).toEqual({ name: 'server', id: 'abc', tab: 'console' });
+    expect(parseRoute('/servers/abc')).toEqual({ name: 'server', id: 'abc', tab: 'overview' });
+    expect(parseRoute('/servers/abc/console')).toEqual({ name: 'server', id: 'abc', tab: 'console' });
     expect(parseRoute('/servers/abc/mods')).toEqual({ name: 'server', id: 'abc', tab: 'mods' });
     expect(parseRoute('/servers/abc/store/')).toEqual({ name: 'server', id: 'abc', tab: 'store' });
     expect(parseRoute('/servers/abc/world')).toEqual({ name: 'server', id: 'abc', tab: 'world' });

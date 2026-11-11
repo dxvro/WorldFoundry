@@ -2,6 +2,7 @@ export const common = {
   loading: 'Loading …',
   close: 'Close',
   cancel: 'Cancel',
+  moreActions: 'More actions',
   retry: 'Try again',
   unknownError: 'Unknown error.',
   errorCode: (code: string) => `Error code: ${code}`,
