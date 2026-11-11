@@ -7,6 +7,7 @@ import { extractZip } from '../../archive/zip.js';
 import type { Db } from '../../db/client.js';
 import { servers, type Server } from '../../db/schema.js';
 import { AppError } from '../../http/errors.js';
+import { allowedImageUrl } from '../../lib/images.js';
 import type { KeyedLock } from '../../lib/keyed-lock.js';
 import { downloadToTmp } from '../../mods/downloader.js';
 import type { ServerRuntimeGuard } from '../../mods/runtime-guard.js';
@@ -196,7 +197,7 @@ export class FicsitService {
     const installed = await this.manifest(this.dirs(server).mods);
     const result = await this.options.api.search(query, offset);
     return {
-      hits: result.hits.map((hit) => ({ reference: hit.mod_reference, name: hit.name, summary: hit.short_description ?? '', logo: hit.logo ?? null, downloads: hit.downloads, installed: installed.has(hit.mod_reference) })),
+      hits: result.hits.map((hit) => ({ reference: hit.mod_reference, name: hit.name, summary: hit.short_description ?? '', logo: allowedImageUrl(hit.logo), downloads: hit.downloads, installed: installed.has(hit.mod_reference) })),
       total: result.total,
       offset,
       limit: PAGE_SIZE,

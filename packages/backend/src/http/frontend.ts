@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { targetsApi } from './auth.js';
 import { notFoundHandler } from './errors.js';
+import { IMAGE_HOSTS } from '../lib/images.js';
 
 const SPA_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD']);
 
@@ -43,7 +44,8 @@ export function contentSecurityPolicy(host: string | undefined): string {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
-    "img-src 'self' https://cdn.modrinth.com",
+    // mod pictures: Modrinth (Minecraft), ficsit.app (Satisfactory), Steam Workshop (Project Zomboid, ARK)
+    `img-src 'self' ${IMAGE_HOSTS.join(' ')}`,
     "font-src 'self'",
     `connect-src 'self'${socketHosts}`,
     "object-src 'none'",

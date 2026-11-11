@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { contentSecurityPolicy } from '../src/http/frontend.js';
+import { allowedImageUrl } from '../src/lib/images.js';
 import { ServerEnv, scratchDir } from './server-env.js';
 
 const TOKEN = 'a-secret-token';
@@ -67,7 +68,7 @@ describe('static frontend without login', () => {
     const csp = String(res.headers['content-security-policy']);
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).toContain("img-src 'self' https://cdn.modrinth.com");
+    expect(csp).toContain("img-src 'self' https://cdn.modrinth.com https://storage.ficsit.app");
     expect(csp).toContain(`ws://127.0.0.1:${port}`);
     expect(csp).not.toContain('unsafe-inline');
   });
@@ -223,10 +224,23 @@ describe('frontend not built', () => {
 });
 
 describe('contentSecurityPolicy', () => {
-  it('limits sources to the page itself and the Modrinth CDN for images', () => {
+  it('limits sources to the page itself and the mod sites for images', () => {
     const csp = contentSecurityPolicy('192.168.1.20:3000');
     expect(csp).toContain("connect-src 'self' ws://192.168.1.20:3000 wss://192.168.1.20:3000");
     expect(csp).toContain("script-src 'self'");
     expect(contentSecurityPolicy(undefined)).toContain("connect-src 'self'");
+  });
+
+  it('allows the pictures of every mod source and nothing else', () => {
+    const csp = contentSecurityPolicy(undefined);
+    expect(csp).toContain("img-src 'self' https://cdn.modrinth.com https://storage.ficsit.app https://images.steamusercontent.com https://steamuserimages-a.akamaihd.net");
+    expect(allowedImageUrl('https://storage.ficsit.app/file/smr-prod-s3/images/mods/jYntLCZw3stSG/logo.webp')).toBe('https://storage.ficsit.app/file/smr-prod-s3/images/mods/jYntLCZw3stSG/logo.webp');
+    expect(allowedImageUrl('https://images.steamusercontent.com/ugc/1/ABC/')).toBe('https://images.steamusercontent.com/ugc/1/ABC/');
+    // ficsit.app answers "" for a mod without a logo: no broken picture
+    expect(allowedImageUrl('')).toBeNull();
+    expect(allowedImageUrl(null)).toBeNull();
+    expect(allowedImageUrl('http://storage.ficsit.app/logo.webp')).toBeNull();
+    expect(allowedImageUrl('https://evil.example/logo.webp')).toBeNull();
+    expect(allowedImageUrl('javascript:alert(1)')).toBeNull();
   });
 });

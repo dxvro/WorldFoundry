@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { servers, type Server } from '../../db/schema.js';
 import { AppError } from '../../http/errors.js';
+import { allowedImageUrl } from '../../lib/images.js';
 import type { KeyedLock } from '../../lib/keyed-lock.js';
 import type { ServerRuntimeGuard } from '../../mods/runtime-guard.js';
 import { iniFile, parseZomboidSettings } from './adapter.js';
@@ -87,7 +88,7 @@ export class SteamWorkshopClient implements WorkshopApi {
         id,
         found,
         title: found ? (detail.title ?? null) : null,
-        previewUrl: found ? (detail.preview_url ?? null) : null,
+        previewUrl: found ? allowedImageUrl(detail.preview_url) : null,
         sizeBytes: Number.isFinite(size) ? size : null,
         updatedAt: found && detail.time_updated !== undefined ? detail.time_updated * 1000 : null,
         modIds: modIdsOf(description),
