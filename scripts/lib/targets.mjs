@@ -103,3 +103,9 @@ export function parseArgs(argv) {
   }
   return options;
 }
+
+// The systemd unit allows 32-bit x86 system calls for SteamCMD; on an ARM machine there are none, so that is dropped.
+export function unitForTarget(text, target) {
+  if (target.arch === 'x64') return text;
+  return text.replace(/^SystemCallArchitectures=native x86$/m, 'SystemCallArchitectures=native');
+}

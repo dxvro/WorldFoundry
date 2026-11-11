@@ -18,7 +18,7 @@ import { collectFrontendPackages, collectPackages, formatNotices, mergePackages 
 import { NODE_DIST_BASE, nodeArchiveEntries, nodeBinaryMode, nodeDistUrl, selectLts, writeExecutable } from './lib/node-dist.mjs';
 import { describeSpawnFailure } from './lib/probe.mjs';
 import { runNpm, stageProduction } from './lib/stage.mjs';
-import { getTarget, hostTargetName, nodeArchiveName, parseArgs, releaseBaseName, TARGET_NAMES } from './lib/targets.mjs';
+import { getTarget, hostTargetName, nodeArchiveName, parseArgs, releaseBaseName, TARGET_NAMES, unitForTarget } from './lib/targets.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RELEASE = path.join(ROOT, 'release');
@@ -148,7 +148,7 @@ async function copyPlatformFiles(outDir, target) {
     for (const name of ['install.sh', 'uninstall.sh', 'worldfoundry', 'worldfoundry.service', 'worldfoundry-update.service', 'worldfoundry-update.path', 'README.txt']) {
       // Shell scripts must have LF line endings, even if the checkout on Windows produced CRLF
       const text = (await readFile(path.join(dir, name), 'utf8')).replace(/\r\n/g, '\n');
-      await writeFile(path.join(outDir, name), text);
+      await writeFile(path.join(outDir, name), name === 'worldfoundry.service' ? unitForTarget(text, target) : text);
     }
   }
 }

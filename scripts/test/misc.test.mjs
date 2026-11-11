@@ -11,7 +11,7 @@ import { WINSW } from '../lib/pins.mjs';
 import { findNonAsciiPaths, isPrunableDirName, lockEntry, npmPlatformFlags, pruneNodeModules } from '../lib/stage.mjs';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
-import { getTarget, TARGET_NAMES } from '../lib/targets.mjs';
+import { getTarget, TARGET_NAMES, unitForTarget } from '../lib/targets.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -113,6 +113,12 @@ test('systemd unit: shutdown and hardening', async () => {
   assert.match(unit, /^KillMode=mixed$/m);
   assert.ok(!/^MemoryDenyWriteExecute=(true|yes)/m.test(unit), 'MemoryDenyWriteExecute would break Java');
   assert.match(unit, /^NoNewPrivileges=true$/m);
+  // SteamCMD is a 32-bit program; "native" alone kills it with SIGSYS (exit code 159, "Bad system call")
+  assert.match(unit, /^SystemCallArchitectures=native x86$/m);
+  assert.equal(unitForTarget(unit, getTarget('linux-x64')), unit);
+  const arm = unitForTarget(unit, getTarget('linux-arm64'));
+  assert.match(arm, /^SystemCallArchitectures=native$/m);
+  assert.doesNotMatch(arm, /native x86/);
 });
 
 test('node_modules: test folders are removed, special characters in paths are found', async () => {

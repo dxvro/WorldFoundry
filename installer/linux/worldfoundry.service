@@ -51,7 +51,9 @@ RestrictRealtime=true
 RestrictNamespaces=true
 LockPersonality=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-SystemCallArchitectures=native
+# SteamCMD and some dedicated servers are 32-bit x86 programs: without "x86" the kernel kills them with SIGSYS
+# ("Bad system call"). The ARM package drops "x86" (scripts/package.mjs), where it does not apply.
+SystemCallArchitectures=native x86
 # Allow ports below 1024 (e.g. PORT=80) without root, no other special privileges
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_BIND_SERVICE
