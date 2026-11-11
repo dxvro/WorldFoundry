@@ -32,6 +32,7 @@ import { buildOutput, convertSingleplayerPlayer, moveDir, styleForLoader } from 
 import { evaluateNotices, matchMods, notice as notice_, missingMods, missingNotice, type ModSelection, type ReviewTarget } from './review.js';
 import { stageArchive, type StageLimits } from './staging.js';
 import { swapWorlds } from './swap.js';
+import { receiveToFile } from '../lib/receive.js';
 
 const MIB = 1024 * 1024;
 
@@ -267,54 +268,8 @@ export class ImportService {
     const file = path.join(dir, 'upload.bin');
     try {
       await mkdir(dir, { recursive: true });
-      let received = 0;
-      // Not stream.pipeline: on an error that would destroy the request, and with it the connection the 413 is sent on.
       const tooLarge = (): AppError => new AppError(413, 'IMPORT_TOO_LARGE', `The file is too large (at most ${maxText}). The limit can be adjusted with IMPORT_MAX_MB.`, undefined, { max: maxText });
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const out = createWriteStream(file, { flags: 'wx' });
-          let settled = false;
-          const fail = (error: Error): void => {
-            if (settled) return;
-            settled = true;
-            stream.pause();
-            stream.removeListener('data', onData);
-            out.destroy();
-            reject(error);
-          };
-          const onData = (chunk: Buffer): void => {
-            received += chunk.length;
-            if (received > max) {
-              fail(tooLarge());
-              return;
-            }
-            if (!out.write(chunk)) {
-              stream.pause();
-              out.once('drain', () => stream.resume());
-            }
-          };
-          stream.on('data', onData);
-          stream.on('end', () => {
-            if (settled) return;
-            settled = true;
-            out.end(() => resolve());
-          });
-          stream.on('error', fail);
-          stream.on('close', () => {
-            if (!(stream as { readableEnded?: boolean }).readableEnded) fail(Object.assign(new Error('closed'), { code: 'ERR_STREAM_PREMATURE_CLOSE' }));
-          });
-          out.on('error', fail);
-        });
-      } catch (error) {
-        if (error instanceof AppError) throw error;
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code === 'ENOSPC') throw new AppError(507, 'DISK_FULL', 'There is not enough free disk space.');
-        if (code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ECONNRESET' || code === 'ABORT_ERR') {
-          throw new AppError(400, 'UPLOAD_ABORTED', 'The upload was cancelled.');
-        }
-        throw error;
-      }
-      if (received === 0) throw new AppError(400, 'UPLOAD_EMPTY', 'No file was transferred.');
+      await receiveToFile(stream, file, max, tooLarge);
     } catch (error) {
       this.jobs.delete(id);
       await rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => undefined);
