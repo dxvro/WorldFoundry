@@ -64,7 +64,9 @@ scp -q "$ARCHIVE" "$TARGET_HOST:$NAME.tar.gz"
 
 echo "==> Installing on $TARGET_HOST (sudo may ask for the password)"
 # the arguments travel as one quoted string to the remote shell
-REMOTE_ARGS="$(printf ' %q' "${INSTALL_ARGS[@]+"${INSTALL_ARGS[@]}"}")"
+# (printf with no arguments would still print one empty argument, which install.sh rejects)
+REMOTE_ARGS=""
+if [ "${#INSTALL_ARGS[@]}" -gt 0 ]; then REMOTE_ARGS="$(printf ' %q' "${INSTALL_ARGS[@]}")"; fi
 ssh -t "$TARGET_HOST" "set -e
 rm -rf '$NAME'
 tar xzf '$NAME.tar.gz'

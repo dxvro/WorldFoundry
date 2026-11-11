@@ -150,6 +150,27 @@ test('Test machine deployment: valid bash, a target is required, the first insta
   const text = await readFile(script, 'utf8');
   assert.match(text, /if \[ -d \/opt\/worldfoundry \]; then FIRST=''; else FIRST='--open-firewall'; fi/);
   assert.match(text, /ssh -t /, 'sudo needs a terminal on the remote side');
+  // the command for the machine: no empty argument without options (install.sh rejects it), options passed on
+  const bin = await mkdtemp(path.join(os.tmpdir(), 'wf-deploy-'));
+  try {
+    await writeFile(path.join(bin, 'ssh'), '#!/bin/sh\nshift 2\nprintf "%s\\n" "$1" | grep "sudo ./install.sh"\n', { mode: 0o755 });
+    await writeFile(path.join(bin, 'scp'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    await mkdir(path.join(ROOT, 'release'), { recursive: true });
+    const archive = path.join(ROOT, 'release', `worldfoundry-${JSON.parse(await readFile(path.join(ROOT, 'packages', 'backend', 'package.json'), 'utf8')).version}-linux-x64.tar.gz`);
+    const existed = spawnSync('test', ['-f', archive]).status === 0;
+    if (!existed) await writeFile(archive, '');
+    try {
+      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` };
+      const plain = spawnSync('bash', [script, 'u@h', '--skip-build'], { encoding: 'utf8', env });
+      if (plain.error === undefined) assert.match(plain.stdout, /^sudo \.\/install\.sh \$FIRST$/m, plain.stderr);
+      const extra = spawnSync('bash', [script, 'u@h', '--skip-build', '--', '--port', '8080'], { encoding: 'utf8', env });
+      if (extra.error === undefined) assert.match(extra.stdout, /^sudo \.\/install\.sh \$FIRST --port 8080$/m, extra.stderr);
+    } finally {
+      if (!existed) await rm(archive, { force: true });
+    }
+  } finally {
+    await rm(bin, { recursive: true, force: true });
+  }
   // no address of any particular machine is written into the script
   assert.doesNotMatch(text, /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
 });
