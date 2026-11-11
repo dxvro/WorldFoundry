@@ -6,6 +6,7 @@ import { AppError } from '../http/errors.js';
 import type { InstallerRunner } from '../installer/runner.js';
 import { KeyedLock } from '../lib/keyed-lock.js';
 import { downloadToTmp } from '../mods/downloader.js';
+import { msg, type Msg } from '../messages.js';
 
 // SteamCMD is Valve's command-line client for dedicated servers. WorldFoundry downloads it from Valve into its data
 // folder on first use (or uses STEAMCMD_PATH) and always logs in anonymously: no Steam account is ever involved.
@@ -29,9 +30,16 @@ export const STEAM_DEV_CFG = [
 const RUN_TIMEOUT_MS = 3 * 60 * 60_000;
 const BRANCH = /^[A-Za-z0-9_.-]{1,80}$/;
 
+export type SteamStep = 'download' | 'preallocate' | 'verify' | 'commit' | 'other';
+
 export interface SteamProgress {
   percent: number | null;
   line: string;
+  step: SteamStep;
+  doneBytes: number | null;
+  totalBytes: number | null;
+  // measured over the last seconds while downloading; null before there is enough to measure
+  bytesPerSecond: number | null;
 }
 
 export interface AppUpdateRequest {
@@ -63,13 +71,78 @@ const exists = (file: string): Promise<boolean> =>
   );
 
 // "Update state (0x61) downloading, progress: 45.12 (1234 / 5678)"
-const PROGRESS = /Update state \(0x[0-9a-f]+\) [a-z ,]+, progress: (\d{1,3}(?:\.\d+)?) \(/i;
+const PROGRESS = /Update state \(0x[0-9a-f]+\) ([a-z ,]+), progress: (\d{1,3}(?:\.\d+)?) \((?:(\d+) \/ (\d+)\))?/i;
 
 export function parseProgress(line: string): number | null {
+  return parseSteamLine(line)?.percent ?? null;
+}
+
+// " Update state (0x61) downloading, progress: 45.12 (1234 / 5678)" -> step, percent and bytes
+export function parseSteamLine(line: string): { step: SteamStep; percent: number; doneBytes: number | null; totalBytes: number | null } | null {
   const match = PROGRESS.exec(line);
-  if (match?.[1] === undefined) return null;
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
+  if (match?.[2] === undefined) return null;
+  const value = Number(match[2]);
+  if (!Number.isFinite(value)) return null;
+  const state = (match[1] ?? '').toLowerCase();
+  const step: SteamStep = state.includes('downloading') ? 'download' : state.includes('preallocating') ? 'preallocate' : state.includes('verifying') ? 'verify' : state.includes('committing') ? 'commit' : 'other';
+  const done = match[3] === undefined ? null : Number(match[3]);
+  // "(0 / 0)" while SteamCMD is still looking at the depots: nothing known yet
+  const total = match[4] === undefined || Number(match[4]) === 0 ? null : Number(match[4]);
+  return { step, percent: Math.min(100, Math.max(0, value)), doneBytes: done, totalBytes: total };
+}
+
+const SPEED_WINDOW_MS = 10_000;
+
+// Download speed over a sliding window of the byte counts SteamCMD prints (about every two seconds)
+export class SpeedMeter {
+  private samples: Array<{ at: number; bytes: number }> = [];
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  // the speed after this sample; null until two samples lie at least a second apart
+  add(bytes: number): number | null {
+    const at = this.now();
+    const last = this.samples.at(-1);
+    // a new phase or file list starts from fewer bytes: measure afresh
+    if (last !== undefined && bytes < last.bytes) this.samples = [];
+    this.samples.push({ at, bytes });
+    while (this.samples.length > 2 && at - (this.samples[1]?.at ?? at) >= SPEED_WINDOW_MS) this.samples.shift();
+    const first = this.samples[0];
+    if (first === undefined || at - first.at < 1000) return null;
+    return ((bytes - first.bytes) * 1000) / (at - first.at);
+  }
+
+  reset(): void {
+    this.samples = [];
+  }
+}
+
+const unitText = (bytes: number): string => {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  return `${unit === 0 ? Math.round(value) : value.toFixed(value >= 100 ? 0 : 1)} ${units[unit]}`;
+};
+
+// The install step text of a SteamCMD progress line, with amounts and the measured speed
+export function steamProgressMessage(game: string, progress: SteamProgress): Msg {
+  if (progress.totalBytes === null) return msg('INSTALL_STEP_STEAM_DOWNLOAD', { game, done: '0 B', total: '?', speed: '' });
+  const done = progress.doneBytes === null ? '?' : unitText(progress.doneBytes);
+  const total = progress.totalBytes === null ? '?' : unitText(progress.totalBytes);
+  switch (progress.step) {
+    case 'preallocate':
+      return msg('INSTALL_STEP_STEAM_PREALLOCATE', { game, total });
+    case 'verify':
+      return msg('INSTALL_STEP_STEAM_VERIFY', { game, done, total });
+    case 'commit':
+      return msg('INSTALL_STEP_STEAM_COMMIT', { game, done, total });
+    default:
+      return msg('INSTALL_STEP_STEAM_DOWNLOAD', { game, done, total, speed: progress.bytesPerSecond === null ? '' : `${unitText(progress.bytesPerSecond)}/s` });
+  }
 }
 
 export const successLine = (appId: number): RegExp => new RegExp(String.raw`Success! App '${appId}' (?:fully installed|already up to date)`);
@@ -174,6 +247,8 @@ export class SteamCmd {
       const success = successLine(request.appId);
       let confirmed = false;
       const tail: string[] = [];
+      const meter = new SpeedMeter();
+      let step: SteamStep | null = null;
       const result = await this.options.runner({
         javaPath: command,
         args: [...prefix, ...buildAppUpdateArgs(request.appId, request.branch, request.dir, request.validate)],
@@ -185,8 +260,13 @@ export class SteamCmd {
           tail.push(line);
           if (tail.length > 15) tail.shift();
           if (success.test(line)) confirmed = true;
-          const percent = parseProgress(line);
-          if (percent !== null) request.onProgress({ percent, line });
+          const parsed = parseSteamLine(line);
+          if (parsed !== null) {
+            if (parsed.step !== step) meter.reset();
+            step = parsed.step;
+            const bytesPerSecond = parsed.step === 'download' && parsed.doneBytes !== null ? meter.add(parsed.doneBytes) : null;
+            request.onProgress({ ...parsed, line, bytesPerSecond });
+          }
         },
       }).catch((error: unknown) => {
         const code = (error as NodeJS.ErrnoException).code;

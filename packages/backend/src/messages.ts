@@ -226,6 +226,12 @@ const TEMPLATES = {
   INSTALL_STEP_RESOLVE: () => 'Resolving version',
   INSTALL_STEP_DOWNLOAD: (p: { fileName: string; kib: number }) => `${p.fileName}: ${p.kib} KiB`,
   INSTALL_STEP_INSTALLER: () => 'Installer running',
+  // SteamCMD: amounts and speed are already formatted ("1.2 GB", "12.3 MB/s")
+  INSTALL_STEP_STEAM_DOWNLOAD: (p: { game: string; done: string; total: string; speed: string }) =>
+    `${p.game}: ${p.done} of ${p.total}${p.speed === '' ? '' : ` · ${p.speed}`}`,
+  INSTALL_STEP_STEAM_PREALLOCATE: (p: { game: string; total: string }) => `${p.game}: reserving ${p.total} of disk space`,
+  INSTALL_STEP_STEAM_VERIFY: (p: { game: string; done: string; total: string }) => `${p.game}: checking files (${p.done} of ${p.total})`,
+  INSTALL_STEP_STEAM_COMMIT: (p: { game: string; done: string; total: string }) => `${p.game}: writing files (${p.done} of ${p.total})`,
   INSTALL_DONE: () => 'Installation finished',
   // ---- managed Java runtimes ----
   JAVA_ORIGIN_MANAGED: (p: { date: string; version: string; image: 'JRE' | 'JDK'; sha: string }) =>

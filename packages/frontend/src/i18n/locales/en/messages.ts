@@ -204,6 +204,10 @@ export const messages: MessageTexts = {
   INSTALL_UNEXPECTED_ERROR: 'An unexpected error occurred during the installation.',
   INSTALL_STEP_RESOLVE: 'Resolving version',
   INSTALL_STEP_DOWNLOAD: (p) => `${p.fileName}: ${p.kib} KiB`,
+  INSTALL_STEP_STEAM_DOWNLOAD: (p) => `${p.game}: ${p.done} of ${p.total}${p.speed === '' ? '' : ` · ${p.speed}`}`,
+  INSTALL_STEP_STEAM_PREALLOCATE: (p) => `${p.game}: reserving ${p.total} of disk space`,
+  INSTALL_STEP_STEAM_VERIFY: (p) => `${p.game}: checking files (${p.done} of ${p.total})`,
+  INSTALL_STEP_STEAM_COMMIT: (p) => `${p.game}: writing files (${p.done} of ${p.total})`,
   INSTALL_STEP_INSTALLER: 'Installer running',
   INSTALL_DONE: 'Installation finished',
   // ---- managed Java runtimes ----

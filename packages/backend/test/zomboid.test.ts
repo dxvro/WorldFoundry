@@ -11,7 +11,7 @@ import { readIniValues, setIniValues } from '../src/games/zomboid/ini.js';
 import { SteamWorkshopClient, mapFoldersOf, modIdsOf, workshopIdOf, type WorkshopDetails } from '../src/games/zomboid/workshop.js';
 import { createInstallerRunner } from '../src/installer/runner.js';
 import { realSpawner } from '../src/process/spawner.js';
-import { buildAppUpdateArgs, parseProgress, STEAM_DEV_CFG, STEAMCMD_DOWNLOAD, SteamCmd } from '../src/steam/steamcmd.js';
+import { buildAppUpdateArgs, parseProgress, parseSteamLine, SpeedMeter, STEAM_DEV_CFG, STEAMCMD_DOWNLOAD, SteamCmd, steamProgressMessage } from '../src/steam/steamcmd.js';
 import { FakeModrinth } from './fake-modrinth.js';
 import { createTestDb, testConfig, type TestDb } from './helpers.js';
 import { waitFor } from './server-env.js';
@@ -31,6 +31,33 @@ describe('SteamCMD helpers', () => {
     expect(parseProgress(' Update state (0x61) downloading, progress: 45.12 (1234 / 5678)')).toBe(45.12);
     expect(parseProgress(' Update state (0x81) verifying update, progress: 3.00 (1 / 2)')).toBe(3);
     expect(parseProgress('Success!')).toBeNull();
+  });
+
+  it('reads step and bytes, measures the download speed and words the progress', () => {
+    expect(parseSteamLine(' Update state (0x61) downloading, progress: 45.12 (1234 / 5678)')).toEqual({ step: 'download', percent: 45.12, doneBytes: 1234, totalBytes: 5678 });
+    expect(parseSteamLine(' Update state (0x101) committing, progress: 5.15 (1182146993 / 22942306343)')?.step).toBe('commit');
+    expect(parseSteamLine(' Update state (0x11) preallocating, progress: 10.00 (1 / 10)')?.step).toBe('preallocate');
+    expect(parseSteamLine(' Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)')).toEqual({ step: 'other', percent: 0, doneBytes: 0, totalBytes: null });
+
+    let now = 0;
+    const meter = new SpeedMeter(() => now);
+    expect(meter.add(0)).toBeNull();
+    now = 2000;
+    expect(meter.add(20_000_000)).toBe(10_000_000);
+    now = 4000;
+    expect(meter.add(60_000_000)).toBe(15_000_000);
+    // only the last ten seconds count
+    now = 16_000;
+    expect(meter.add(180_000_000)).toBe(10_000_000);
+    // fewer bytes than before: a new phase, measured afresh
+    expect(meter.add(1000)).toBeNull();
+
+    const download = steamProgressMessage('ARK', { step: 'download', percent: 5, line: '', doneBytes: 1_234_000_000, totalBytes: 22_942_306_343, bytesPerSecond: 12_300_000 });
+    expect(download.text).toBe('ARK: 1.2 GB of 22.9 GB · 12.3 MB/s');
+    expect(download.ref).toEqual({ key: 'INSTALL_STEP_STEAM_DOWNLOAD', params: { game: 'ARK', done: '1.2 GB', total: '22.9 GB', speed: '12.3 MB/s' } });
+    expect(steamProgressMessage('ARK', { step: 'download', percent: 1, line: '', doneBytes: 5000, totalBytes: 10_000, bytesPerSecond: null }).text).toBe('ARK: 5.0 KB of 10.0 KB');
+    expect(steamProgressMessage('ARK', { step: 'verify', percent: 2, line: '', doneBytes: 467_890_591, totalBytes: 22_942_306_343, bytesPerSecond: null }).text).toBe('ARK: checking files (468 MB of 22.9 GB)');
+    expect(steamProgressMessage('ARK', { step: 'other', percent: 0, line: '', doneBytes: 0, totalBytes: null, bytesPerSecond: null }).text).toBe('ARK: 0 B of ?');
   });
 
   it.runIf(linux)('tunes the downloads of its own SteamCMD once and leaves an existing steam_dev.cfg and STEAMCMD_PATH alone', async () => {

@@ -13,6 +13,7 @@ import { takenPorts } from '../ports.js';
 import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { getSectionValue } from './ini.js';
+import { steamProgressMessage } from '../../steam/steamcmd.js';
 
 export const ARK_APP_ID = 376030;
 export const ARK_WORKSHOP_APP = 346110;
@@ -176,7 +177,7 @@ export class ArkAdapter implements GameAdapter {
       validate: true,
       signal: ctx.signal,
       onLine: ctx.log,
-      onProgress: ({ percent }) => ctx.progress('download', percent, msg('INSTALL_STEP_DOWNLOAD', { fileName: 'ARK', kib: 0 })),
+      onProgress: (progress) => ctx.progress('download', progress.percent, steamProgressMessage('ARK', progress)),
     });
     if (!(await exists(this.executable(ctx.dir)))) throw new AppError(500, 'SERVER_FILES_MISSING', 'SteamCMD finished, but the server program is missing.');
     return {};

@@ -13,6 +13,7 @@ import { portsOf, takenPorts } from '../ports.js';
 import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { readIniValues, setIniValues } from './ini.js';
+import { steamProgressMessage } from '../../steam/steamcmd.js';
 
 export const ZOMBOID_APP_ID = 380870;
 export const DEFAULT_GAME_PORT = 16261;
@@ -213,7 +214,7 @@ export class ZomboidAdapter implements GameAdapter {
       validate: true,
       signal: ctx.signal,
       onLine: ctx.log,
-      onProgress: ({ percent }) => ctx.progress('download', percent, msg('INSTALL_STEP_DOWNLOAD', { fileName: 'Project Zomboid', kib: 0 })),
+      onProgress: (progress) => ctx.progress('download', progress.percent, steamProgressMessage('Project Zomboid', progress)),
     });
     const start = this.startFile(ctx.dir);
     if (!(await exists(start))) throw new AppError(500, 'SERVER_FILES_MISSING', 'SteamCMD finished, but the start file of the server is missing.');

@@ -12,6 +12,7 @@ import type { SteamCmd } from '../../steam/steamcmd.js';
 import { takenPorts } from '../ports.js';
 import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
+import { steamProgressMessage } from '../../steam/steamcmd.js';
 
 export const SATISFACTORY_APP_ID = 1690800;
 export const DEFAULT_PORT = 7777;
@@ -200,7 +201,7 @@ export class SatisfactoryAdapter implements GameAdapter {
       validate: true,
       signal: ctx.signal,
       onLine: ctx.log,
-      onProgress: ({ percent }) => ctx.progress('download', percent, msg('INSTALL_STEP_DOWNLOAD', { fileName: 'Satisfactory', kib: 0 })),
+      onProgress: (progress) => ctx.progress('download', progress.percent, steamProgressMessage('Satisfactory', progress)),
     });
     if (!(await exists(this.executable(ctx.dir)))) throw new AppError(500, 'SERVER_FILES_MISSING', 'SteamCMD finished, but the server program is missing.');
     await mkdir(homeDir(ctx.dir), { recursive: true });
