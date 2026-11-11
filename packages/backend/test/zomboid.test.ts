@@ -11,7 +11,7 @@ import { readIniValues, setIniValues } from '../src/games/zomboid/ini.js';
 import { SteamWorkshopClient, mapFoldersOf, modIdsOf, workshopIdOf, type WorkshopDetails } from '../src/games/zomboid/workshop.js';
 import { createInstallerRunner } from '../src/installer/runner.js';
 import { realSpawner } from '../src/process/spawner.js';
-import { buildAppUpdateArgs, parseProgress, STEAMCMD_DOWNLOAD, SteamCmd } from '../src/steam/steamcmd.js';
+import { buildAppUpdateArgs, parseProgress, STEAM_DEV_CFG, STEAMCMD_DOWNLOAD, SteamCmd } from '../src/steam/steamcmd.js';
 import { FakeModrinth } from './fake-modrinth.js';
 import { createTestDb, testConfig, type TestDb } from './helpers.js';
 import { waitFor } from './server-env.js';
@@ -31,6 +31,33 @@ describe('SteamCMD helpers', () => {
     expect(parseProgress(' Update state (0x61) downloading, progress: 45.12 (1234 / 5678)')).toBe(45.12);
     expect(parseProgress(' Update state (0x81) verifying update, progress: 3.00 (1 / 2)')).toBe(3);
     expect(parseProgress('Success!')).toBeNull();
+  });
+
+  it.runIf(linux)('tunes the downloads of its own SteamCMD once and leaves an existing steam_dev.cfg and STEAMCMD_PATH alone', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'wf-steamcfg-'));
+    try {
+      const fake = path.join(root, 'steamcmd.sh');
+      await writeFile(fake, '#!/bin/sh\necho "Success! App \'1\' fully installed."\n', { mode: 0o755 });
+      const update = (steam: SteamCmd) =>
+        steam.appUpdate({ appId: 1, branch: 'public', dir: path.join(root, 'game'), validate: false, signal: new AbortController().signal, onLine: () => undefined, onProgress: () => undefined });
+      const runner = createInstallerRunner(realSpawner);
+      // a SteamCMD named by the user: nothing is written next to it
+      await update(new SteamCmd({ dir: path.join(root, 'unused'), runner, configuredPath: fake, platform: 'linux' }));
+      expect(await readFile(path.join(root, 'steam_dev.cfg'), 'utf8').catch(() => null)).toBeNull();
+      // the managed one gets the file
+      const own = path.join(root, 'own');
+      await mkdir(own);
+      await writeFile(path.join(own, 'steamcmd.sh'), await readFile(fake, 'utf8'), { mode: 0o755 });
+      await update(new SteamCmd({ dir: own, runner, platform: 'linux' }));
+      expect(await readFile(path.join(own, 'steam_dev.cfg'), 'utf8')).toBe(STEAM_DEV_CFG);
+      expect(STEAM_DEV_CFG).toContain('@nClientDownloadEnableHTTP2PlatformLinux 0');
+      // a file the user changed is kept
+      await writeFile(path.join(own, 'steam_dev.cfg'), '@cMaxInitialDownloadSources 3\n');
+      await update(new SteamCmd({ dir: own, runner, platform: 'linux' }));
+      expect(await readFile(path.join(own, 'steam_dev.cfg'), 'utf8')).toBe('@cMaxInitialDownloadSources 3\n');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('downloads SteamCMD from Valve into its folder on first use', async () => {

@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, rename, rm } from 'node:fs/promises';
+import { access, chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { extractTarGz } from '../archive/tar.js';
 import { extractZip } from '../archive/zip.js';
@@ -14,6 +14,17 @@ export const STEAMCMD_DOWNLOAD = {
   win32: 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip',
 } as const;
 const DOWNLOAD_HOSTS = ['steamcdn-a.akamaihd.net'];
+// SteamCMD reads steam_dev.cfg next to itself. By default it keeps few HTTP/2 connections to the first content server
+// it picks; when that one is slow from the user's line (measured: 1 MB/s from one CDN node on a 80 MB/s line), a big
+// server like ARK takes hours. These settings let it open more connections and try more servers (measured: 11 -> 26 MB/s).
+// Written once into the SteamCMD that WorldFoundry manages and never over a file that already exists.
+export const STEAM_DEV_CFG_NAME = 'steam_dev.cfg';
+export const STEAM_DEV_CFG = [
+  '@nClientDownloadEnableHTTP2PlatformLinux 0',
+  '@fDownloadRateImprovementToAddAnotherConnection 1.0',
+  '@cMaxInitialDownloadSources 15',
+  '',
+].join('\n');
 // SteamCMD updates itself and the game files; a big game can take long on a slow line
 const RUN_TIMEOUT_MS = 3 * 60 * 60_000;
 const BRANCH = /^[A-Za-z0-9_.-]{1,80}$/;
@@ -145,10 +156,19 @@ export class SteamCmd {
     }
   }
 
+  // only for the SteamCMD of WorldFoundry: an installation named with STEAMCMD_PATH belongs to the user
+  private async tuneDownloads(): Promise<void> {
+    if (this.options.configuredPath !== undefined) return;
+    await writeFile(path.join(this.options.dir, STEAM_DEV_CFG_NAME), STEAM_DEV_CFG, { flag: 'wx' }).catch((error: unknown) => {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    });
+  }
+
   // Installs or updates a dedicated server. Resolves when SteamCMD confirmed success, throws otherwise.
   async appUpdate(request: AppUpdateRequest): Promise<void> {
     await this.lock.run('steamcmd', async () => {
       await this.ensure(request.signal, request.onLine);
+      await this.tuneDownloads();
       await mkdir(request.dir, { recursive: true });
       const { command, prefix } = this.command();
       const success = successLine(request.appId);
