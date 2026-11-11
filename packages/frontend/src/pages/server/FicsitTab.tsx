@@ -6,6 +6,7 @@ import { ficsitApi } from '../../lib/endpoints';
 import { formatCompact } from '../../lib/format';
 import type { RuntimeStatus, ServerView } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
+import { CustomModsSection } from './CustomModsSection';
 
 const isActive = (status: RuntimeStatus): boolean => status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
 const modUrl = (reference: string): string => `https://ficsit.app/mod/${encodeURIComponent(reference)}`;
@@ -138,6 +139,7 @@ export function FicsitTab({ server, status }: { server: ServerView; status: Runt
           )}
         </div>
       </Section>
+      <CustomModsSection server={server} status={status} />
     </div>
   );
 }

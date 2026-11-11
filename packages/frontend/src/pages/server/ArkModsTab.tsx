@@ -6,6 +6,7 @@ import { arkModsApi, type WorkshopItem } from '../../lib/endpoints';
 import { formatBytes } from '../../lib/format';
 import type { RuntimeStatus, ServerView } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
+import { CustomModsSection } from './CustomModsSection';
 
 const isActive = (status: RuntimeStatus): boolean => status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
 const workshopUrl = (id: string): string => `https://steamcommunity.com/sharedfiles/filedetails/?id=${encodeURIComponent(id)}`;
@@ -123,6 +124,7 @@ export function ArkModsTab({ server, status }: { server: ServerView; status: Run
         </Button>
         {dirty ? <span className="chip chip-warn">{m.unsaved}</span> : null}
       </div>
+      <CustomModsSection server={server} status={status} />
     </div>
   );
 }

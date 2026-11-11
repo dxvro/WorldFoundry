@@ -15,6 +15,7 @@ import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../type
 import { readIniValues, setIniValues } from './ini.js';
 import { steamProgressMessage } from '../../steam/steamcmd.js';
 import { zomboidWorldImport } from './world-import.js';
+import { zomboidCustomMods } from './custom-mods.js';
 
 export const ZOMBOID_APP_ID = 380870;
 export const DEFAULT_GAME_PORT = 16261;
@@ -98,6 +99,7 @@ export interface ZomboidAdapterOptions {
 export class ZomboidAdapter implements GameAdapter {
   readonly definition = gameDefinition('zomboid');
   readonly worldImport = zomboidWorldImport;
+  readonly customMods = zomboidCustomMods;
   readonly stopCommand = 'quit';
   // admin commands of the server console; names are quoted, so spaces work
   readonly playerActions = [

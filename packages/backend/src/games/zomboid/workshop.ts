@@ -10,6 +10,7 @@ import type { KeyedLock } from '../../lib/keyed-lock.js';
 import type { ServerRuntimeGuard } from '../../mods/runtime-guard.js';
 import { iniFile, parseZomboidSettings } from './adapter.js';
 import { readIniValues, setIniValues } from './ini.js';
+import { localModIds } from './custom-mods.js';
 
 // Steam Workshop for Project Zomboid. The server downloads the items itself on start; WorldFoundry only keeps the
 // three lists of <profile>.ini in order: WorkshopItems (Workshop ids), Mods (mod ids inside the items) and Map.
@@ -178,9 +179,13 @@ export class ZomboidWorkshopService {
       const file = this.file(server);
       const unique = (list: string[]): string[] => [...new Set(list)];
       const maps = unique(input.maps);
-      const text = setIniValues(await readFile(file, 'utf8').catch(() => ''), {
+      const current = await readFile(file, 'utf8').catch(() => '');
+      // uploaded (local) mods that were active stay active: the Workshop list does not know them
+      const active = new Set(split(readIniValues(current).get('Mods')));
+      const local = (await localModIds(path.join(this.options.serversDir, server.id))).filter((id) => active.has(id));
+      const text = setIniValues(current, {
         WorkshopItems: unique(input.items).join(';'),
-        Mods: unique(input.mods).join(';'),
+        Mods: unique([...input.mods, ...local]).join(';'),
         Map: (maps.length === 0 ? [DEFAULT_MAP] : maps).join(';'),
       });
       await mkdir(path.dirname(file), { recursive: true });

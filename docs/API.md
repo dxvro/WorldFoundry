@@ -59,6 +59,12 @@ Per server under `/api/servers/:serverId`; Fabric, Forge and NeoForge use `mods/
 - `PATCH /mods/:modId` with `{ enabled, force? }`: switches a mod or plugin on or off (see below)
 - `GET /mods/backups`: backups that updates left behind (size, associated mod, what would be cleaned up), `POST /mods/backups/cleanup` cleans up
 
+Mods the user uploads as a file (not from a mod store), for every game, only while the server is stopped:
+
+- `GET /servers/:serverId/custom-mods` → `{ supported, accept, mods: [{ id, name, location, sizeBytes, active }] }` (Minecraft lists them with the other mods instead).
+- `POST /servers/:serverId/custom-mods?fileName=<name>` with the raw file as the body. Minecraft: a `.jar` into `mods/` or `plugins/`, then registered by the scan (`source: "manual"`). Project Zomboid: a `.zip` with mod folders (`mod.info`, or `42/mod.info` for Build 42) into `data/mods`, added to `Mods=`. Satisfactory: a `.zip` with a plugin folder (`<Name>.uplugin`) into `FactoryGame/Mods/<Name>` (refused if ficsit.app manages that name). ARK: a `.zip` with `<id>.mod` and the folder `<id>` into `ShooterGame/Content/Mods`, added to `ActiveMods`; uploaded ARK mods never trigger `-automanagedmods`. Saving the Workshop lists keeps uploaded mods active. Errors: `422 CUSTOM_MOD_INVALID`, `409 MOD_ALREADY_INSTALLED`, `409 MODS_NOT_SUPPORTED` (Vanilla), `409 SERVER_RUNNING`.
+- `DELETE /servers/:serverId/custom-mods/:modId` removes the files and the entry in `Mods=` / `ActiveMods`.
+
 Installing, updating, deleting and enabling/disabling mods are locked while the server is running (`409 SERVER_RUNNING`). Start, installation, deletion and mod changes of a server share one lock and never run at the same time.
 
 ### Enabling and disabling mods

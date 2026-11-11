@@ -6,6 +6,7 @@ import { workshopApi, type WorkshopItem } from '../../lib/endpoints';
 import { formatBytes } from '../../lib/format';
 import type { RuntimeStatus, ServerView } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
+import { CustomModsSection } from './CustomModsSection';
 
 const isActive = (status: RuntimeStatus): boolean => status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
 const move = <T,>(list: T[], index: number, by: -1 | 1): T[] => {
@@ -190,6 +191,7 @@ export function WorkshopTab({ server, status }: { server: ServerView; status: Ru
         </Button>
         {dirty ? <span className="chip chip-warn">{w.unsaved}</span> : null}
       </div>
+      <CustomModsSection server={server} status={status} />
     </div>
   );
 }

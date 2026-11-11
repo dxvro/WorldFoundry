@@ -54,6 +54,7 @@ import { eq } from 'drizzle-orm';
 import { ExportService } from './worldio/export-service.js';
 import { ImportService } from './worldio/import-service.js';
 import { GameWorldService } from './worldio/game-world.js';
+import { CustomModsService } from './games/custom-mods.js';
 
 export interface ServiceOptions {
   db: Db;
@@ -140,6 +141,7 @@ export interface Services {
   exports: ExportService;
   imports: ImportService;
   gameWorlds: GameWorldService;
+  customMods: CustomModsService;
 }
 
 export function createServices(options: ServiceOptions): Services {
@@ -346,6 +348,17 @@ export function createServices(options: ServiceOptions): Services {
     maxUploadBytes: (config.importMaxMb ?? DEFAULT_IMPORT_MAX_MB) * 1024 * 1024,
     ...(options.freeSpace === undefined ? {} : { freeSpace: options.freeSpace }),
   });
+  const customMods = new CustomModsService({
+    db,
+    serversDir: config.serversDir,
+    tmpDir: path.join(tmpDir, 'custom-mods'),
+    lock,
+    guard,
+    games,
+    maxUploadBytes: (config.importMaxMb ?? DEFAULT_IMPORT_MAX_MB) * 1024 * 1024,
+    scanMinecraft: (serverId) => mods.scan(serverId),
+    ...(options.freeSpace === undefined ? {} : { freeSpace: options.freeSpace }),
+  });
   const imports = new ImportService({
     db,
     serversDir: config.serversDir,
@@ -422,5 +435,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
 }

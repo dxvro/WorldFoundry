@@ -15,6 +15,7 @@ import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../type
 import { getSectionValue } from './ini.js';
 import { steamProgressMessage } from '../../steam/steamcmd.js';
 import { arkWorldImport } from './world-import.js';
+import { arkCustomMods, customArkIds } from './custom-mods.js';
 
 export const ARK_APP_ID = 376030;
 export const ARK_WORKSHOP_APP = 346110;
@@ -104,6 +105,7 @@ export class ArkAdapter implements GameAdapter {
   readonly definition = gameDefinition('ark');
   // the server reads no console input: commands, players and the clean stop go through RCON
   readonly worldImport = arkWorldImport;
+  readonly customMods = arkCustomMods((dir) => this.gameUserSettings(dir));
   readonly stopCommand = null;
   readonly stopSignal = 'SIGINT' as const;
   private readonly platform: NodeJS.Platform;
@@ -197,7 +199,9 @@ export class ArkAdapter implements GameAdapter {
     const settings = parseArkSettings(server);
     const executable = this.executable(dir);
     if (!(await exists(executable))) throw new AppError(409, 'SERVER_FILES_MISSING', 'The server program is missing. Please start the installation again.');
-    const mods = await this.activeMods(dir);
+    // uploaded mods are already in place; only Workshop mods make the server run SteamCMD (-automanagedmods)
+    const custom = new Set(await customArkIds(dir));
+    const mods = (await this.activeMods(dir)).filter((id) => !custom.has(id));
     if (mods.length > 0 && this.platform === 'linux') {
       // -automanagedmods runs the SteamCMD the server ships beside the engine; ARK does not bring it on Linux
       const target = path.join(binaryDir(dir), 'Engine', 'Binaries', 'ThirdParty', 'SteamCMD', 'Linux');

@@ -9,7 +9,8 @@ import type { KeyedLock } from '../../lib/keyed-lock.js';
 import type { ServerRuntimeGuard } from '../../mods/runtime-guard.js';
 import { workshopIdOf, type WorkshopApi, type WorkshopDetails } from '../zomboid/workshop.js';
 import { ARK_WORKSHOP_APP, type ArkAdapter } from './adapter.js';
-import { setSectionValue } from './ini.js';
+import { getSectionValue, setSectionValue } from './ini.js';
+import { customArkIds } from './custom-mods.js';
 
 export const ArkModsSaveSchema = z.object({ mods: z.array(z.string().regex(/^\d{1,20}$/)).max(200) }).strict();
 
@@ -59,8 +60,12 @@ export class ArkModsService {
       if (this.options.guard.isRunning(serverId)) throw running();
       const server = await this.server(serverId);
       const file = this.options.adapter.gameUserSettings(path.join(this.options.serversDir, server.id));
-      const unique = [...new Set(mods)];
-      const text = setSectionValue(await readFile(file, 'utf8').catch(() => ''), 'ServerSettings', 'ActiveMods', unique.length === 0 ? null : unique.join(','));
+      const current = await readFile(file, 'utf8').catch(() => '');
+      // uploaded mods that were active stay active (at the end of the load order)
+      const active = new Set((getSectionValue(current, 'ServerSettings', 'ActiveMods') ?? '').split(',').map((id) => id.trim()));
+      const custom = (await customArkIds(path.join(this.options.serversDir, server.id))).filter((id) => active.has(id));
+      const unique = [...new Set([...mods, ...custom])];
+      const text = setSectionValue(current, 'ServerSettings', 'ActiveMods', unique.length === 0 ? null : unique.join(','));
       await mkdir(path.dirname(file), { recursive: true });
       await writeFile(`${file}.part`, text, 'utf8');
       await rename(`${file}.part`, file);

@@ -125,6 +125,31 @@ export function uploadGameWorld(file: File, serverId: string, onProgress: (loade
   });
 }
 
+// Uploads a mod file (a .jar for Minecraft, a .zip for the other games); the answer comes once it is in place
+export function uploadCustomMod(file: File, serverId: string, onProgress: (loaded: number, total: number) => void): Promise<{ installed: Array<{ id: string; name: string }> }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/servers/${enc(serverId)}/custom-mods?fileName=${enc(file.name)}`);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    xhr.onerror = () => reject(new ApiError(0, NETWORK_ERROR, getCurrentDictionary().import.uploadFailed));
+    xhr.onabort = () => reject(new DOMException(getCurrentDictionary().import.aborted, 'AbortError'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as { installed: Array<{ id: string; name: string }> });
+        } catch {
+          reject(new ApiError(xhr.status, 'INVALID_RESPONSE', getCurrentDictionary().errors.codes.INVALID_RESPONSE));
+        }
+      } else reject(errorFromResponse(xhr.status, xhr.responseText));
+    };
+    xhr.send(file);
+  });
+}
+
 const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
   new Promise((resolve, reject) => {
     const timer = setTimeout(resolve, ms);

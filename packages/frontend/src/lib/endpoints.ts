@@ -214,6 +214,25 @@ export interface FicsitHit {
   installed: boolean;
 }
 
+export interface CustomModView {
+  id: string;
+  name: string;
+  location: string;
+  sizeBytes: number;
+  active: boolean | null;
+}
+
+export interface CustomModsList {
+  supported: boolean;
+  accept: string;
+  mods: CustomModView[];
+}
+
+export const customModsApi = {
+  list: (id: string, signal?: AbortSignal): Promise<CustomModsList> => request(`${server(id)}/custom-mods`, signal === undefined ? {} : { signal }),
+  remove: (id: string, modId: string): Promise<CustomModsList> => request(`${server(id)}/custom-mods/${enc(modId)}`, { method: 'DELETE' }),
+};
+
 export const ficsitApi = {
   list: (id: string, signal?: AbortSignal): Promise<{ mods: FicsitMod[]; gameBuild: number | null }> => request(`${server(id)}/ficsit/mods`, signal === undefined ? {} : { signal }),
   search: (id: string, query: string, offset: number, signal?: AbortSignal): Promise<{ hits: FicsitHit[]; total: number; offset: number; limit: number }> =>

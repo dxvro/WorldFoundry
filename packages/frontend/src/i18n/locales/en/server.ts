@@ -77,6 +77,28 @@ export const server = {
       replaceLocked: 'Only possible while the server is stopped',
       replaced: 'The world was replaced.',
     },
+    // mods uploaded as a file (every game)
+    customMods: {
+      title: 'Own mods',
+      description: 'Mods that are not in the mod store: made by yourself or from another site. Only while the server is stopped.',
+      upload: 'Upload mod …',
+      uploading: (percent: number) => `Uploading … ${percent} %`,
+      locked: 'Only possible while the server is stopped',
+      accepts: {
+        minecraft: 'A .jar file. It is put into the mods or plugins folder and then shows up in the list above as a manually added mod.',
+        zomboid: 'A .zip with the mod folder (with mod.info, or 42/mod.info for Build 42). It is put into data/mods and added to Mods= in the server settings.',
+        satisfactory: 'A .zip with the server build of the mod (a folder with <Name>.uplugin). Most mods also need the Satisfactory Mod Loader (SML) from ficsit.app.',
+        ark: 'A .zip with <id>.mod and the folder <id> from ShooterGame/Content/Mods. The mod is added to ActiveMods and never downloaded from the Workshop.',
+      },
+      empty: 'No own mods yet.',
+      active: 'active',
+      inactive: 'not active',
+      remove: (name: string) => `Remove ${name}`,
+      added: (names: string) => `Added: ${names}`,
+      failedTitle: 'The mod could not be added',
+      removeFailed: 'The mod could not be removed',
+      warning: 'Mods from unknown sources can damage worlds or contain harmful code. Only upload files you trust, and make a backup first.',
+    },
     // games other than Minecraft
     game: {
       title: 'Import and export world',

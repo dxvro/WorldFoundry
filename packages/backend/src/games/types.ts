@@ -140,6 +140,8 @@ export interface GameAdapter {
   backupLayout(server: Server, dir: string): Promise<BackupLayout>;
   // Taking over a world from an uploaded file (worldio/game-world.ts); absent: the game has no world import of its own
   readonly worldImport?: WorldImportSupport;
+  // Mods the user uploads as files (games/custom-mods.ts); absent: the game takes none
+  readonly customMods?: CustomModSupport;
 
   // For games that read no console input (ARK: RCON): sends one command and returns the answer as lines
   sendCommand?(server: Server, dir: string, command: string): Promise<string[]>;
@@ -203,4 +205,32 @@ export interface WorldImportSupport {
   native: (staged: string, out: string, ctx: WorldImportContext) => Promise<PreparedWorld>;
   // after the world is in place; what the server row decides (ports) is written again
   after?: (ctx: WorldImportContext) => Promise<Msg[]>;
+}
+
+// ---- mods uploaded as a file (games/custom-mods.ts) ----
+
+// A mod the user brought as a file: made by themselves, or from a site WorldFoundry does not search.
+export interface CustomMod {
+  id: string;
+  name: string;
+  // where it lives, relative to the server folder
+  location: string;
+  sizeBytes: number;
+  // whether the game loads it (Zomboid: in Mods=, ARK: in ActiveMods); null when the game loads every mod it finds
+  active: boolean | null;
+}
+
+export interface CustomModsView {
+  supported: boolean;
+  // what an upload may be, for the file picker
+  accept: string;
+  mods: CustomMod[];
+}
+
+// Per game: where uploaded mods go and how the game is told to load them. `staged` is the unpacked upload.
+export interface CustomModSupport {
+  accept: string;
+  list(server: Server, dir: string): Promise<CustomMod[]>;
+  install(server: Server, dir: string, staged: string): Promise<CustomMod[]>;
+  remove(server: Server, dir: string, id: string): Promise<void>;
 }

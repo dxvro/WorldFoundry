@@ -14,6 +14,7 @@ import { useLive } from '../../live/LiveProvider';
 import { ModBackups } from './ModBackups';
 import { useModRemoval } from './useModRemoval';
 import { useModToggle } from './useModToggle';
+import { CustomModsSection } from './CustomModsSection';
 
 // Wording of the content type (Mods or Plugins) in the active language; call from a component that uses useI18n()
 export const contentNames = (server: Pick<ServerView, 'loader'>): { singular: string; plural: string; store: string } => {
@@ -470,6 +471,7 @@ export function ModsTab({ server, status }: { server: ServerView; status: Runtim
         )}
         {removal.error === null ? null : <ErrorNotice error={removal.error} />}
       </Dialog>
+      <CustomModsSection server={server} status={status} onChanged={list.reload} />
     </div>
   );
 }
