@@ -3,7 +3,7 @@ import { ExternalLink, Plus } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { Button, ErrorNotice, LoadingBlock, Section } from '../components/ui';
 import { useGames } from '../games/GamesProvider';
-import { GAME_LOOK } from '../games/look';
+import { GameTile } from '../games/GameTile';
 import { useI18n } from '../i18n';
 import { useLive } from '../live/LiveProvider';
 import { useRouter } from '../lib/router';
@@ -22,15 +22,12 @@ const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
 export function GameCard({ game, serverCount }: { game: GameDefinition; serverCount: number }): ReactNode {
   const { t } = useI18n();
   const { navigate } = useRouter();
-  const Icon = GAME_LOOK[game.id].icon;
   const available = game.availability === 'available';
   return (
     <li className="panel space-y-4 p-4 sm:p-5" data-testid="game-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-raised text-accent">
-            <Icon aria-hidden className="size-5" />
-          </span>
+          <GameTile game={game.id} size="lg" muted={!available} />
           <div className="min-w-0">
             <h2 className="text-base">{game.name}</h2>
             <p className="flex flex-wrap items-center gap-2 text-sm text-dim">
@@ -45,9 +42,13 @@ export function GameCard({ game, serverCount }: { game: GameDefinition; serverCo
           </Button>
         ) : null}
       </div>
+      <p className="text-dim">{game.summary}</p>
       {available ? null : <p className="hint">{t.games.plannedHint}</p>}
       <dl className="space-y-2">
         <Fact label={t.games.facts.delivery}>{game.delivery.kind === 'steamcmd' ? t.games.delivery.steamcmd(game.delivery.appId) : t.games.delivery.vendor}</Fact>
+        <Fact label={t.games.facts.size}>
+          <span className="num">{`${t.games.disk(game.diskGb)} · ${t.games.ram(game.ramGb)}`}</span>
+        </Fact>
         <Fact label={t.games.facts.platforms}>{game.platforms.map((platform) => t.games.platform[platform]).join(', ')}</Fact>
         <Fact label={t.games.facts.ports}>
           <span className="num">{game.ports.map((port) => t.games.port(port.purpose, port.port, port.protocol)).join(' · ')}</span>

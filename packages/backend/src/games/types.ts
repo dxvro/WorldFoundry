@@ -47,6 +47,11 @@ export interface GameDefinition {
   platforms: HostPlatform[];
   ports: GamePort[];
   modSources: ModSourceInfo[];
+  // one line on what the game is, shown where a game is chosen; written by WorldFoundry, not the publisher's text
+  summary: string;
+  // rough size of the server files after installation and the memory a small server should get, to plan the machine
+  diskGb: number;
+  ramGb: number;
 }
 
 // ---- The adapter: everything the core needs from a game ----

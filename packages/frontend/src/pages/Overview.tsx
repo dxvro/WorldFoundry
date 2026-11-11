@@ -1,5 +1,6 @@
 import { useGames } from '../games/GamesProvider';
 import { GAME_LOOK, GAME_ORDER } from '../games/look';
+import { GameTile } from '../games/GameTile';
 import { Cpu, Globe, HardDrive, Plus, Server, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { ActionBar, ActionFeedback, useServerActions } from '../components/ServerActions';
@@ -268,12 +269,11 @@ export function Overview(): ReactNode {
         <>
           {listError === null ? null : <Notice tone="warn">{t.overview.listStale(listError)}</Notice>}
           {GAME_ORDER.filter((game) => servers.some((server) => server.game === game)).map((game) => {
-            const Icon = GAME_LOOK[game].icon;
             const own = servers.filter((server) => server.game === game);
             return (
               <section key={game} aria-label={t.games.groupLabel(nameOf(game))} className="space-y-2">
                 <h2 className="flex items-center gap-2 text-sm font-medium text-dim">
-                  <Icon aria-hidden className="size-4 text-accent" />
+                  <GameTile game={game} size="sm" />
                   {nameOf(game)}
                   <span className="num text-faint">{own.length}</span>
                 </h2>

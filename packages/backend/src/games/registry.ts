@@ -8,6 +8,9 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'minecraft',
     name: 'Minecraft: Java Edition',
+    summary: 'Block-building sandbox. Java Edition server with Vanilla, Paper, Fabric, Forge or NeoForge.',
+    diskGb: 1,
+    ramGb: 4,
     availability: 'available',
     rightsHolders: ['Mojang AB', 'Microsoft Corporation'],
     disclaimer: notA('Minecraft', 'Mojang or Microsoft'),
@@ -30,6 +33,9 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'zomboid',
     name: 'Project Zomboid',
+    summary: 'Open-world zombie survival for small groups, with Steam Workshop mods.',
+    diskGb: 5,
+    ramGb: 4,
     availability: 'available',
     rightsHolders: ['The Indie Stone'],
     disclaimer: notA('Project Zomboid', 'The Indie Stone'),
@@ -53,6 +59,9 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'satisfactory',
     name: 'Satisfactory',
+    summary: 'Co-op factory building on an alien planet, with mods from ficsit.app.',
+    diskGb: 9,
+    ramGb: 12,
     availability: 'available',
     rightsHolders: ['Coffee Stain Studios AB', 'Coffee Stain Publishing AB'],
     disclaimer: notA('Satisfactory', 'Coffee Stain Studios or Coffee Stain Publishing'),
@@ -68,6 +77,9 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'ark',
     name: 'ARK: Survival Evolved',
+    summary: 'Survival with dinosaurs on large maps, with Steam Workshop mods.',
+    diskGb: 20,
+    ramGb: 8,
     availability: 'available',
     rightsHolders: ['Studio Wildcard', 'Snail Games USA'],
     disclaimer: notA('ARK', 'Studio Wildcard or Snail Games'),

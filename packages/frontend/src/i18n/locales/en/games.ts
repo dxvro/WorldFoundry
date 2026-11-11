@@ -18,6 +18,7 @@ export const games = {
     mods: 'Mods',
     license: 'License',
     rights: 'Rights holders',
+    size: 'Plan for',
   },
   delivery: {
     vendor: 'Downloaded from the official source at installation',
@@ -35,6 +36,12 @@ export const games = {
   pickDocumentTitle: 'New server · WorldFoundry',
   pickIntro: 'Choose the game the server is for.',
   pickLabel: 'Games',
+  searchLabel: 'Find a game',
+  searchPlaceholder: 'Search by name, e.g. "ark"',
+  noMatch: (query: string) => `No game matches "${query}".`,
+  disk: (gb: number) => `about ${gb} GB disk`,
+  ram: (gb: number) => `${gb} GB RAM or more`,
+  modsFrom: (sources: string) => `Mods: ${sources}`,
   fromWorld: 'Minecraft server from an existing world',
   groupLabel: (game: string) => `${game} servers`,
 };

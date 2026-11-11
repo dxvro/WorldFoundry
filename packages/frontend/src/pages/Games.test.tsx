@@ -84,6 +84,26 @@ describe('new server', () => {
     expect(screen.getByRole('link', { name: 'Minecraft server from an existing world' })).toHaveAttribute('href', '/new/world');
   });
 
+  it('finds a game by a word of its name or summary, shows its size and says when nothing matches', async () => {
+    open('/new');
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Games' });
+    expect(within(list).getAllByTestId('game-tile')).toHaveLength(4);
+    expect(within(list).getByText('What Satisfactory is about.')).toBeInTheDocument();
+    expect(within(list).getAllByText('about 5 GB disk')).toHaveLength(4);
+    const search = screen.getByRole('searchbox', { name: 'Find a game' });
+    await user.type(search, 'zom');
+    expect(within(screen.getByRole('list', { name: 'Games' })).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: /Project Zomboid/ })).toHaveAttribute('href', '/new/zomboid');
+    await user.clear(search);
+    await user.type(search, 'satisfactory about');
+    expect(within(screen.getByRole('list', { name: 'Games' })).getAllByRole('listitem')).toHaveLength(1);
+    await user.clear(search);
+    await user.type(search, 'tetris');
+    expect(screen.queryByRole('list', { name: 'Games' })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('No game matches "tetris".');
+  });
+
   it('opens the wizard of the chosen game, with the disclaimer of that game', async () => {
     open('/new');
     const user = userEvent.setup();

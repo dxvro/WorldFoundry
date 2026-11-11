@@ -90,6 +90,9 @@ const game = (id: string, name: string, availability: string, disclaimer: string
   platforms: ['win32', 'linux'],
   ports: [{ purpose: 'Game', port: 7777, protocol: 'udp' }],
   modSources: [{ id: 'workshop', name: 'Steam Workshop', url: 'https://example.invalid/workshop', requiresKey: false }],
+  summary: 'What ' + name + ' is about.',
+  diskGb: 5,
+  ramGb: 4,
   ...extra,
 });
 

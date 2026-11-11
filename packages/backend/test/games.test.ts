@@ -16,6 +16,15 @@ describe('game registry', () => {
     expect(gameDefinition('minecraft').disclaimer).toBe('Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.');
   });
 
+  it('describes every game in its own words and gives a rough size for planning', () => {
+    for (const game of GAMES) {
+      expect(game.summary.length, game.id).toBeGreaterThan(10);
+      expect(game.summary, game.id).not.toMatch(/official/i);
+      expect(game.diskGb, game.id).toBeGreaterThan(0);
+      expect(game.ramGb, game.id).toBeGreaterThan(0);
+    }
+  });
+
   it('never ships game files: every game is fetched from its vendor or through SteamCMD with an anonymous login', () => {
     for (const game of GAMES) {
       if (game.delivery.kind === 'steamcmd') expect(game.delivery.anonymous, game.id).toBe(true);
