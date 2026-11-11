@@ -127,6 +127,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     await recover('Leftovers of world export and import could not be cleaned up', async () => {
       await services.exports.recoverInterrupted();
       await services.imports.recoverInterrupted();
+      await services.gameWorlds.recoverInterrupted();
       return 0;
     });
     services.exports.start();

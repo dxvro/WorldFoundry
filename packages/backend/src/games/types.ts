@@ -138,6 +138,8 @@ export interface GameAdapter {
 
   // The folders a backup holds
   backupLayout(server: Server, dir: string): Promise<BackupLayout>;
+  // Taking over a world from an uploaded file (worldio/game-world.ts); absent: the game has no world import of its own
+  readonly worldImport?: WorldImportSupport;
 
   // For games that read no console input (ARK: RCON): sends one command and returns the answer as lines
   sendCommand?(server: Server, dir: string, command: string): Promise<string[]>;
@@ -174,4 +176,31 @@ export interface PlayerAction {
   confirm: boolean;
   // the console command; `name` is already checked against `nameRule`
   command: (name: string) => string;
+}
+
+// ---- world import of a game other than Minecraft ----
+
+export interface WorldImportContext {
+  server: Server;
+  // the server folder
+  dir: string;
+  layout: BackupLayout;
+}
+
+// A world laid out like a backup of this server: `worlds` and `configItems` are names directly in the output folder
+export interface PreparedWorld {
+  worlds: string[];
+  configItems: string[];
+  warnings: Msg[];
+}
+
+export interface WorldImportSupport {
+  // an uploaded file that is a save game itself rather than an archive (a Satisfactory .sav)
+  singleFile?: (fileName: string) => boolean;
+  // a WorldFoundry export or backup of another server of this game: renames what carries that server's names
+  adopt?: (out: string, sourceLevel: string, ctx: WorldImportContext) => Promise<void>;
+  // a world in the game's own format, wherever it sits in the upload; moves it into `out`
+  native: (staged: string, out: string, ctx: WorldImportContext) => Promise<PreparedWorld>;
+  // after the world is in place; what the server row decides (ports) is written again
+  after?: (ctx: WorldImportContext) => Promise<Msg[]>;
 }

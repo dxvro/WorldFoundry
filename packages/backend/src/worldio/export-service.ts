@@ -5,7 +5,7 @@ import { lstat, mkdir, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { extractTarGz, writeTarGz, type TarSource } from '../archive/tar.js';
 import { writeZip } from '../archive/zip-writer.js';
-import { collectSources, readLevelName, type Collected } from '../backups/world.js';
+import { collectLayout, collectSources, hasLayoutData, readLevelName, type BackupLayout, type Collected } from '../backups/world.js';
 import { DEFAULT_SAVE_TIMINGS, SaveSession, type SaveTimings } from '../backups/save.js';
 import type { BackupService } from '../backups/service.js';
 import type { Db } from '../db/client.js';
@@ -24,6 +24,7 @@ import { styleForLoader } from './layout.js';
 import { parseLevelDat } from './level-dat.js';
 import { EXPORT_MANIFEST_FORMAT, EXPORT_MANIFEST_NAME, serializeManifest, type ExportManifest, type ManifestMod } from './manifest.js';
 import { hashFileBoth, readJarMeta, type JarMeta } from './mod-meta.js';
+import { GAME_EXPORT_MANIFEST_NAME, gameExportManifest } from './game-world.js';
 
 const MIB = 1024 * 1024;
 const COMPRESSION_ESTIMATE = WORLD_COMPRESSION_ESTIMATE;
@@ -43,6 +44,8 @@ export interface ExportServiceOptions {
   freeSpace?: FreeSpaceReader;
   saveTimings?: SaveTimings;
   now?: () => number;
+  // the folders of a server's world per game (games other than Minecraft); Minecraft only when absent (tests)
+  layoutOf?: (server: Server, serverDir: string) => Promise<BackupLayout>;
 }
 
 interface Job {
@@ -214,6 +217,7 @@ export class ExportService {
 
   async startServerExport(serverId: string, options: ExportOptionsDto): Promise<ExportJobDto> {
     const server = await this.serverRow(serverId);
+    if (server.game !== 'minecraft') return this.startGameExport(server, options);
     if (BUSY_STATES.has(this.options.manager.status(serverId).state)) {
       throw new AppError(409, 'EXPORT_SERVER_BUSY', 'The server is starting or stopping. Please wait until it is running or stopped.');
     }
@@ -382,6 +386,7 @@ export class ExportService {
   async startBackupExport(serverId: string, backupId: string, format: ExportFormat): Promise<ExportJobDto> {
     const server = await this.serverRow(serverId);
     const { row, file } = await this.options.backups.locate(serverId, backupId);
+    if (server.game !== 'minecraft') return this.startGameBackupExport(server, row, file, format);
     const options: ExportOptionsDto = { format, mods: 'none', includeConfig: row.includesConfig };
     const job = this.register(server, 'backup', options);
     this.launch(job, async () => {
@@ -408,5 +413,79 @@ export class ExportService {
       }
     });
     return job.dto;
+  }
+
+  // ---- games other than Minecraft: the folders of the game's backup layout, while the server is stopped ----
+
+  private async gameLayout(server: Server, root?: string): Promise<BackupLayout> {
+    if (this.options.layoutOf === undefined) throw new AppError(409, 'GAME_FEATURE_UNSUPPORTED', 'This game has no world export.');
+    const layout = await this.options.layoutOf(server, path.join(this.options.serversDir, server.id));
+    return root === undefined ? layout : { ...layout, root };
+  }
+
+  private async startGameExport(server: Server, options: ExportOptionsDto): Promise<ExportJobDto> {
+    const state = this.options.manager.status(server.id).state;
+    if (state !== 'offline' && state !== 'crashed') {
+      throw new AppError(409, 'EXPORT_NEEDS_STOP', 'This game can only be exported while the server is stopped. Please stop it first.');
+    }
+    if (this.options.backups.isBusy(server.id)) {
+      throw new AppError(409, 'BACKUP_IN_PROGRESS', 'A backup is currently running for this server. Please wait before the world is exported.');
+    }
+    const layout = await this.gameLayout(server);
+    if (!(await hasLayoutData(layout, layout.levelName, false))) {
+      throw new AppError(409, 'EXPORT_NOTHING', 'There is no world data to export yet. The server must have been started once.', undefined, { levelName: layout.levelName });
+    }
+    const job = this.register(server, 'server', { format: options.format, mods: 'none', includeConfig: options.includeConfig });
+    this.launch(job, () =>
+      this.options.lock.run(server.id, async () => {
+        if (this.options.manager.isRunning(server.id)) throw new AppError(409, 'EXPORT_NEEDS_STOP', 'This game can only be exported while the server is stopped. Please stop it first.');
+        await this.writeGameArchive(job, server, 'server', layout, layout.levelName, () => {
+          if (this.abort.signal.aborted) throw new AppError(503, 'SHUTTING_DOWN', 'The export was cancelled because the application is shutting down.');
+          if (this.options.manager.isRunning(server.id)) throw new AppError(409, 'EXPORT_INTERRUPTED', 'The server was started during the export. The incomplete export was discarded.');
+        });
+      }),
+    );
+    return job.dto;
+  }
+
+  private startGameBackupExport(server: Server, row: { levelName: string; rawBytes: number; includesConfig: boolean }, file: string, format: ExportFormat): ExportJobDto {
+    const job = this.register(server, 'backup', { format, mods: 'none', includeConfig: row.includesConfig });
+    this.launch(job, async () => {
+      const staging = path.join(this.options.tmpDir, `${job.dto.id}.staging`);
+      try {
+        await mkdir(this.options.tmpDir, { recursive: true });
+        await assertFreeSpace(this.freeSpace, this.options.tmpDir, row.rawBytes + Math.ceil(row.rawBytes * COMPRESSION_ESTIMATE) + 128 * MIB, 'export');
+        const check = this.checkpoint(server.id, false);
+        await extractTarGz(file, staging, { maxBytes: row.rawBytes + MIB, maxEntries: 5_000_000, checkpoint: check });
+        await this.writeGameArchive(job, server, 'backup', await this.gameLayout(server, staging), row.levelName, check);
+      } finally {
+        await rm(staging, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => undefined);
+      }
+    });
+    return job.dto;
+  }
+
+  private async writeGameArchive(job: Job, server: Server, source: 'server' | 'backup', layout: BackupLayout, level: string, checkpoint: () => void): Promise<void> {
+    const options = job.dto.options;
+    const final = path.join(this.options.tmpDir, `${job.dto.id}.${options.format === 'zip' ? 'zip' : 'tar.gz'}`);
+    const part = `${final}.part`;
+    try {
+      await mkdir(this.options.tmpDir, { recursive: true });
+      const collected = await collectLayout(layout, level, options.includeConfig);
+      if (collected.worlds.length === 0) throw new AppError(409, 'EXPORT_NOTHING', 'There is no world data to export yet. The server must have been started once.', undefined, { levelName: level });
+      await assertFreeSpace(this.freeSpace, this.options.tmpDir, Math.ceil(collected.rawBytes * COMPRESSION_ESTIMATE) + 64 * MIB, 'export');
+      const manifest = gameExportManifest({ server, source, appVersion: this.options.version, createdAt: this.now(), layout, levelName: level, worlds: collected.worlds, configItems: collected.configItems });
+      const sources: TarSource[] = [{ kind: 'bytes', name: GAME_EXPORT_MANIFEST_NAME, data: manifest, mtimeMs: this.now(), mode: 0o644 }, ...collected.sources];
+      await this.write(options.format, part, sources, checkpoint);
+      if (collected.skipped.length > 0) {
+        const warning = msg('EXPORT_WARN_SYMLINKS', { count: collected.skipped.length });
+        job.dto.warnings.push(warning.text);
+        job.dto.warningRefs.push(warning.ref);
+      }
+      await this.finish(job, part, final);
+    } catch (error) {
+      await rm(part, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 }

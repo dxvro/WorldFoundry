@@ -16,7 +16,9 @@ const runningStates: ReadonlySet<string> = new Set(['preparing', 'starting', 'on
 export function ExportDialog({ server, backup, open, onClose }: { server: ServerView; backup: BackupView | null; open: boolean; onClose: () => void }): ReactNode {
   const { t } = useI18n();
   const x = t.server.world.export;
-  const supportsMods = server.loader !== 'vanilla';
+  const g = t.server.world.game;
+  const minecraft = server.game === 'minecraft';
+  const supportsMods = minecraft && server.loader !== 'vanilla';
   const [format, setFormat] = useState<ExportOptions['format']>('zip');
   const [mods, setMods] = useState<ExportOptions['mods']>('none');
   const [includeConfig, setIncludeConfig] = useState(false);
@@ -77,12 +79,14 @@ export function ExportDialog({ server, backup, open, onClose }: { server: Server
       }
     >
       {backup !== null ? (
-        <Notice tone="info">{x.backupNotice}</Notice>
-      ) : (
+        <Notice tone="info">{minecraft ? x.backupNotice : g.backupNotice}</Notice>
+      ) : minecraft ? (
         <p className="text-dim">
           {x.description}
           {runningStates.has(server.status.state) ? x.runningNote : ''}
         </p>
+      ) : (
+        <p className="text-dim">{g.exportDescription}</p>
       )}
       <fieldset className="space-y-2" disabled={starting || running || job?.status === 'ready'}>
         <legend className="label mb-1.5">{x.format}</legend>
@@ -115,7 +119,7 @@ export function ExportDialog({ server, backup, open, onClose }: { server: Server
               ))}
             </fieldset>
           ) : null}
-          <Toggle checked={includeConfig} onChange={setIncludeConfig} disabled={starting || running || job?.status === 'ready'} label={x.includeConfig} description={x.includeConfigHint} />
+          <Toggle checked={includeConfig} onChange={setIncludeConfig} disabled={starting || running || job?.status === 'ready'} label={x.includeConfig} description={minecraft ? x.includeConfigHint : g.includeConfigHint} />
         </>
       )}
       {running ? (

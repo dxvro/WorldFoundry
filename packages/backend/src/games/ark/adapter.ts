@@ -14,6 +14,7 @@ import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { getSectionValue } from './ini.js';
 import { steamProgressMessage } from '../../steam/steamcmd.js';
+import { arkWorldImport } from './world-import.js';
 
 export const ARK_APP_ID = 376030;
 export const ARK_WORKSHOP_APP = 346110;
@@ -102,6 +103,7 @@ export interface ArkAdapterOptions {
 export class ArkAdapter implements GameAdapter {
   readonly definition = gameDefinition('ark');
   // the server reads no console input: commands, players and the clean stop go through RCON
+  readonly worldImport = arkWorldImport;
   readonly stopCommand = null;
   readonly stopSignal = 'SIGINT' as const;
   private readonly platform: NodeJS.Platform;

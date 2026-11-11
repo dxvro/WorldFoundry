@@ -7,6 +7,7 @@ import type {
   ImportNotice,
   ImportReviewDto,
   Loader,
+  MessageRef,
   ModMatchDto,
   ServerDto,
 } from '@worldfoundry/backend/contract';
@@ -80,6 +81,40 @@ export function uploadArchive(file: File, serverId: string | null, onProgress: (
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           resolve((JSON.parse(xhr.responseText) as { import: ImportJobView }).import);
+        } catch {
+          reject(new ApiError(xhr.status, 'INVALID_RESPONSE', getCurrentDictionary().errors.codes.INVALID_RESPONSE));
+        }
+      } else reject(errorFromResponse(xhr.status, xhr.responseText));
+    };
+    signal?.addEventListener('abort', () => xhr.abort());
+    xhr.send(file);
+  });
+}
+
+// The answer of a world import of a game other than Minecraft: the import became a backup and was restored
+export interface GameImportView {
+  safety: { id: string } | null;
+  warnings: string[];
+  warningRefs: Array<MessageRef | null>;
+  imported: { worlds: string[]; configItems: string[] };
+}
+
+// Like uploadArchive: the raw file as the body, with progress. The answer comes once the world is in place.
+export function uploadGameWorld(file: File, serverId: string, onProgress: (loaded: number, total: number) => void, signal?: AbortSignal): Promise<GameImportView> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/servers/${enc(serverId)}/game-world/import?fileName=${enc(file.name)}`);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    xhr.onerror = () => reject(new ApiError(0, NETWORK_ERROR, getCurrentDictionary().import.uploadFailed));
+    xhr.onabort = () => reject(new DOMException(getCurrentDictionary().import.aborted, 'AbortError'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as GameImportView);
         } catch {
           reject(new ApiError(xhr.status, 'INVALID_RESPONSE', getCurrentDictionary().errors.codes.INVALID_RESPONSE));
         }

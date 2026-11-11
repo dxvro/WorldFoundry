@@ -215,6 +215,14 @@ const TEMPLATES = {
   BACKUP_NOTE_BEFORE_RESTORE: (p: { fileName: string }) => `Created automatically before restoring ${p.fileName}.`,
   BACKUP_NOTE_BEFORE_IMPORT: () => 'Created automatically before the world was replaced by an import.',
   BACKUP_RESTORING: () => 'Restoring backup ...',
+  // ---- world import of games other than Minecraft ----
+  GAME_IMPORT_NOTE: (p: { fileName: string }) => `Imported from ${p.fileName}.`,
+  GAME_IMPORT_FIRST_OF_SEVERAL: (p: { count: number; name: string }) => `The file holds ${p.count} worlds; "${p.name}" was imported.`,
+  GAME_IMPORT_ZOMBOID_SETTINGS_KEPT: () => 'The server settings of this server were kept; the save (and the player database, if it was included) was imported.',
+  GAME_IMPORT_PORTS_KEPT: () => 'The imported settings named other ports; the ports of this server were written back.',
+  GAME_IMPORT_SATISFACTORY_SAVES: (p: { count: number; newest: string }) => `${p.count} save game(s) imported. The server loads the newest one: ${p.newest}.`,
+  GAME_IMPORT_ARK_MAP: (p: { found: string; map: string }) =>
+    `The save is for the map ${p.found}, but this server runs ${p.map}. Choose the same map under Configuration, otherwise the server starts a new world.`,
   BACKUP_RESTORED: () => 'Backup restored.',
   RESTORE_FAILED_REASON: (p: { reason: Msg }) => `Restore failed, the previous world is kept: ${p.reason.text}`,
   UNEXPECTED_ERROR: () => 'unexpected error',

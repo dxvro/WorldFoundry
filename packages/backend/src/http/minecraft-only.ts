@@ -5,8 +5,8 @@ import { servers } from '../db/schema.js';
 import { gameDefinition } from '../games/registry.js';
 import { AppError } from './errors.js';
 
-// Parts of the API that still only know Minecraft (server.properties, player lists, world import/export, mods). For a server of another game they answer 409 instead of reading or writing files that do not exist there.
-const MINECRAFT_ONLY = /^\/api\/servers\/([^/?]+)\/(?:properties|players|exports|world|mods|curseforge|backups\/[^/?]+\/export)(?:[/?]|$)/;
+// Parts of the API that still only know Minecraft (server.properties, player lists, the Minecraft world import, mods); exports work for every game. For a server of another game they answer 409 instead of reading or writing files that do not exist there.
+const MINECRAFT_ONLY = /^\/api\/servers\/([^/?]+)\/(?:properties|players|world|mods|curseforge)(?:[/?]|$)/;
 
 export function registerMinecraftOnlyGuard(app: FastifyInstance, db: Db): void {
   app.addHook('preHandler', async (request) => {

@@ -9,6 +9,7 @@ import { formatBytes, formatDateTime, plural } from '../../lib/format';
 import type { BackupKind, BackupSchedule, BackupStatus, BackupView, RestoreView, RuntimeStatus, ServerView } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { useLive } from '../../live/LiveProvider';
+import { GameWorldTools } from './GameWorldTools';
 import { WorldTools } from './WorldTools';
 
 const KIND_CHIP: Record<BackupKind, string> = { manual: 'chip-accent', auto: '', safety: 'chip-warn' };
@@ -330,14 +331,18 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
                   setDeleteError(null);
                   setDeleteTarget(backup);
                 }}
-                onExport={minecraft ? () => setExportTarget(backup) : null}
+                onExport={() => setExportTarget(backup)}
               />
             ))}
           </ul>
         </section>
       )}
 
-      {minecraft ? <WorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} /> : null}
+      {minecraft ? (
+        <WorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} />
+      ) : (
+        <GameWorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} onImported={list.reload} />
+      )}
 
       {data === undefined ? null : <ScheduleSection server={server} schedule={data.schedule} onSaved={list.reload} />}
 

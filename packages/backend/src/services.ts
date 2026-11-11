@@ -53,6 +53,7 @@ import { backups as backupsTable, servers as serversTable } from './db/schema.js
 import { eq } from 'drizzle-orm';
 import { ExportService } from './worldio/export-service.js';
 import { ImportService } from './worldio/import-service.js';
+import { GameWorldService } from './worldio/game-world.js';
 
 export interface ServiceOptions {
   db: Db;
@@ -138,6 +139,7 @@ export interface Services {
   // world export and import
   exports: ExportService;
   imports: ImportService;
+  gameWorlds: GameWorldService;
 }
 
 export function createServices(options: ServiceOptions): Services {
@@ -330,8 +332,19 @@ export function createServices(options: ServiceOptions): Services {
     backups,
     version: readVersion(),
     logger,
+    layoutOf: (server, dir) => games.forServer(server).backupLayout(server, dir),
     ...(options.freeSpace === undefined ? {} : { freeSpace: options.freeSpace }),
     ...(options.saveTimings === undefined ? {} : { saveTimings: options.saveTimings }),
+  });
+  const gameWorlds = new GameWorldService({
+    db,
+    serversDir: config.serversDir,
+    tmpDir: path.join(tmpDir, 'game-imports'),
+    games,
+    backups,
+    manager,
+    maxUploadBytes: (config.importMaxMb ?? DEFAULT_IMPORT_MAX_MB) * 1024 * 1024,
+    ...(options.freeSpace === undefined ? {} : { freeSpace: options.freeSpace }),
   });
   const imports = new ImportService({
     db,
@@ -362,7 +375,7 @@ export function createServices(options: ServiceOptions): Services {
       if (running.length > 0) return msg('UPDATE_WAIT_BACKUP');
       if (java.activeInstalls().length > 0) return msg('UPDATE_WAIT_JAVA');
       if (exportsService.busy) return msg('UPDATE_WAIT_EXPORT');
-      if (imports.busy) return msg('UPDATE_WAIT_IMPORT');
+      if (imports.busy || gameWorlds.busy) return msg('UPDATE_WAIT_IMPORT');
       return null;
     },
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
@@ -409,5 +422,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds };
 }

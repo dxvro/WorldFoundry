@@ -13,6 +13,7 @@ import { takenPorts } from '../ports.js';
 import { gameDefinition } from '../registry.js';
 import type { ConfigFile, GameAdapter, InstallContext, StartPlan } from '../types.js';
 import { steamProgressMessage } from '../../steam/steamcmd.js';
+import { satisfactoryWorldImport } from './world-import.js';
 
 export const SATISFACTORY_APP_ID = 1690800;
 export const DEFAULT_PORT = 7777;
@@ -131,6 +132,7 @@ export interface SatisfactoryAdapterOptions {
 export class SatisfactoryAdapter implements GameAdapter {
   readonly definition = gameDefinition('satisfactory');
   // the server reads no console input; SIGINT makes it save and quit on Linux
+  readonly worldImport = satisfactoryWorldImport;
   readonly stopCommand = null;
   readonly stopSignal = 'SIGINT' as const;
   private readonly platform: NodeJS.Platform;

@@ -321,9 +321,9 @@ export class BackupService {
 
   // Writes the archive for a row that is already recorded. Never leaves a half-written file behind and always
   // sends save-on again after a save-off, whatever happened in between.
-  private async process(row: Backup): Promise<Backup> {
+  private async process(row: Backup, source?: BackupLayout): Promise<Backup> {
     const { manager } = this.options;
-    const layout = await this.layoutOf(await this.serverRow(row.serverId));
+    const layout = source ?? (await this.layoutOf(await this.serverRow(row.serverId)));
     const dir = this.archiveDir(row.serverId);
     const final = path.join(dir, row.fileName);
     const part = `${final}.part`;
@@ -410,6 +410,27 @@ export class BackupService {
     } finally {
       session?.close();
     }
+  }
+
+  // A world prepared in `folder`, laid out like a backup of this server, becomes a finished manual backup. The world
+  // import of games other than Minecraft goes through it, so the import is restored like any backup (with the safety
+  // copy of the current world) and stays available under Backups.
+  async storeFolder(serverId: string, folder: string, note: Msg): Promise<BackupDto> {
+    this.assertStopped(serverId);
+    if (this.jobs.has(serverId)) throw new AppError(409, 'BACKUP_IN_PROGRESS', 'A backup is currently running for this server.');
+    return this.options.lock.run(serverId, async () => {
+      this.assertStopped(serverId);
+      const server = await this.serverRow(serverId);
+      const layout = await this.layoutOf(server);
+      const row = await this.insertRow(server, 'manual', true, note);
+      try {
+        return toBackupDto(await this.process(row, { ...layout, root: folder }));
+      } catch (error) {
+        // an import that could not be stored leaves no failed backup behind
+        await this.deleteRow(row).catch(() => undefined);
+        throw error;
+      }
+    });
   }
 
   // ---- retention ---------------------------------------------------------------------------

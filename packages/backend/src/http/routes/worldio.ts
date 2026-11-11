@@ -20,6 +20,7 @@ const exportBody = z
   .strict();
 const backupExportBody = z.object({ format: z.enum(['zip', 'tar.gz']).default('zip') }).strict();
 const uploadQuery = z.object({ serverId: z.string().min(1).max(100).optional() });
+const gameUploadQuery = z.object({ fileName: z.string().min(1).max(260).default('upload') });
 const reviewBody = z.object({ loader: z.enum(LOADERS), mcVersion: z.string().trim().min(1).max(64) }).strict();
 const acknowledged = z.array(z.string().max(60)).max(30).default([]);
 const selectionBody = z
@@ -45,7 +46,7 @@ const replaceBody = z.object({ importId: z.string().min(1).max(100), acknowledge
 const headerName = (name: string): string => name.replace(/[^A-Za-z0-9._-]/g, '_');
 
 export function registerWorldIoRoutes(app: FastifyInstance, { services }: AppContext): void {
-  const { exports: exporter, imports, update } = services;
+  const { exports: exporter, imports, gameWorlds, update } = services;
   // like starting a server: no new work on servers and worlds while an update is stopping and replacing everything
   const guardUpdate = (): void => {
     const blocked = update.startGuard();
@@ -112,6 +113,27 @@ export function registerWorldIoRoutes(app: FastifyInstance, { services }: AppCon
           serverId: query.serverId ?? null,
         });
         return await reply.status(202).send({ import: job });
+      } catch (error) {
+        // the rest of a rejected upload is not read; the connection must not wait for it
+        if (error instanceof AppError) void reply.header('Connection', 'close');
+        throw error;
+      }
+    });
+  });
+
+  // world import of the other games: the raw body as above, taken over in one request
+  void app.register(async (scope) => {
+    scope.addContentTypeParser('*', (_request, payload, done) => {
+      done(null, payload);
+    });
+    scope.post('/api/servers/:serverId/game-world/import', { bodyLimit: imports.maxUploadBytes + MIB }, async (request, reply) => {
+      const { serverId } = serverParams.parse(request.params);
+      const { fileName } = gameUploadQuery.parse(request.query);
+      const header = request.headers['content-length'];
+      const length = header === undefined ? null : Number(header);
+      try {
+        guardUpdate();
+        return await gameWorlds.importUpload(serverId, request.body as Readable, { contentLength: length !== null && Number.isFinite(length) ? length : null, fileName });
       } catch (error) {
         // the rest of a rejected upload is not read; the connection must not wait for it
         if (error instanceof AppError) void reply.header('Connection', 'close');
