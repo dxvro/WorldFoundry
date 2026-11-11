@@ -150,7 +150,9 @@ test('Test machine deployment: valid bash, a target is required, the first insta
   const text = await readFile(script, 'utf8');
   assert.match(text, /if \[ -d \/opt\/worldfoundry \]; then FIRST=''; else FIRST='--open-firewall'; fi/);
   assert.match(text, /ssh -t /, 'sudo needs a terminal on the remote side');
-  // the command for the machine: no empty argument without options (install.sh rejects it), options passed on
+  // the command for the machine: no empty argument without options (install.sh rejects it), options passed on.
+  // Runs where ssh and scp can be replaced through PATH (Linux, macOS); Windows only checks the syntax above.
+  if (process.platform !== 'win32') {
   const bin = await mkdtemp(path.join(os.tmpdir(), 'wf-deploy-'));
   try {
     await writeFile(path.join(bin, 'ssh'), '#!/bin/sh\nshift 2\nprintf "%s\\n" "$1" | grep "sudo ./install.sh"\n', { mode: 0o755 });
@@ -170,6 +172,7 @@ test('Test machine deployment: valid bash, a target is required, the first insta
     }
   } finally {
     await rm(bin, { recursive: true, force: true });
+  }
   }
   // no address of any particular machine is written into the script
   assert.doesNotMatch(text, /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);

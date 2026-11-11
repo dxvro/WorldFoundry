@@ -49,7 +49,8 @@ done
 case "$ARCH" in x64 | arm64) ;; *) echo "--arch must be x64 or arm64." >&2; exit 2 ;; esac
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="$(node -p "require('$ROOT/packages/backend/package.json').version")"
+# relative to the project folder: under Git Bash on Windows, Node does not understand the /c/... form of $ROOT
+VERSION="$(cd "$ROOT" && node -p "require('./packages/backend/package.json').version")"
 NAME="worldfoundry-$VERSION-linux-$ARCH"
 ARCHIVE="$ROOT/release/$NAME.tar.gz"
 
