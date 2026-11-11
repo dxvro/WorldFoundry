@@ -131,3 +131,19 @@ test('node_modules: test folders are removed, special characters in paths are fo
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('Test machine deployment: valid bash, a target is required, the first install opens the firewall', async () => {
+  const script = path.join(ROOT, 'scripts', 'deploy-vm.sh');
+  const check = spawnSync('bash', ['-n', script], { encoding: 'utf8' });
+  if (check.error === undefined) assert.equal(check.status, 0, check.stderr);
+  const missing = spawnSync('bash', [script], { encoding: 'utf8' });
+  if (missing.error === undefined) {
+    assert.equal(missing.status, 2);
+    assert.match(missing.stderr, /deploy-vm\.sh <user@host>/);
+  }
+  const text = await readFile(script, 'utf8');
+  assert.match(text, /if \[ -d \/opt\/worldfoundry \]; then FIRST=''; else FIRST='--open-firewall'; fi/);
+  assert.match(text, /ssh -t /, 'sudo needs a terminal on the remote side');
+  // no address of any particular machine is written into the script
+  assert.doesNotMatch(text, /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+});

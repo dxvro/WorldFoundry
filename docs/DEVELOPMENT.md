@@ -79,4 +79,8 @@ npm run package -- --target win-x64      # or linux-x64, linux-arm64
 ISCC.exe /DAppVersion=0.1.0 installer\windows\worldfoundry.iss
 ```
 
+### Installing on a test machine
+
+`scripts/deploy-vm.sh <user@host>` builds the Linux package, copies it to the machine with `scp` and runs `install.sh` there over `ssh`, exactly as a user would. The first run adds `--open-firewall`; later runs update the installation and keep data and configuration. `--skip-build` reuses the last package, `--arch arm64` deploys the ARM build, and options after `--` go to `install.sh`. Set up a key first (`ssh-copy-id <user@host>`) and run the script in a real terminal, because `sudo` on the machine asks for the password. SteamCMD games also need `sudo apt install lib32gcc-s1` on the machine.
+
 The GitHub workflows (`.github/workflows/ci.yml` and `release.yml`) check every push (typecheck, tests, build, package build, and on Ubuntu additionally a real installation with `install.sh`) and, on a tag `v<version>`, produce all three packages including the installer and create a GitHub release. The tag must match the version in `packages/backend/package.json`. The signing of releases is described in [UPDATES.md](UPDATES.md#how-the-owner-publishes-an-update).
