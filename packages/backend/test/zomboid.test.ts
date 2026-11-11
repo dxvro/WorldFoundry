@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -193,6 +193,15 @@ describe.runIf(linux)('a Project Zomboid server from creation to stop', () => {
     expect(again).not.toContain('-adminpassword');
     await call('POST', `/api/servers/${id}/stop`);
     await waitFor(async () => (await status()).state === 'offline' || undefined, 10_000);
+
+    // deleting removes everything of the server from the disk: game files, saves, settings and the cache folder
+    const folder = path.join(t.dir, 'servers', id);
+    await mkdir(path.join(folder, 'data', 'Saves', 'Multiplayer', 'servertest'), { recursive: true });
+    await writeFile(path.join(folder, 'data', 'Saves', 'Multiplayer', 'servertest', 'map_p.bin'), 'world');
+    const removed = await app.inject({ method: 'DELETE', url: `/api/servers/${id}?confirm=true` });
+    expect(removed.statusCode).toBe(200);
+    expect(await stat(folder).catch(() => null)).toBeNull();
+    expect((await call('GET', `/api/servers/${id}`)).status).toBe(404);
   }, 60_000);
 
   it('backs up Server, Saves and db while stopped, refuses while running, and restores with a safety copy', async () => {

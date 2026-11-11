@@ -1,18 +1,18 @@
-import { ExternalLink, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { ExternalLink, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Dialog } from '../../components/Dialog';
 import { Button, ErrorNotice, Field, LoadingBlock, Notice, Range, Section, Toggle } from '../../components/ui';
 import { EULA_URL } from '../../lib/constants';
-import { backupsApi, systemApi, serversApi } from '../../lib/endpoints';
+import { systemApi, serversApi } from '../../lib/endpoints';
 import { useI18n } from '../../i18n';
 import { getCurrentDictionary } from '../../i18n/current';
-import { formatBytes, formatMb } from '../../lib/format';
+import { formatMb } from '../../lib/format';
 import { javaFit } from '../../lib/java';
 import { ramBounds, validateRam, withMax, withMin } from '../../lib/ram';
-import { Link, serverPath, useRouter } from '../../lib/router';
+import { Link, serverPath } from '../../lib/router';
 import type { PropertiesPatch, PropertiesView, RuntimeStatus, ServerView, SystemInfo, TypedProperties, UpdateServerInput } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { useLive } from '../../live/LiveProvider';
+import { DeleteServerSection } from './DeleteServerSection';
 import { JavaRuntimes } from './JavaRuntimes';
 
 type Gamemode = TypedProperties['gamemode'];
@@ -465,100 +465,6 @@ function GeneralSection({ server, onSaved }: { server: ServerView; onSaved: () =
   );
 }
 
-function DangerSection({ server, status }: { server: ServerView; status: RuntimeStatus }): ReactNode {
-  const { t } = useI18n();
-  const d = t.config.danger;
-  const { navigate } = useRouter();
-  const { refresh } = useLive();
-  const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState('');
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const running = status.state === 'preparing' || status.state === 'starting' || status.state === 'online' || status.state === 'stopping';
-  const [archives, setArchives] = useState<{ count: number; sizeBytes: number } | null>(null);
-  const [choice, setChoice] = useState<'delete' | 'keep' | null>(null);
-  const installing = server.installState === 'installing';
-
-  const close = (): void => {
-    setOpen(false);
-    setTyped('');
-    setError(null);
-    setChoice(null);
-  };
-
-  const openDialog = (): void => {
-    setOpen(true);
-    setArchives(null);
-    setChoice(null);
-    backupsApi
-      .list(server.id)
-      .then((list) => setArchives({ count: list.backups.length, sizeBytes: list.totalBytes }))
-      .catch(() => setArchives({ count: 0, sizeBytes: 0 }));
-  };
-
-  const remove = async (): Promise<void> => {
-    setDeleting(true);
-    setError(null);
-    try {
-      await serversApi.remove(server.id, choice ?? undefined);
-      await refresh();
-      navigate('/', { replace: true });
-    } catch (cause) {
-      setError(cause);
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <Section title={d.title} description={d.description}>
-      {running ? <Notice tone="warn" className="mb-3">{d.running}</Notice> : null}
-      {installing ? <Notice tone="warn" className="mb-3">{d.installing}</Notice> : null}
-      <Button variant="danger" icon={Trash2} disabled={running || installing} onClick={openDialog}>
-        {d.open}
-      </Button>
-      <Dialog
-        open={open}
-        title={d.dialogTitle}
-        onClose={close}
-        footer={
-          <>
-            <Button onClick={close}>{t.common.cancel}</Button>
-            <Button variant="danger-solid" icon={Trash2} loading={deleting} disabled={typed !== server.name || archives === null || (archives.count > 0 && choice === null)} onClick={() => void remove()}>
-              {d.confirm}
-            </Button>
-          </>
-        }
-      >
-        <Notice tone="error" title={d.noticeTitle}>
-          {d.notice(server.name)}
-        </Notice>
-        {archives === null || archives.count === 0 ? null : (
-          <fieldset className="space-y-2 rounded-lg border border-line-strong bg-canvas p-3">
-            <legend className="px-1 font-medium">
-              {d.backupsQuestion(archives.count, formatBytes(archives.sizeBytes))}
-            </legend>
-            <label className="flex cursor-pointer items-start gap-3">
-              <input type="radio" name="backups" checked={choice === 'delete'} onChange={() => setChoice('delete')} className="mt-1 size-5 shrink-0 accent-[var(--color-accent)]" />
-              <span>{d.deleteWithServer}</span>
-            </label>
-            <label className="flex cursor-pointer items-start gap-3">
-              <input type="radio" name="backups" checked={choice === 'keep'} onChange={() => setChoice('keep')} className="mt-1 size-5 shrink-0 accent-[var(--color-accent)]" />
-              <span>
-                {d.keep}
-                <span className="hint block">{d.keepHint(server.id)}</span>
-              </span>
-            </label>
-          </fieldset>
-        )}
-        <Field label={d.typeName(server.name)}>
-          {(props) => <input {...props} className="input" value={typed} autoComplete="off" spellCheck={false} onChange={(event) => setTyped(event.target.value)} />}
-        </Field>
-        {error === null ? null : <ErrorNotice error={error} />}
-      </Dialog>
-    </Section>
-  );
-}
-
 export function ConfigTab({ server, status }: { server: ServerView; status: RuntimeStatus }): ReactNode {
   const { t } = useI18n();
   const { state, refresh, setRestartNeeded } = useLive();
@@ -606,7 +512,7 @@ export function ConfigTab({ server, status }: { server: ServerView; status: Runt
       <JvmSection server={server} system={system.data} rescanning={rescanning} onRescan={rescan} onSaved={afterSave} />
       {system.data === undefined ? null : <JavaRuntimes server={server} system={system.data} serverNames={serverNames} onChanged={rescan} />}
       <GeneralSection server={server} onSaved={() => void refresh()} />
-      <DangerSection server={server} status={status} />
+      <DeleteServerSection server={server} status={status} />
     </div>
   );
 }

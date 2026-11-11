@@ -182,11 +182,11 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         {tab !== 'config' ? null : minecraft ? (
           <ConfigTab key={server.id} server={server} status={status} />
         ) : server.game === 'satisfactory' ? (
-          <SatisfactorySettingsTab key={server.id} server={server} />
+          <SatisfactorySettingsTab key={server.id} server={server} status={status} />
         ) : server.game === 'ark' ? (
-          <ArkSettingsTab key={server.id} server={server} />
+          <ArkSettingsTab key={server.id} server={server} status={status} />
         ) : (
-          <ZomboidSettingsTab key={server.id} server={server} />
+          <ZomboidSettingsTab key={server.id} server={server} status={status} />
         )}
         {!minecraft ? null : tab === 'world' ? <WorldTab key={server.id} server={server} status={status} /> : null}
         {tab === 'players' && !minecraft ? <GamePlayersTab key={server.id} server={server} status={status} /> : null}

@@ -4,7 +4,8 @@ import { Button, ErrorNotice, Notice, Section, Toggle } from '../../components/u
 import { ARK_MAPS, arkSettings } from '../../games/ark';
 import { useI18n } from '../../i18n';
 import { serversApi } from '../../lib/endpoints';
-import type { ServerView } from '../../lib/types';
+import type { RuntimeStatus, ServerView } from '../../lib/types';
+import { DeleteServerSection } from './DeleteServerSection';
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }): ReactNode {
   return (
@@ -18,7 +19,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-export function ArkSettingsTab({ server }: { server: ServerView }): ReactNode {
+export function ArkSettingsTab({ server, status }: { server: ServerView; status: RuntimeStatus }): ReactNode {
   const { t } = useI18n();
   const s = t.ark.settings;
   const settings = arkSettings(server);
@@ -74,6 +75,7 @@ export function ArkSettingsTab({ server }: { server: ServerView }): ReactNode {
           </Button>
         </div>
       </Section>
+      <DeleteServerSection server={server} status={status} />
     </div>
   );
 }

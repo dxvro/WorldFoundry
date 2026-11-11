@@ -4,7 +4,8 @@ import { Button, ErrorNotice, Notice, Range, Section, Toggle } from '../../compo
 import { zomboidSettings } from '../../games/zomboid';
 import { useI18n } from '../../i18n';
 import { serversApi, systemApi } from '../../lib/endpoints';
-import type { ServerView } from '../../lib/types';
+import type { RuntimeStatus, ServerView } from '../../lib/types';
+import { DeleteServerSection } from './DeleteServerSection';
 import { formatMb } from '../../lib/format';
 import { useQuery } from '../../lib/useQuery';
 
@@ -21,7 +22,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 // The settings of a Project Zomboid server that WorldFoundry manages itself.
-export function ZomboidSettingsTab({ server }: { server: ServerView }): ReactNode {
+export function ZomboidSettingsTab({ server, status }: { server: ServerView; status: RuntimeStatus }): ReactNode {
   const { t } = useI18n();
   const z = t.zomboid.settings;
   const settings = zomboidSettings(server);
@@ -88,6 +89,7 @@ export function ZomboidSettingsTab({ server }: { server: ServerView }): ReactNod
           </Button>
         </div>
       </Section>
+      <DeleteServerSection server={server} status={status} />
     </div>
   );
 }

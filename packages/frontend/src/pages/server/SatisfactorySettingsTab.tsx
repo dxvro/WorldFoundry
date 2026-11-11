@@ -4,9 +4,10 @@ import { Button, ErrorNotice, Notice, Section, Toggle } from '../../components/u
 import { satisfactorySettings } from '../../games/satisfactory';
 import { useI18n } from '../../i18n';
 import { serversApi } from '../../lib/endpoints';
-import type { ServerView } from '../../lib/types';
+import type { RuntimeStatus, ServerView } from '../../lib/types';
+import { DeleteServerSection } from './DeleteServerSection';
 
-export function SatisfactorySettingsTab({ server }: { server: ServerView }): ReactNode {
+export function SatisfactorySettingsTab({ server, status }: { server: ServerView; status: RuntimeStatus }): ReactNode {
   const { t } = useI18n();
   const s = t.satisfactory.settings;
   const settings = satisfactorySettings(server);
@@ -61,6 +62,7 @@ export function SatisfactorySettingsTab({ server }: { server: ServerView }): Rea
           </Button>
         </div>
       </Section>
+      <DeleteServerSection server={server} status={status} />
     </div>
   );
 }

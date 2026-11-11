@@ -176,8 +176,9 @@ describe('autostart and deleting', () => {
     render(<App />);
     await user.click(await screen.findByRole('button', { name: 'Delete server …' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete server permanently?' });
-    const confirm = within(dialog).getByRole('button', { name: 'Delete server and world' });
+    const confirm = within(dialog).getByRole('button', { name: 'Delete server and all data' });
     await user.type(within(dialog).getByLabelText(/Type the name/), 'Survival');
+    await user.click(within(dialog).getByRole('checkbox', { name: /all data of this server will be lost/ }));
     expect(await within(dialog).findByText(/What should happen to the 2 backups \(3 MB\)\?/)).toBeInTheDocument();
     expect(confirm).toBeDisabled();
     await user.click(within(dialog).getByRole('radio', { name: /Keep/ }));
@@ -196,7 +197,12 @@ describe('autostart and deleting', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Delete server permanently?' });
     await user.type(within(dialog).getByLabelText(/Type the name/), 'Survival');
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Delete server and world' }));
+    const confirm = within(dialog).getByRole('button', { name: 'Delete server and all data' });
+    // the typed name alone is not enough: the loss of all data must be confirmed as well
+    expect(confirm).toBeDisabled();
+    await user.click(within(dialog).getByRole('checkbox', { name: /all data of this server will be lost/ }));
+    expect(within(dialog).getByText(/permanently removes its whole folder/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Delete server and all data' }));
     await waitFor(() => expect(api.callsTo('DELETE /api/servers/srv-1')).toHaveLength(1));
     expect(api.callsTo('DELETE /api/servers/srv-1')[0]?.url).toBe('/api/servers/srv-1?confirm=true');
   });
