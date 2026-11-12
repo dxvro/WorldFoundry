@@ -6,7 +6,7 @@ import { FakeSocket } from '../../test/fakes';
 import { FakeXhr } from '../../test/fakeXhr';
 import { baseRoutes, mockApi, offline, serverFixture, type MockApi } from '../../test/mockApi';
 
-const emptyBackups = { backups: [], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 0, freeBytes: null, running: false };
+const emptyBackups = { backups: [], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 0, freeBytes: null, running: false };
 const satisfactory = (status: Record<string, unknown> = offline): Record<string, unknown> =>
   serverFixture({ game: 'satisfactory', loader: 'vanilla', mcVersion: '', loaderVersion: null, port: 7777, gameSettings: JSON.stringify({ branch: 'public', reliablePort: 8888 }), status });
 

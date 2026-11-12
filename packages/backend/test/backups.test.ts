@@ -184,7 +184,7 @@ describe('creating a backup of a stopped server', () => {
     const res = await list(server.id);
     expect(res.body.totalBytes).toBe(res.body.backups[0]?.sizeBytes);
     expect(res.body.running).toBe(false);
-    expect(res.body.schedule).toEqual({ intervalHours: null, keepLast: 7, includeConfig: false });
+    expect(res.body.schedule).toMatchObject({ mode: 'off', intervalHours: null, times: [], everyDays: 1, keepLast: 7, includeConfig: false, nextRunAt: null });
     expect(typeof res.body.freeBytes === 'number' || res.body.freeBytes === null).toBe(true);
     const states = events.filter((e) => e.type === 'backup.changed').map((e) => (e.type === 'backup.changed' ? e.status : ''));
     expect(states).toEqual(['running', 'ok']);
@@ -639,7 +639,7 @@ describe('schedule and retention', () => {
     expect((await env.call<ErrorBody>('PATCH', `/api/servers/${server.id}/backups/schedule`, { keepLast: 0 })).status).toBe(400);
     expect((await env.call<ErrorBody>('PATCH', `/api/servers/${server.id}/backups/schedule`, { gibtEsNicht: 1 })).status).toBe(400);
     const ok = await env.call<{ schedule: unknown }>('PATCH', `/api/servers/${server.id}/backups/schedule`, { intervalHours: 6, keepLast: 4, includeConfig: true });
-    expect(ok.body.schedule).toEqual({ intervalHours: 6, keepLast: 4, includeConfig: true });
+    expect(ok.body.schedule).toMatchObject({ mode: 'hours', intervalHours: 6, times: [], keepLast: 4, includeConfig: true });
     expect((await env.call<{ server: Server }>('GET', `/api/servers/${server.id}`)).body.server).toMatchObject({ backupIntervalHours: 6, backupKeepLast: 4, backupIncludeConfig: true });
     const off = await env.call<{ schedule: { intervalHours: number | null } }>('PATCH', `/api/servers/${server.id}/backups/schedule`, { intervalHours: null });
     expect(off.body.schedule.intervalHours).toBeNull();
@@ -749,6 +749,133 @@ describe('schedule and retention', () => {
     expect(rows[0]).toMatchObject({ status: 'failed', kind: 'auto' });
     expect(events.some((e) => e.type === 'backup.changed' && e.kind === 'auto' && e.status === 'failed')).toBe(true);
     expect(await env.services.backupScheduler.tick(Date.now() + 1000)).toBe(0);
+  });
+
+  // the first moment at HH:MM UTC after `from`
+  const nextUtc = (from: number, time: string): number => {
+    const [hour, minute] = time.split(':').map(Number) as [number, number];
+    const date = new Date(from);
+    let at = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, minute);
+    if (at <= from) at += 24 * HOUR;
+    return at;
+  };
+
+  it('validates times of day, every n days and the time zone', async () => {
+    const server = await env.addServer();
+    const patch = (body: Record<string, unknown>) => env.call<ErrorBody>('PATCH', `/api/servers/${server.id}/backups/schedule`, body);
+    expect((await patch({ mode: 'times', times: ['25:00'] })).status).toBe(400);
+    expect((await patch({ mode: 'times', times: ['3:00'] })).status).toBe(400);
+    expect((await patch({ mode: 'times', times: [] })).status).toBe(400);
+    expect((await patch({ mode: 'times', times: ['03:00'], everyDays: 0 })).status).toBe(400);
+    expect((await patch({ mode: 'times', times: ['03:00'], everyDays: 31 })).status).toBe(400);
+    expect((await patch({ mode: 'times', times: ['03:00'], timeZone: 'Mars/Olympus' })).status).toBe(400);
+    expect((await patch({ mode: 'times' })).status).toBe(422);
+    expect((await patch({ mode: 'hours' })).status).toBe(422);
+    const ok = await env.call<{ schedule: Record<string, unknown> }>('PATCH', `/api/servers/${server.id}/backups/schedule`, {
+      mode: 'times',
+      times: ['18:00', '06:00', '06:00'],
+      everyDays: 2,
+      timeZone: 'Europe/Berlin',
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.schedule).toMatchObject({ mode: 'times', intervalHours: null, times: ['06:00', '18:00'], everyDays: 2, timeZone: 'Europe/Berlin' });
+    expect(typeof ok.body.schedule['nextRunAt']).toBe('string');
+    // switching to hours forgets the times, off forgets both
+    const hours = await env.call<{ schedule: Record<string, unknown> }>('PATCH', `/api/servers/${server.id}/backups/schedule`, { mode: 'hours', intervalHours: 4 });
+    expect(hours.body.schedule).toMatchObject({ mode: 'hours', intervalHours: 4, times: [] });
+    const off = await env.call<{ schedule: Record<string, unknown> }>('PATCH', `/api/servers/${server.id}/backups/schedule`, { mode: 'off' });
+    expect(off.body.schedule).toMatchObject({ mode: 'off', intervalHours: null, times: [], nextRunAt: null });
+  });
+
+  it('runs at the set times of day', async () => {
+    const server = await scheduled({ mode: 'times', times: ['06:00', '18:00'], timeZone: 'UTC', keepLast: 5 });
+    const since = (await env.row(server.id))?.backupScheduleSince?.getTime() as number;
+    const first = Math.min(nextUtc(since, '06:00'), nextUtc(since, '18:00'));
+    const listed = (await list(server.id)).body.schedule;
+    expect(listed.nextRunAt).toBe(new Date(first).toISOString());
+    expect(await env.services.backupScheduler.tick(first - 60_000)).toBe(0);
+    expect(await env.services.backupScheduler.tick(first + 1000)).toBe(1);
+    expect(await autos(server.id)).toHaveLength(1);
+  });
+
+  it('runs only every n days', async () => {
+    const server = await scheduled({ mode: 'times', times: ['04:00'], everyDays: 3, timeZone: 'UTC', keepLast: 5 });
+    const since = (await env.row(server.id))?.backupScheduleSince?.getTime() as number;
+    const today = Date.UTC(new Date(since).getUTCFullYear(), new Date(since).getUTCMonth(), new Date(since).getUTCDate(), 4, 0);
+    // the cycle starts on the day the schedule was set: today 04:00 if still ahead, otherwise three days later
+    const first = today > since ? today : today + 72 * HOUR;
+    const listed = (await list(server.id)).body.schedule;
+    expect(listed.nextRunAt).toBe(new Date(first).toISOString());
+    expect(await env.services.backupScheduler.tick(first - 24 * HOUR + 1000)).toBe(0);
+    expect(await env.services.backupScheduler.tick(first + 1000)).toBe(1);
+  });
+
+  it('deletes the oldest automatic backups at once when fewer copies are kept', async () => {
+    const server = await scheduled({ intervalHours: 1, keepLast: 3 });
+    const since = (await env.row(server.id))?.backupScheduleSince?.getTime() as number;
+    for (let index = 0; index < 3; index++) {
+      await wait(20);
+      await write(server.id, 'world/level.dat', `state-${index}`);
+      expect(await env.services.backupScheduler.tick(since + (index + 1) * 2 * HOUR)).toBe(1);
+      await wait(20);
+    }
+    const before = await autos(server.id);
+    expect(before).toHaveLength(3);
+    const manual = await backupNow(server.id);
+    await env.call('PATCH', `/api/servers/${server.id}/backups/schedule`, { keepLast: 2 });
+    const after = await autos(server.id);
+    expect(after.map((row) => row.id)).toEqual(before.slice(1).map((row) => row.id));
+    expect((await list(server.id)).body.backups.some((entry) => entry.id === manual.id)).toBe(true);
+    // raising the number deletes nothing
+    await env.call('PATCH', `/api/servers/${server.id}/backups/schedule`, { keepLast: 5 });
+    expect(await autos(server.id)).toHaveLength(2);
+  });
+
+  it('with one copy, deletes the old automatic backup first when the disk has no room for two', async () => {
+    await env.close();
+    let serverId = '';
+    // room for exactly one archive: full as soon as an automatic backup exists
+    await setup({
+      freeSpace: async () => {
+        const names = await readdir(backupsDir(serverId)).catch(() => [] as string[]);
+        return names.some((name) => name.includes('-auto-')) ? 1024 : 1024 ** 4;
+      },
+    });
+    const server = await scheduled({ intervalHours: 1, keepLast: 1 });
+    serverId = server.id;
+    const since = (await env.row(server.id))?.backupScheduleSince?.getTime() as number;
+    expect(await env.services.backupScheduler.tick(since + HOUR + 1000)).toBe(1);
+    const first = await autos(server.id);
+    expect(first).toHaveLength(1);
+    expect(first[0]?.status).toBe('ok');
+    await wait(20);
+    await write(server.id, 'world/level.dat', 'changed');
+    expect(await env.services.backupScheduler.tick(since + 3 * HOUR)).toBe(1);
+    const second = await autos(server.id);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.status).toBe('ok');
+    expect(second[0]?.id).not.toBe(first[0]?.id);
+  });
+
+  it('with more copies, keeps them and lets the backup fail cleanly when the disk is full', async () => {
+    await env.close();
+    let serverId = '';
+    await setup({
+      freeSpace: async () => {
+        const names = await readdir(backupsDir(serverId)).catch(() => [] as string[]);
+        return names.some((name) => name.includes('-auto-')) ? 1024 : 1024 ** 4;
+      },
+    });
+    const server = await scheduled({ intervalHours: 1, keepLast: 2 });
+    serverId = server.id;
+    const since = (await env.row(server.id))?.backupScheduleSince?.getTime() as number;
+    expect(await env.services.backupScheduler.tick(since + HOUR + 1000)).toBe(1);
+    await wait(20);
+    await write(server.id, 'world/level.dat', 'changed');
+    await env.services.backupScheduler.tick(since + 3 * HOUR);
+    const rows = await autos(server.id);
+    expect(rows.filter((row) => row.status === 'ok')).toHaveLength(1);
+    expect(rows.filter((row) => row.status === 'failed')).toHaveLength(1);
   });
 });
 

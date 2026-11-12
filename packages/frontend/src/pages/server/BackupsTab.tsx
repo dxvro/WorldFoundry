@@ -1,4 +1,4 @@
-import { Archive, Download, FileDown, HardDrive, History, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { Archive, Download, FileDown, HardDrive, History, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Dialog } from '../../components/Dialog';
 import { Button, ErrorNotice, Field, LoadingBlock, Notice, Section, Spinner, Toggle, cx } from '../../components/ui';
@@ -15,7 +15,7 @@ import { WorldTools } from './WorldTools';
 const KIND_CHIP: Record<BackupKind, string> = { manual: 'chip-accent', auto: '', safety: 'chip-warn' };
 const STATUS_CHIP: Record<BackupStatus, string> = { running: 'chip-busy', ok: 'chip-ok', failed: 'chip-bad' };
 
-const INTERVAL_PRESETS = [1, 2, 3, 6, 12, 24, 48, 168];
+const INTERVAL_PRESETS = [1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168];
 
 // In the active language; call from a component that uses useI18n()
 export const intervalLabel = (hours: number): string => {
@@ -77,28 +77,74 @@ function BackupRow({ serverId, backup, locked, onRestore, onDelete, onExport }: 
   );
 }
 
-function ScheduleSection({ server, schedule, onSaved }: { server: ServerView; schedule: BackupSchedule; onSaved: () => void }): ReactNode {
+type ScheduleMode = BackupSchedule['mode'];
+const MAX_TIMES = 24;
+const EVERY_DAYS_OPTIONS = Array.from({ length: 30 }, (_, index) => index + 1);
+
+function browserTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+// older servers answer without mode, times and everyDays
+function modeOf(schedule: BackupSchedule): ScheduleMode {
+  return schedule.mode ?? ((schedule.times ?? []).length > 0 ? 'times' : schedule.intervalHours !== null ? 'hours' : 'off');
+}
+
+const VALID_TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+function ScheduleSection({ server, schedule, autoCount, onSaved }: { server: ServerView; schedule: BackupSchedule; autoCount: number; onSaved: () => void }): ReactNode {
   const { t } = useI18n();
   const s = t.backups.schedule;
-  const [interval, setIntervalHours] = useState<number | null>(schedule.intervalHours);
+  const savedMode = modeOf(schedule);
+  const savedTimes = schedule.times ?? [];
+  const savedEveryDays = schedule.everyDays ?? 1;
+  const [mode, setMode] = useState<ScheduleMode>(savedMode);
+  const [interval, setIntervalHours] = useState<number>(schedule.intervalHours ?? 6);
+  const [times, setTimes] = useState<string[]>(savedTimes.length > 0 ? savedTimes : ['03:00']);
+  const [everyDays, setEveryDays] = useState<number>(savedEveryDays);
   const [keepText, setKeepText] = useState(String(schedule.keepLast));
   const [includeConfig, setIncludeConfig] = useState(schedule.includeConfig);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const timeZone = schedule.mode === 'times' && schedule.timeZone ? schedule.timeZone : browserTimeZone();
   useEffect(() => {
-    setIntervalHours(schedule.intervalHours);
+    setMode(savedMode);
+    setIntervalHours(schedule.intervalHours ?? 6);
+    setTimes(savedTimes.length > 0 ? savedTimes : ['03:00']);
+    setEveryDays(savedEveryDays);
     setKeepText(String(schedule.keepLast));
     setIncludeConfig(schedule.includeConfig);
-  }, [schedule.intervalHours, schedule.keepLast, schedule.includeConfig]);
+  }, [savedMode, schedule.intervalHours, savedTimes.join(','), savedEveryDays, schedule.keepLast, schedule.includeConfig]);
 
+  const changed = (): void => setSaved(false);
   const keep = parseKeepLast(keepText);
-  const presets = interval !== null && !INTERVAL_PRESETS.includes(interval) ? [...INTERVAL_PRESETS, interval].sort((a, b) => a - b) : INTERVAL_PRESETS;
+  const cleanTimes = [...new Set(times)].sort();
+  const timesValid = times.length > 0 && times.every((time) => VALID_TIME.test(time));
+  const presets = !INTERVAL_PRESETS.includes(interval) ? [...INTERVAL_PRESETS, interval].sort((a, b) => a - b) : INTERVAL_PRESETS;
+
   const patch: Partial<BackupSchedule> = {};
-  if (interval !== schedule.intervalHours) patch.intervalHours = interval;
+  if (mode !== savedMode) patch.mode = mode;
+  if (mode === 'hours' && (mode !== savedMode || interval !== schedule.intervalHours)) {
+    patch.mode = 'hours';
+    patch.intervalHours = interval;
+  }
+  if (mode === 'times' && timesValid && (mode !== savedMode || cleanTimes.join(',') !== savedTimes.join(',') || everyDays !== savedEveryDays)) {
+    patch.mode = 'times';
+    patch.times = cleanTimes;
+    patch.everyDays = everyDays;
+    patch.timeZone = timeZone;
+  }
   if (keep !== null && keep !== schedule.keepLast) patch.keepLast = keep;
   if (includeConfig !== schedule.includeConfig) patch.includeConfig = includeConfig;
   const dirty = Object.keys(patch).length > 0;
+  const invalid = keep === null || (mode === 'times' && !timesValid);
+  // lowering the number deletes the oldest automatic backups when saving
+  const doomed = keep !== null && keep < schedule.keepLast ? Math.max(0, autoCount - keep) : 0;
 
   const save = async (): Promise<void> => {
     setSaving(true);
@@ -130,48 +176,145 @@ function ScheduleSection({ server, schedule, onSaved }: { server: ServerView; sc
               <select
                 {...props}
                 className="input"
-                value={interval === null ? '' : String(interval)}
+                value={mode}
                 onChange={(event) => {
-                  setIntervalHours(event.target.value === '' ? null : Number(event.target.value));
-                  setSaved(false);
+                  setMode(event.target.value as ScheduleMode);
+                  changed();
                 }}
               >
-                <option value="">{s.off}</option>
-                {presets.map((hours) => (
-                  <option key={hours} value={hours}>
-                    {intervalLabel(hours)}
-                  </option>
-                ))}
+                <option value="off">{s.off}</option>
+                <option value="hours">{s.modeHours}</option>
+                <option value="times">{s.modeTimes}</option>
               </select>
             )}
           </Field>
-          <Field label={s.keep} hint={s.keepHint} error={keep === null ? s.keepInvalid : undefined}>
-            {(props) => (
-              <input
-                {...props}
-                className="input num"
-                inputMode="numeric"
-                value={keepText}
-                onChange={(event) => {
-                  setKeepText(event.target.value);
-                  setSaved(false);
-                }}
-              />
-            )}
-          </Field>
+          {mode === 'hours' ? (
+            <Field label={s.interval}>
+              {(props) => (
+                <select
+                  {...props}
+                  className="input"
+                  value={String(interval)}
+                  onChange={(event) => {
+                    setIntervalHours(Number(event.target.value));
+                    changed();
+                  }}
+                >
+                  {presets.map((hours) => (
+                    <option key={hours} value={hours}>
+                      {intervalLabel(hours)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          ) : null}
+          {mode === 'times' ? (
+            <Field label={s.repeat}>
+              {(props) => (
+                <select
+                  {...props}
+                  className="input"
+                  value={String(everyDays)}
+                  onChange={(event) => {
+                    setEveryDays(Number(event.target.value));
+                    changed();
+                  }}
+                >
+                  {EVERY_DAYS_OPTIONS.map((days) => (
+                    <option key={days} value={days}>
+                      {days === 1 ? s.everyDay : s.everyDays(days)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          ) : null}
         </div>
+
+        {mode === 'times' ? (
+          <fieldset className="space-y-2">
+            <legend className="label">{s.times}</legend>
+            <ul className="flex flex-wrap gap-2">
+              {times.map((time, index) => (
+                <li key={index} className="flex items-center gap-1">
+                  <input
+                    className="input num w-28"
+                    type="time"
+                    aria-label={s.timeLabel(index + 1)}
+                    aria-invalid={VALID_TIME.test(time) ? undefined : true}
+                    value={time}
+                    onChange={(event) => {
+                      const next = [...times];
+                      next[index] = event.target.value;
+                      setTimes(next);
+                      changed();
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={X}
+                    iconOnly
+                    aria-label={s.removeTime(time)}
+                    title={s.removeTime(time)}
+                    disabled={times.length === 1}
+                    onClick={() => {
+                      setTimes(times.filter((_, other) => other !== index));
+                      changed();
+                    }}
+                  />
+                </li>
+              ))}
+              {times.length < MAX_TIMES ? (
+                <li>
+                  <Button
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => {
+                      setTimes([...times, '12:00']);
+                      changed();
+                    }}
+                  >
+                    {s.addTime}
+                  </Button>
+                </li>
+              ) : null}
+            </ul>
+            <p className="hint">{timesValid ? s.timesHint(timeZone) : s.timesInvalid}</p>
+          </fieldset>
+        ) : null}
+
+        <Field label={s.keep} hint={s.keepHint} error={keep === null ? s.keepInvalid : undefined}>
+          {(props) => (
+            <input
+              {...props}
+              className="input num w-28"
+              inputMode="numeric"
+              value={keepText}
+              onChange={(event) => {
+                setKeepText(event.target.value);
+                changed();
+              }}
+            />
+          )}
+        </Field>
+        {keep === 1 ? <Notice tone="info">{s.keepOne}</Notice> : null}
+        {doomed > 0 ? <Notice tone="warn">{s.keepLowered(doomed)}</Notice> : null}
+
         {server.game !== 'minecraft' ? null : <Toggle
           checked={includeConfig}
           onChange={(value) => {
             setIncludeConfig(value);
-            setSaved(false);
+            changed();
           }}
           label={s.includeConfig}
           description={s.includeConfigHint}
         />}
+        {schedule.nextRunAt && !dirty ? <p className="hint">{s.next(formatDateTime(schedule.nextRunAt))}</p> : null}
         {error === null ? null : <ErrorNotice error={error} title={s.saveFailed} />}
         {saved ? <Notice tone="success">{s.saved}</Notice> : null}
-        <Button type="submit" variant="primary" icon={Save} loading={saving} disabled={!dirty || keep === null}>
+        <Button type="submit" variant="primary" icon={Save} loading={saving} disabled={!dirty || invalid}>
           {s.save}
         </Button>
       </form>
@@ -347,7 +490,7 @@ export function BackupsTab({ server, status }: { server: ServerView; status: Run
         <GameWorldTools server={server} status={status} exportBackup={exportTarget} onCloseBackupExport={() => setExportTarget(null)} onImported={list.reload} />
       )}
 
-      {data === undefined ? null : <ScheduleSection server={server} schedule={data.schedule} onSaved={list.reload} />}
+      {data === undefined ? null : <ScheduleSection server={server} schedule={data.schedule} autoCount={data.backups.filter((entry) => entry.kind === 'auto' && entry.status === 'ok').length} onSaved={list.reload} />}
 
       <Dialog
         open={restoreTarget !== null}

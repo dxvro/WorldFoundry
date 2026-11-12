@@ -10,7 +10,7 @@ const backups = {
   backups: [
     { id: 'b1', status: 'ok', kind: 'manual', createdAt: '2026-11-10T08:00:00.000Z', fileName: 'a.tar.gz', sizeBytes: 1, rawBytes: 1, includesConfig: false, levelName: 'world', worlds: ['world'], note: null, noteRef: null, error: null, errorRef: null, finishedAt: null, serverId: 'srv-1' },
   ],
-  schedule: { intervalHours: null, keepLast: 7, includeConfig: false },
+  schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null },
   totalBytes: 1,
   freeBytes: null,
   running: false,

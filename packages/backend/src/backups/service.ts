@@ -19,12 +19,21 @@ import type { KeyedLock } from '../lib/keyed-lock.js';
 import { silentLogger, type Logger } from '../lib/logger.js';
 import { rethrowFsError } from '../mods/fs-errors.js';
 import type { ProcessManager } from '../process/manager.js';
+import { MAX_EVERY_DAYS, MAX_TIMES_PER_DAY, TIME_OF_DAY, isTimeZone, localDay, nextSlot, normalizeTimes, parseCalendar, systemTimeZone, type BackupCalendar } from './calendar.js';
 import { DEFAULT_SAVE_TIMINGS, SaveSession, type SaveTimings } from './save.js';
 import { MANIFEST_NAME, collectLayout, hasLayoutData, minecraftLayout, newestChange, type BackupLayout } from './world.js';
 
+export const BACKUP_SCHEDULE_MODES = ['off', 'hours', 'times'] as const;
+export type BackupScheduleMode = (typeof BACKUP_SCHEDULE_MODES)[number];
+
 export const BackupScheduleSchema = z
   .object({
+    // off; every n hours; at set times of day (every day or every n days)
+    mode: z.enum(BACKUP_SCHEDULE_MODES),
     intervalHours: z.number().int().min(1).max(24 * 30).nullable(),
+    times: z.array(z.string().regex(TIME_OF_DAY, 'Times must look like 03:00.')).min(1).max(MAX_TIMES_PER_DAY),
+    everyDays: z.number().int().min(1).max(MAX_EVERY_DAYS),
+    timeZone: z.string().max(64).refine(isTimeZone, 'Unknown time zone.'),
     keepLast: z.number().int().min(1).max(100),
     includeConfig: z.boolean(),
   })
@@ -155,8 +164,42 @@ export class BackupService {
     return row;
   }
 
-  schedule(server: Pick<Server, 'backupIntervalHours' | 'backupKeepLast' | 'backupIncludeConfig'>): BackupSchedule {
-    return { intervalHours: server.backupIntervalHours, keepLast: server.backupKeepLast, includeConfig: server.backupIncludeConfig };
+  private async lastAutomatic(serverId: string): Promise<number> {
+    const last = (
+      await this.options.db
+        .select({ createdAt: backups.createdAt })
+        .from(backups)
+        .where(and(eq(backups.serverId, serverId), eq(backups.kind, 'auto')))
+        .orderBy(desc(backups.createdAt))
+        .limit(1)
+    )[0];
+    return last?.createdAt.getTime() ?? 0;
+  }
+
+  // when the next automatic backup is due (may lie in the past: then the scheduler starts it within a minute)
+  private dueAt(server: Server, lastAuto: number, now: number): number | null {
+    // counted from the newer of the last automatic backup and the moment the schedule was set; never more than 40 days back
+    const anchor = Math.max(lastAuto, server.backupScheduleSince?.getTime() ?? 0, now - 40 * 86_400_000);
+    const calendar = parseCalendar(server.backupCalendar);
+    if (calendar !== null) return nextSlot(calendar, anchor);
+    if (server.backupIntervalHours !== null) return anchor + server.backupIntervalHours * 3_600_000;
+    return null;
+  }
+
+  async schedule(server: Server, now = Date.now()): Promise<BackupSchedule> {
+    const calendar = parseCalendar(server.backupCalendar);
+    const mode: BackupScheduleMode = calendar !== null ? 'times' : server.backupIntervalHours !== null ? 'hours' : 'off';
+    const due = mode === 'off' ? null : this.dueAt(server, await this.lastAutomatic(server.id), now);
+    return {
+      mode,
+      intervalHours: server.backupIntervalHours,
+      times: calendar?.times ?? [],
+      everyDays: calendar?.everyDays ?? 1,
+      timeZone: calendar?.timeZone ?? systemTimeZone(),
+      keepLast: server.backupKeepLast,
+      includeConfig: server.backupIncludeConfig,
+      nextRunAt: due === null ? null : new Date(due).toISOString(),
+    };
   }
 
   async list(serverId: string): Promise<BackupListResponse> {
@@ -164,7 +207,7 @@ export class BackupService {
     const rows = await this.options.db.select().from(backups).where(eq(backups.serverId, serverId)).orderBy(desc(backups.createdAt));
     return {
       backups: rows.map(toBackupDto),
-      schedule: this.schedule(server),
+      schedule: await this.schedule(server),
       totalBytes: rows.reduce((sum, row) => sum + row.sizeBytes, 0),
       freeBytes: await this.freeSpace(this.options.backupsDir),
       running: this.jobs.has(serverId),
@@ -470,24 +513,85 @@ export class BackupService {
 
   // ---- schedule ----------------------------------------------------------------------------
 
-  async setSchedule(serverId: string, input: BackupScheduleInput): Promise<BackupSchedule> {
+  async setSchedule(serverId: string, input: BackupScheduleInput, now = Date.now()): Promise<BackupSchedule> {
     const server = await this.serverRow(serverId);
-    const intervalChanged = input.intervalHours !== undefined && input.intervalHours !== server.backupIntervalHours;
+    const current = parseCalendar(server.backupCalendar);
+    const currentMode: BackupScheduleMode = current !== null ? 'times' : server.backupIntervalHours !== null ? 'hours' : 'off';
+    // without an explicit mode the fields say which one is meant (older clients only send intervalHours)
+    const mode: BackupScheduleMode =
+      input.mode ??
+      (input.intervalHours !== undefined
+        ? input.intervalHours === null
+          ? 'off'
+          : 'hours'
+        : input.times !== undefined || input.everyDays !== undefined
+          ? 'times'
+          : currentMode);
+
+    let intervalHours: number | null = null;
+    let calendar: BackupCalendar | null = null;
+    if (mode === 'hours') {
+      intervalHours = input.intervalHours ?? server.backupIntervalHours;
+      if (intervalHours === null) throw new AppError(422, 'VALIDATION_ERROR', 'Please choose how many hours lie between two backups.');
+    } else if (mode === 'times') {
+      const times = input.times ?? current?.times;
+      if (times === undefined) throw new AppError(422, 'VALIDATION_ERROR', 'Please enter at least one time of day.');
+      const timeZone = input.timeZone ?? current?.timeZone ?? systemTimeZone();
+      const next = { times: normalizeTimes(times), everyDays: input.everyDays ?? current?.everyDays ?? 1, timeZone };
+      const same =
+        current !== null && current.everyDays === next.everyDays && current.timeZone === next.timeZone && current.times.join(',') === next.times.join(',');
+      // a changed calendar starts its cycle today; an unchanged one keeps its day so "every 3 days" does not move
+      calendar = same ? current : { ...next, anchorDay: localDay(now, timeZone) };
+    }
+    const scheduleChanged = mode !== currentMode || intervalHours !== server.backupIntervalHours || JSON.stringify(calendar) !== JSON.stringify(current);
+    const keepLowered = input.keepLast !== undefined && input.keepLast < server.backupKeepLast;
+
     await this.options.db.transaction((tx) =>
       tx
         .update(servers)
         .set({
-          ...(input.intervalHours === undefined ? {} : { backupIntervalHours: input.intervalHours }),
+          backupIntervalHours: intervalHours,
+          backupCalendar: calendar === null ? null : JSON.stringify(calendar),
           ...(input.keepLast === undefined ? {} : { backupKeepLast: input.keepLast }),
           ...(input.includeConfig === undefined ? {} : { backupIncludeConfig: input.includeConfig }),
-          // the interval counts from the moment it was set
-          ...(intervalChanged ? { backupScheduleSince: new Date() } : {}),
+          // the schedule counts from the moment it was set
+          ...(scheduleChanged ? { backupScheduleSince: new Date(now) } : {}),
           updatedAt: new Date(),
         })
         .where(eq(servers.id, serverId)),
     );
+    // fewer copies to keep: the oldest automatic backups go at once, not only after the next backup
+    if (keepLowered) await this.options.lock.run(serverId, () => this.pruneAutomatic(serverId));
     this.options.bus.emit({ type: 'server.changed', serverId, reason: 'updated' });
-    return this.schedule(await this.serverRow(serverId));
+    return this.schedule(await this.serverRow(serverId), now);
+  }
+
+  // Before an automatic backup: when the disk has no room for one more archive, the oldest automatic backups that
+  // would be pruned afterwards anyway (everything beyond keepLast - 1) are deleted first. With "keep 1" this replaces
+  // the old backup instead of failing for lack of space. Manual and safety backups are never touched.
+  private async makeRoomForAutomatic(server: Server): Promise<number> {
+    const layout = await this.layoutOf(server);
+    const collected = await collectLayout(layout, layout.levelName, server.backupIncludeConfig);
+    const needed = Math.ceil(collected.rawBytes * COMPRESSION_ESTIMATE) + 64 * MIB;
+    const dir = this.archiveDir(server.id);
+    await mkdir(dir, { recursive: true });
+    const free = await this.freeSpace(dir);
+    // unknown free space: nothing is deleted, the backup itself checks again
+    if (free === null || free >= needed) return 0;
+    const rows = await this.options.db
+      .select()
+      .from(backups)
+      .where(and(eq(backups.serverId, server.id), eq(backups.kind, 'auto'), eq(backups.status, 'ok')))
+      .orderBy(desc(backups.createdAt));
+    const removable = rows.slice(Math.max(0, server.backupKeepLast - 1)).reverse();
+    let removed = 0;
+    for (const row of removable) {
+      await this.deleteRow(row);
+      removed++;
+      this.logger.info({ serverId: server.id, backupId: row.id }, 'Deleted the oldest automatic backup to make room for the next one');
+      if (((await this.freeSpace(dir)) ?? 0) >= needed) break;
+    }
+    return removed;
   }
 
   // One pass of the scheduler: starts every backup that is due, one after the other
@@ -496,17 +600,9 @@ export class BackupService {
     let started = 0;
     for (const server of rows) {
       if (this.abort.signal.aborted) break;
-      if (server.backupIntervalHours === null || server.installState !== 'installed' || this.jobs.has(server.id)) continue;
-      const last = (
-        await this.options.db
-          .select({ createdAt: backups.createdAt })
-          .from(backups)
-          .where(and(eq(backups.serverId, server.id), eq(backups.kind, 'auto')))
-          .orderBy(desc(backups.createdAt))
-          .limit(1)
-      )[0];
-      const anchor = Math.max(last?.createdAt.getTime() ?? 0, server.backupScheduleSince?.getTime() ?? 0);
-      if (now < anchor + server.backupIntervalHours * 3_600_000) continue;
+      if (server.installState !== 'installed' || this.jobs.has(server.id)) continue;
+      const due = this.dueAt(server, await this.lastAutomatic(server.id), now);
+      if (due === null || now < due) continue;
       const state = this.options.manager.status(server.id).state;
       if (BUSY_STATES.has(state)) continue;
       try {
@@ -514,6 +610,7 @@ export class BackupService {
           await this.options.db.transaction((tx) => tx.update(servers).set({ backupScheduleSince: new Date(now) }).where(eq(servers.id, server.id)));
           continue;
         }
+        await this.options.lock.run(server.id, () => this.makeRoomForAutomatic(server));
         await this.startAndWait(server.id, 'auto');
         started++;
         await this.options.lock.run(server.id, () => this.pruneAutomatic(server.id));

@@ -32,6 +32,8 @@ export const servers = sqliteTable(
     backupKeepLast: integer('backup_keep_last').notNull().default(7),
     backupIncludeConfig: integer('backup_include_config', { mode: 'boolean' }).notNull().default(false),
     backupScheduleSince: integer('backup_schedule_since', { mode: 'timestamp_ms' }),
+    // JSON of BackupCalendar (times of day, every n days, time zone); null unless the schedule runs at set times
+    backupCalendar: text('backup_calendar'),
     lastStartedAt: integer('last_started_at', { mode: 'timestamp_ms' }),
     lastExitCode: integer('last_exit_code'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),

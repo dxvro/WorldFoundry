@@ -44,7 +44,7 @@ function setup(status: Record<string, unknown> = {}): void {
   FakeXhr.install({ status: 202, body: {} });
   api = mockApi({
     ...baseRoutes(serverFixture(status === undefined ? {} : { status: { state: 'offline', pid: null, startedAt: null, exitCode: null, message: null, players: [], port: null, cpuPercent: null, rssBytes: null, ...status } })),
-    'GET /api/servers/srv-1/backups': () => ({ body: { backups: [backup], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 1024, freeBytes: 1024 ** 3, running: false } }),
+    'GET /api/servers/srv-1/backups': () => ({ body: { backups: [backup], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 1024, freeBytes: 1024 ** 3, running: false } }),
     'GET /api/imports/limits': () => ({ body: { maxUploadBytes: 4096 * 1024 * 1024 } }),
   });
 }

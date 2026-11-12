@@ -330,10 +330,21 @@ export interface BackupDto extends Omit<Backup, 'worlds' | 'noteRef' | 'errorRef
 }
 
 export interface BackupSchedule {
+  // off; every intervalHours hours; at `times` (HH:MM in timeZone) every day or every `everyDays` days
+  mode: 'off' | 'hours' | 'times';
   intervalHours: number | null;
+  times: string[];
+  everyDays: number;
+  timeZone: string;
+  // automatic backups to keep; older ones are deleted
   keepLast: number;
   includeConfig: boolean;
+  // ISO time of the next automatic backup; null when the schedule is off
+  nextRunAt: string | null;
 }
+
+// PATCH body of the schedule: every field is optional
+export type BackupScheduleUpdate = Partial<Omit<BackupSchedule, 'nextRunAt'>>;
 
 export interface BackupListResponse {
   backups: BackupDto[];

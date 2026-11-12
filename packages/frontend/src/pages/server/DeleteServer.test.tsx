@@ -22,7 +22,7 @@ describe('deleting a server of a Steam game', () => {
     it(`${entry.game}: warns that all data is lost and deletes only after both confirmations`, async () => {
       const api = mockApi({
         ...baseRoutes(serverFixture({ game: entry.game, loader: 'vanilla', mcVersion: '', loaderVersion: null, port: entry.port, gameSettings: JSON.stringify(entry.settings), status: offline })),
-        'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 0, freeBytes: null, running: false } }),
+        'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 0, freeBytes: null, running: false } }),
         'DELETE /api/servers/srv-1': () => ({ body: { deleted: true } }),
       });
       window.history.replaceState(null, '', '/servers/srv-1/config');

@@ -124,7 +124,7 @@ describe('Project Zomboid backups', () => {
   it('offers backups without the Minecraft options and only while stopped', async () => {
     mockApi({
       ...baseRoutes(zomboidServer({ status: { ...offline, state: 'online', pid: 1, startedAt: 1, port: 16261 } })),
-      'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 0, freeBytes: null, running: false } }),
+      'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 0, freeBytes: null, running: false } }),
     });
     window.history.replaceState(null, '', '/servers/srv-1/backups');
     render(<App />);

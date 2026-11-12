@@ -33,7 +33,7 @@ function setup(system: Record<string, unknown>, server: Record<string, unknown> 
   api = mockApi({
     ...baseRoutes(server, system),
     'GET /api/servers/srv-1/properties': () => ({ body: { exists: false, properties: { 'server-port': 25565, gamemode: 'survival', difficulty: 'easy', 'white-list': false, 'max-players': 20, 'view-distance': 10, 'online-mode': true, motd: 'x' }, extra: {} } }),
-    'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 0, freeBytes: null, running: false } }),
+    'GET /api/servers/srv-1/backups': () => ({ body: { backups: [], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 0, freeBytes: null, running: false } }),
   });
 }
 
@@ -170,7 +170,7 @@ describe('autostart and deleting', () => {
 
   it('makes the user decide about the backups before a server with backups is deleted', async () => {
     setup(systemFixture());
-    api.set('GET /api/servers/srv-1/backups', () => ({ body: { backups: [{ id: 'b1' }, { id: 'b2' }], schedule: { intervalHours: null, keepLast: 7, includeConfig: false }, totalBytes: 3 * 1024 * 1024, freeBytes: null, running: false } }));
+    api.set('GET /api/servers/srv-1/backups', () => ({ body: { backups: [{ id: 'b1' }, { id: 'b2' }], schedule: { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null }, totalBytes: 3 * 1024 * 1024, freeBytes: null, running: false } }));
     api.set('DELETE /api/servers/srv-1', () => ({ body: { deleted: true } }));
     const user = userEvent.setup();
     render(<App />);

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
@@ -24,7 +24,8 @@ const backup = (id: string, overrides: Record<string, unknown> = {}): Record<str
   ...overrides,
 });
 
-const listBody = (backups: Array<Record<string, unknown>>, schedule = { intervalHours: null, keepLast: 7, includeConfig: false }): { body: unknown } => ({
+const OFF_SCHEDULE = { mode: 'off', intervalHours: null, times: [], everyDays: 1, timeZone: 'UTC', keepLast: 7, includeConfig: false, nextRunAt: null };
+const listBody = (backups: Array<Record<string, unknown>>, schedule: Record<string, unknown> = OFF_SCHEDULE): { body: unknown } => ({
   body: { backups, schedule, totalBytes: backups.reduce((sum, entry) => sum + Number(entry['sizeBytes']), 0), freeBytes: 50 * 1024 ** 3, running: false },
 });
 
@@ -150,21 +151,82 @@ describe('backups tab', () => {
     expect(screen.getByRole('button', { name: 'Create backup' })).toBeDisabled();
   });
 
-  it('saves the schedule and the retention', async () => {
+  it('saves a schedule every few hours and the retention', async () => {
     setup();
-    api.set('PATCH /api/servers/srv-1/backups/schedule', (call) => ({ body: { schedule: { intervalHours: 6, keepLast: 3, includeConfig: false, ...(call.body as object) } } }));
+    api.set('PATCH /api/servers/srv-1/backups/schedule', (call) => ({ body: { schedule: { ...OFF_SCHEDULE, ...(call.body as object) } } }));
     const user = userEvent.setup();
     render(<App />);
     await screen.findAllByTestId('backup-row');
     const save = screen.getByRole('button', { name: 'Save schedule' });
     expect(save).toBeDisabled();
-    await user.selectOptions(screen.getByLabelText('Automatic backup'), '6');
+    await user.selectOptions(screen.getByLabelText('Automatic backup'), 'hours');
+    await user.selectOptions(screen.getByLabelText('Interval'), '8');
     const keep = screen.getByLabelText('Automatic backups to keep');
     await user.clear(keep);
     await user.type(keep, '3');
     await user.click(save);
     await waitFor(() => expect(api.callsTo('PATCH /api/servers/srv-1/backups/schedule')).toHaveLength(1));
-    expect(api.callsTo('PATCH /api/servers/srv-1/backups/schedule')[0]?.body).toEqual({ intervalHours: 6, keepLast: 3 });
+    expect(api.callsTo('PATCH /api/servers/srv-1/backups/schedule')[0]?.body).toEqual({ mode: 'hours', intervalHours: 8, keepLast: 3 });
+  });
+
+  it('saves set times of day, every n days, in the time zone of the browser', async () => {
+    setup();
+    api.set('PATCH /api/servers/srv-1/backups/schedule', (call) => ({ body: { schedule: { ...OFF_SCHEDULE, ...(call.body as object) } } }));
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findAllByTestId('backup-row');
+    await user.selectOptions(screen.getByLabelText('Automatic backup'), 'times');
+    fireEvent.change(screen.getByLabelText('Time 1'), { target: { value: '04:30' } });
+    await user.click(screen.getByRole('button', { name: 'Add time' }));
+    fireEvent.change(screen.getByLabelText('Time 2'), { target: { value: '16:00' } });
+    await user.click(screen.getByRole('button', { name: 'Add time' }));
+    // a duplicate is sent once, the list is sorted
+    fireEvent.change(screen.getByLabelText('Time 3'), { target: { value: '04:30' } });
+    await user.selectOptions(screen.getByLabelText('Repeat'), '2');
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    expect(screen.getByText(new RegExp(`Times in ${zone.replace('/', '\\/')}`))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save schedule' }));
+    await waitFor(() => expect(api.callsTo('PATCH /api/servers/srv-1/backups/schedule')).toHaveLength(1));
+    expect(api.callsTo('PATCH /api/servers/srv-1/backups/schedule')[0]?.body).toEqual({ mode: 'times', times: ['04:30', '16:00'], everyDays: 2, timeZone: zone });
+  });
+
+  it('removes a time and refuses an empty one', async () => {
+    setup();
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findAllByTestId('backup-row');
+    await user.selectOptions(screen.getByLabelText('Automatic backup'), 'times');
+    // the only time cannot be removed
+    expect(screen.getByRole('button', { name: 'Remove 03:00' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Add time' }));
+    await user.click(screen.getByRole('button', { name: 'Remove 03:00' }));
+    expect(screen.queryByLabelText('Time 2')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Time 1')).toHaveValue('12:00');
+    fireEvent.change(screen.getByLabelText('Time 1'), { target: { value: '' } });
+    expect(screen.getByText(/Please enter every time/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save schedule' })).toBeDisabled();
+  });
+
+  it('shows the saved schedule with the next run and warns before fewer copies are kept', async () => {
+    setup();
+    backups = [backup('a1', { kind: 'auto' }), backup('a2', { kind: 'auto' }), backup('a3', { kind: 'auto' })];
+    api.set('GET /api/servers/srv-1/backups', () =>
+      listBody(backups, { ...OFF_SCHEDULE, mode: 'times', times: ['03:00', '15:00'], everyDays: 3, timeZone: 'Europe/Berlin', keepLast: 3, nextRunAt: '2030-01-02T02:00:00.000Z' }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findAllByTestId('backup-row');
+    expect(screen.getByLabelText('Automatic backup')).toHaveValue('times');
+    expect(screen.getByLabelText('Time 1')).toHaveValue('03:00');
+    expect(screen.getByLabelText('Time 2')).toHaveValue('15:00');
+    expect(screen.getByLabelText('Repeat')).toHaveValue('3');
+    expect(screen.getByText(/Times in Europe\/Berlin/)).toBeInTheDocument();
+    expect(screen.getByText(/Next automatic backup:/)).toBeInTheDocument();
+    const keep = screen.getByLabelText('Automatic backups to keep');
+    await user.clear(keep);
+    await user.type(keep, '1');
+    expect(screen.getByText('Saving deletes the 2 oldest automatic backups right away.')).toBeInTheDocument();
+    expect(screen.getByText(/Only the newest automatic backup is kept/)).toBeInTheDocument();
   });
 
   it('rejects a keep-last value outside 1 to 100 without calling the backend', async () => {
