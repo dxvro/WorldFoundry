@@ -92,7 +92,7 @@ english.FinishedLabel=Setup has finished installing [name] on your computer. Add
 english.FinishedLabelNoIcons=Setup has finished installing [name] on your computer. Addresses and the access token are on the previous page and in the file credentials.txt.%n%nWorldFoundry is not an official product of any game publisher. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 [CustomMessages]
-english.TaskFirewall=Windows Firewall: open the web port (TCP 3000 or the port set in the configuration) and the default game server ports (TCP %1, UDP %2) for private networks
+english.TaskFirewall=Windows Firewall: open the web port (TCP 3000 or the port set in the configuration) and the default game server ports (TCP {#TcpPortRange}, UDP {#UdpPortRange}) for private networks
 english.TaskGroupNetwork=Network:
 english.TaskStartMenu=Start menu shortcut that opens the web interface
 english.TaskGroupShortcuts=Shortcuts:
@@ -133,7 +133,7 @@ english.UninstallKept=Your data (servers, worlds, backups, configuration) was NO
 english.UninstallRemoveByHand=To remove it completely, delete this folder by hand.
 
 [Tasks]
-Name: "firewall"; Description: "{cm:TaskFirewall,{#TcpPortRange},{#UdpPortRange}}"; GroupDescription: "{cm:TaskGroupNetwork}"
+Name: "firewall"; Description: "{cm:TaskFirewall}"; GroupDescription: "{cm:TaskGroupNetwork}"
 Name: "startmenu"; Description: "{cm:TaskStartMenu}"; GroupDescription: "{cm:TaskGroupShortcuts}"
 
 [Dirs]
