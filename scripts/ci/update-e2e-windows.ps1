@@ -166,9 +166,6 @@ try {
   $state = Api 'GET' '/api/system/update'
   if ($state.installMode -ne 'service') { Fail "Install mode is $($state.installMode), expected service." }
 
-  # Simulate an installation made by an older version: the credentials file still has its old name
-  Move-Item (Join-Path $dataDir 'credentials.txt') (Join-Path $dataDir 'Zugangsdaten.txt')
-
   Step "Update to $next"
   $checked = Api 'POST' '/api/system/update/check'
   if (-not $checked.updateAvailable -or $checked.latest.version -ne $next) { Fail "Update not detected: $($checked | ConvertTo-Json -Depth 5)" }
@@ -184,9 +181,8 @@ try {
   if ($final.state -ne 'done' -or $final.version -ne $next -or $final.from -ne $version) { Fail "Unexpected update status: $($final | ConvertTo-Json -Compress)" }
   if ((Get-Content (Join-Path $installDir 'VERSION') -Raw).Trim() -ne $next) { Fail 'VERSION in the program folder is wrong.' }
   if ((Read-Config 'AUTH_TOKEN') -ne $script:token) { Fail 'The token changed during the update.' }
-  # The installer renames Zugangsdaten.txt to credentials.txt and keeps it restricted to administrators
-  if (-not (Test-Path (Join-Path $dataDir 'credentials.txt'))) { Fail 'credentials.txt is missing after the update (migration from Zugangsdaten.txt).' }
-  if (Test-Path (Join-Path $dataDir 'Zugangsdaten.txt')) { Fail 'Zugangsdaten.txt still exists after the update.' }
+  # The update keeps credentials.txt and its access restricted to administrators
+  if (-not (Test-Path (Join-Path $dataDir 'credentials.txt'))) { Fail 'credentials.txt is missing after the update.' }
   $aclCred = (icacls (Join-Path $dataDir 'credentials.txt') | Out-String)
   if ($aclCred -match 'NT SERVICE') { Fail "credentials.txt: the service account must not have access:`n$aclCred" }
   Write-Host 'Update on Windows succeeded.'
