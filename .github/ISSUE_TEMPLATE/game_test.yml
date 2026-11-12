@@ -1,0 +1,49 @@
+name: Game test report
+description: You tried a game against a real server. Tell us what works and what does not.
+labels: [game-test]
+body:
+  - type: markdown
+    attributes:
+      value: Most games are only tested against simulated servers so far. Reports from real servers help a lot, also when everything works.
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - Minecraft
+        - Project Zomboid
+        - Satisfactory
+        - "ARK: Survival Evolved"
+        - "ARK: Survival Ascended"
+        - Valheim
+        - 7 Days to Die
+        - Palworld
+        - Terraria
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: WorldFoundry 0.1.0, Ubuntu 24.04, game server build 12345678
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What worked?
+      options:
+        - label: Install
+        - label: Start and "running" state
+        - label: Joining from the game
+        - label: Console commands
+        - label: Player list
+        - label: Clean stop (world saved)
+        - label: Backup and restore
+        - label: World import or export
+        - label: Mods
+  - type: textarea
+    id: notes
+    attributes:
+      label: What did not work, and anything else
+      description: Paste console output if something failed. Remove passwords first.

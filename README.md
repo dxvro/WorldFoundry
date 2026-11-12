@@ -4,14 +4,14 @@
 
 WorldFoundry runs dedicated game servers on one of your own computers and is operated in the browser, from a PC, tablet or phone on your network. Creating, starting, monitoring, backing up, importing and exporting servers works without a command line.
 
-**Status: early development.** No release has been published yet. Minecraft works; Project Zomboid, Satisfactory and ARK: Survival Evolved have their first versions. To try WorldFoundry, run it from source (see below).
+**Status: early preview (0.1.x).** Expect bugs and breaking changes. Minecraft works and runs real servers. Project Zomboid has run against a real server with real player data. All other games (Satisfactory, ARK: Survival Evolved, ARK: Survival Ascended, Valheim, 7 Days to Die, Palworld, Terraria) are built and tested only against simulated servers in the test suite, **not yet against the real game servers**. ARK: Survival Ascended on Linux runs the Windows server through GE-Proton and is experimental. Please report what does not work in the [issue tracker](https://github.com/dxvro/WorldFoundry/issues).
 
 ## Games
 
 | Game | Status | Server files | Mods |
 | --- | --- | --- | --- |
 | Minecraft: Java Edition | Works | Downloaded from the official source of the loader (Vanilla, Fabric, Paper, NeoForge, Forge) | Modrinth; CurseForge in progress (will need your own API key) |
-| Project Zomboid | Early: install, start, stop, console, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
+| Project Zomboid | Works: install, start, stop, console, settings files, offline backups. Runs a real server (build 42) | SteamCMD, anonymous login | Steam Workshop (ids, mod ids, maps in order) |
 | Satisfactory | Early: install, start, clean stop (Linux), readiness through the server API, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | ficsit.app (server builds, mod loader, dependencies) |
 | ARK: Survival Evolved | Early: install, start, RCON console, players with kick/ban, clean stop with SaveWorld, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | Steam Workshop (ActiveMods, downloaded by the server) |
 | ARK: Survival Ascended | New: install (Windows files; on Linux through GE-Proton), RCON console, players with kick/ban, clean stop, settings files, offline backups. Not yet tested against a real server | SteamCMD, anonymous login | CurseForge project ids (downloaded by the server) |
@@ -34,15 +34,25 @@ WorldFoundry ships no game files, logos or artwork. Every server is downloaded o
 
 ## What it does today
 
-- **Several servers** side by side, grouped by game
-- **Live console** with command input and history
-- **Mods and plugins** from Modrinth: install, enable and disable, update, with dependencies
-- **Players:** whitelist, operators and ban lists
-- **World settings:** all values of `server.properties` in an editor
+For every game:
+
+- **Several servers** side by side, of the same or different games, grouped by game, with ports assigned so they do not collide
+- **Guided creation** with the settings of the game (world, password, player limit, map …), changeable later
+- **Installation without a command line:** the server files come from the official source or SteamCMD (anonymous login, no Steam account)
+- **Live console** with command input and history (RCON, telnet or the REST API where the game has one)
+- **Players:** who is online, and kick, ban and admin lists where the game supports them
+- **Settings files** of the game in an editor
 - **Backups** by hand or on a schedule, with restore
-- **Import and export** of worlds, with or without mods
+- **Import and export** of worlds
+- **Mods:** from the mod source of the game (table above) and your own mod files
+- **Autostart** of individual servers and a clean stop that saves the world first
+
+For Minecraft in addition:
+
+- **Loaders:** Vanilla, Fabric, Paper, NeoForge and Forge
+- **Mods and plugins** from Modrinth: install, enable and disable, update, with dependencies
+- **Whitelist, operators and ban lists**, and all values of `server.properties` in an editor
 - **Automatic Java installation** when the matching version is missing (Eclipse Temurin)
-- **Autostart** of individual servers
 
 ## Project Zomboid and other Steam games
 
@@ -62,6 +72,10 @@ WorldFoundry is one program with a web interface. It runs on the computer that h
 
 > **Security notice:** The web interface can start programs and is unencrypted (HTTP). Run it only on a home network or another trusted network, and never expose the web port to the internet.
 
+## Installation
+
+Download the package for your system from the [Releases page](https://github.com/dxvro/WorldFoundry/releases): an installer or a portable ZIP for Windows, and tar.gz packages for Linux (x64 and arm64). The steps are in [docs/INSTALL.md](docs/INSTALL.md). Installed versions can update themselves from the web interface; updates are only installed when their signature is valid (see [docs/UPDATES.md](docs/UPDATES.md)).
+
 ## Running from source
 
 Needs Node.js 22 or newer.
@@ -78,13 +92,13 @@ Then open `http://localhost:3000`. On the first start WorldFoundry creates a pas
 
 ## Documentation
 
-The pages below were written for the Minecraft part and are being extended as games are added.
+Some pages were written for the Minecraft part first and are still being extended for the other games.
 
 - [docs/USAGE.md](docs/USAGE.md): the web interface, creating and starting servers, loaders, Java
 - [docs/CONFIGURATION.md](docs/CONFIGURATION.md): environment variables, network access, password, security
 - [docs/API.md](docs/API.md): HTTP API, backups, world import and export, WebSockets
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): running from source, tests and building packages
-- [docs/INSTALL.md](docs/INSTALL.md) and [docs/UPDATES.md](docs/UPDATES.md): the installation packages and self-update. These describe packages that are not published yet.
+- [docs/INSTALL.md](docs/INSTALL.md) and [docs/UPDATES.md](docs/UPDATES.md): the installation packages and self-update
 
 ## Adding a game
 
@@ -98,4 +112,6 @@ WorldFoundry is free software, licensed under the **GNU General Public License, 
 
 Contact: <worldfoundry0@gmail.com>, or the issue tracker of this repository. For security problems, please use the private reporting described in [SECURITY.md](SECURITY.md).
 
-Contributors: commits must use a no-reply address (for example your GitHub `…@users.noreply.github.com` address). `npm test` and CI reject any other email address in a file or a commit.
+## Contributing
+
+Bug reports, tests against real game servers and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Commits must use a no-reply address (for example your GitHub `…@users.noreply.github.com` address); `npm test` and CI reject any other email address in a file or a commit.

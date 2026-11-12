@@ -1,0 +1,15 @@
+name: Feature or game request
+description: Suggest a new feature or a new game.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: For a new game, name it and say whether it has a dedicated server on SteamCMD or another official download.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it useful?

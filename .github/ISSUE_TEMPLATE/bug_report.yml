@@ -1,0 +1,72 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. Do not post passwords, tokens or your public IP address.
+        Security problems go to the private reporting in SECURITY.md, not here.
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - Minecraft
+        - Project Zomboid
+        - Satisfactory
+        - "ARK: Survival Evolved"
+        - "ARK: Survival Ascended"
+        - Valheim
+        - 7 Days to Die
+        - Palworld
+        - Terraria
+        - Not game-specific (web interface, install, update)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: WorldFoundry version
+      description: Shown under System in the web interface.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows (installer)
+        - Windows (portable ZIP)
+        - Linux x64
+        - Linux arm64
+        - From source
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version and game server version
+      placeholder: Ubuntu 24.04, Valheim 0.220.3
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a Valheim server with ...
+        2. Start it
+        3. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output or logs
+      description: The server console and the WorldFoundry log (data folder, logs/). Remove passwords first.
+      render: text
