@@ -37,6 +37,7 @@ import type {
   SearchIndex,
   SearchResponse,
   ServerView,
+  DiskInfo,
   SystemInfo,
   SystemUpdateState,
   ToggleView,
@@ -69,6 +70,7 @@ export const systemApi = {
   health: (): Promise<HealthInfo> => request('/api/health'),
   system: (rescan = false, signal?: AbortSignal): Promise<SystemInfo> =>
     request('/api/system', { query: rescan ? { rescan: true } : {}, ...(signal === undefined ? {} : { signal }) }),
+  disk: (signal?: AbortSignal): Promise<DiskInfo> => request('/api/system/disk', signal === undefined ? {} : { signal }),
   loaders: async (): Promise<LoaderInfo[]> => (await request<{ loaders: LoaderInfo[] }>('/api/loaders')).loaders,
   mcVersions: async (loader: Loader, snapshots: boolean, signal?: AbortSignal): Promise<McVersion[]> =>
     (await request<{ mcVersions: McVersion[] }>(`/api/loaders/${enc(loader)}/mc-versions`, { query: { snapshots }, ...(signal === undefined ? {} : { signal }) }))

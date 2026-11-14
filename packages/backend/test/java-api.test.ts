@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import type { JavaInstallResponse, SystemInfo } from '../src/contract.js';
+import type { DiskInfo, JavaInstallResponse, SystemInfo } from '../src/contract.js';
 import { FakeAdoptium, fakeProbe, managedKit, type ManagedKit } from './fake-adoptium.js';
 import { FakeModrinth } from './fake-modrinth.js';
 import { createTestDb, testConfig } from './helpers.js';
@@ -31,6 +31,18 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await env.close();
+});
+
+describe('GET /api/system/disk', () => {
+  it('reports the volume of the data folder and no backups on a fresh installation', async () => {
+    const res = await env.call<DiskInfo>('GET', '/api/system/disk');
+    expect(res.status).toBe(200);
+    expect(res.body.backups).toEqual([]);
+    if (res.body.totalBytes !== null && res.body.freeBytes !== null) {
+      expect(res.body.totalBytes).toBeGreaterThan(0);
+      expect(res.body.freeBytes).toBeLessThanOrEqual(res.body.totalBytes);
+    }
+  });
 });
 
 describe('GET /api/system', () => {

@@ -19,6 +19,22 @@ export const freeBytes: FreeSpaceReader = async (dir) => {
   }
 };
 
+// Size and free bytes of the volume holding `dir` (or its nearest existing parent); null when the platform cannot tell
+export async function diskUsage(dir: string): Promise<{ totalBytes: number; freeBytes: number } | null> {
+  let current = path.resolve(dir);
+  for (;;) {
+    try {
+      const info = await statfs(current);
+      const totalBytes = Number(info.blocks) * Number(info.bsize);
+      return totalBytes > 0 ? { totalBytes, freeBytes: Number(info.bavail) * Number(info.bsize) } : null;
+    } catch (error) {
+      const parent = path.dirname(current);
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || parent === current) return null;
+      current = parent;
+    }
+  }
+}
+
 // Whether two paths (or their nearest existing parents) are on the same volume; null when the platform cannot tell.
 // A move inside one volume is a rename, across volumes it is a full copy that needs the free space.
 export async function sameVolume(a: string, b: string): Promise<boolean | null> {

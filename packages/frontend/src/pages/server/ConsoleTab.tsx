@@ -221,7 +221,7 @@ export function ConsoleTab({ server, status }: { server: ServerView; status: Run
           )}
         </div>
         {following ? null : (
-          <Button size="sm" variant="primary" icon={ArrowDownToLine} onClick={jumpToNewest} className="absolute right-4 bottom-4 shadow-lg shadow-black/50">
+          <Button size="sm" icon={ArrowDownToLine} onClick={jumpToNewest} className="absolute right-4 bottom-4 border-accent shadow-lg shadow-black/50">
             {unseen > 0 ? t.console.log.newLines(unseen) : t.console.log.jumpToNewest}
           </Button>
         )}

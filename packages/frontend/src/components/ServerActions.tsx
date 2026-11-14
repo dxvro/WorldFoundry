@@ -101,8 +101,8 @@ export function ActionBar({ server, status, actions, compact = false, menu = fal
             label={t.common.moreActions}
             size={size}
             items={[
-              { label: labels.restart, disabled: state === 'stopping' || busy !== null, onSelect: () => void run('restart') },
-              { label: labels.kill, danger: true, disabled: busy !== null, onSelect: () => setConfirmKill(true) },
+              { label: labels.restart, icon: RotateCw, disabled: state === 'stopping' || busy !== null, onSelect: () => void run('restart') },
+              { label: labels.kill, icon: Skull, danger: true, disabled: busy !== null, onSelect: () => setConfirmKill(true) },
             ]}
           />
         </>

@@ -1,16 +1,16 @@
-import { Plus, Server } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { Plus, RefreshCw, Server, Upload } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActionBar, ActionFeedback, useServerActions } from '../components/ServerActions';
 import { LOADER_LABEL, StatusChip } from '../components/status';
-import { Button, EmptyState, ErrorNotice, LoadingBlock, Notice } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, LoadingBlock, Notice, cx } from '../components/ui';
 import { useGames } from '../games/GamesProvider';
 import { GameTile } from '../games/GameTile';
 import { GAME_ORDER } from '../games/look';
 import { renderOptionalRef, renderRef, useI18n } from '../i18n';
-import { formatDuration } from '../lib/format';
+import { formatDuration, formatInt } from '../lib/format';
 import { useLanHost } from '../lib/lan';
 import { Link, serverPath, useRouter } from '../lib/router';
-import type { RuntimeStatus, ServerView } from '../lib/types';
+import type { RuntimeStatus, ServerState, ServerView } from '../lib/types';
 import { useLive } from '../live/LiveProvider';
 import type { CrashInfo, InstallProgress } from '../live/reducer';
 
@@ -21,16 +21,25 @@ function firstLine(text: string): string {
 // players a status knows: names when the game lists them, else the bare count of games that only count
 const playerCount = (status: RuntimeStatus): number => (status.players.length > 0 ? status.players.length : (status.playerCount ?? 0));
 
-function Summary({ statuses }: { statuses: RuntimeStatus[] }): ReactNode {
-  const { t } = useI18n();
-  const running = statuses.filter((status) => status.state === 'online' || status.state === 'starting').length;
-  const players = statuses.reduce((sum, status) => sum + playerCount(status), 0);
+// one figure of the summary: a small label above a large number
+function Metric({ label, value, delay }: { label: string; value: number; delay: number }): ReactNode {
   return (
-    <p className="num text-dim">
-      {t.overview.running(running)} · {t.overview.playersOnline(players)}
-    </p>
+    <div className="panel flex min-w-40 flex-1 flex-col gap-1 px-5 py-4" style={{ animationDelay: `${delay}ms` }}>
+      <dt className="text-sm font-semibold text-dim">{label}</dt>
+      <dd className="num m-0 text-3xl leading-tight font-extrabold text-ink">{formatInt(value)}</dd>
+    </div>
   );
 }
+
+type Filter = 'all' | 'running' | 'stopped';
+type SortKey = 'game' | 'name' | 'status' | 'players';
+const FILTERS: readonly Filter[] = ['all', 'running', 'stopped'];
+const SORT_KEYS: readonly SortKey[] = ['game', 'name', 'status', 'players'];
+
+// running servers first, then the ones on their way, then the stopped ones
+const STATE_RANK: Record<ServerState, number> = { online: 0, starting: 1, preparing: 2, stopping: 3, crashed: 4, offline: 5 };
+// "running" in the filter: everything that has a process or is about to
+const isUp = (state: ServerState): boolean => state === 'online' || state === 'starting' || state === 'preparing' || state === 'stopping';
 
 interface RowProps {
   server: ServerView;
@@ -83,53 +92,42 @@ function StatusDetail({ server, status, install, crash }: Omit<RowProps, 'host'>
   return null;
 }
 
-function ServerRow({ server, status, install, crash, host }: RowProps): ReactNode {
+function ServerCard({ server, status, install, crash, host, delay }: RowProps & { delay: number }): ReactNode {
   const { t } = useI18n();
   const { nameOf } = useGames();
   const actions = useServerActions(server.id);
   const port = status.port ?? server.port;
   const players = playerCount(status);
+  const online = status.state === 'online';
   const subtitle = server.game === 'minecraft' ? `${LOADER_LABEL[server.loader]} · ${t.overview.minecraftVersion(server.mcVersion)}` : nameOf(server.game);
   return (
-    <>
-      <tr className="border-t border-line align-middle">
-        <td className="px-4 py-3">
-          <Link to={serverPath(server.id)} className="flex min-w-0 items-center gap-3 text-ink no-underline hover:text-accent">
-            <GameTile game={server.game} />
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{server.name}</span>
-              <span className="block truncate text-xs text-faint">{subtitle}</span>
-            </span>
-          </Link>
-        </td>
-        <td className="px-3 py-3">
-          <div className="space-y-1">
-            <StatusChip server={server} status={status} />
-            <StatusDetail server={server} status={status} install={install} crash={crash} />
-          </div>
-        </td>
-        <td className="num px-3 py-3" title={status.players.length > 0 ? status.players.join(', ') : undefined}>
-          {status.state === 'online' ? players : <span className="text-faint">{t.overview.noPlayers}</span>}
-        </td>
-        <td className="num px-3 py-3 text-dim">
-          <span className="select-all whitespace-nowrap" title={t.overview.connectTo(`${host ?? ''}:${port}`)}>
+    <li data-testid="server-card" className={cx('panel server-card flex min-w-0 flex-col gap-4 p-5', online && 'server-card-online')} style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex items-start gap-3">
+        <Link to={serverPath(server.id)} className="flex min-w-0 flex-1 items-center gap-3 text-ink no-underline hover:text-accent">
+          <GameTile game={server.game} />
+          <span className="min-w-0">
+            <span className="block truncate text-base font-extrabold">{server.name}</span>
+            <span className="block truncate text-sm text-faint">{subtitle}</span>
+          </span>
+        </Link>
+        <StatusChip server={server} status={status} />
+      </div>
+      <StatusDetail server={server} status={status} install={install} crash={crash} />
+      <dl className="m-0 mt-auto grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+        <dt className="text-dim">{t.overview.columns.players}</dt>
+        <dd className="num m-0 text-right font-bold" title={status.players.length > 0 ? status.players.join(', ') : undefined}>
+          {online ? players : <span className="text-faint">{t.overview.noPlayers}</span>}
+        </dd>
+        <dt className="text-dim">{t.overview.columns.join}</dt>
+        <dd className="num m-0 min-w-0 text-right font-bold">
+          <span className="select-all" title={t.overview.connectTo(`${host ?? ''}:${port}`)}>
             {host === null ? t.overview.portLabel(port) : `${host}:${port}`}
           </span>
-        </td>
-        <td className="px-4 py-3">
-          <div className="flex justify-end">
-            <ActionBar server={server} status={status} actions={actions} compact menu />
-          </div>
-        </td>
-      </tr>
-      {actions.error !== null || actions.warnings.length > 0 ? (
-        <tr>
-          <td colSpan={5} className="px-4 pb-3">
-            <ActionFeedback serverId={server.id} actions={actions} />
-          </td>
-        </tr>
-      ) : null}
-    </>
+        </dd>
+      </dl>
+      <ActionBar server={server} status={status} actions={actions} compact menu />
+      {actions.error !== null || actions.warnings.length > 0 ? <ActionFeedback serverId={server.id} actions={actions} /> : null}
+    </li>
   );
 }
 
@@ -144,20 +142,26 @@ export function Overview(): ReactNode {
     document.title = t.overview.documentTitle;
   }, [t]);
 
+  const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<SortKey>('game');
+
   // one list, ordered like the games page and then by name; the tile in each row tells the games apart
-  const sorted = servers === null ? [] : [...servers].sort((a, b) => GAME_ORDER.indexOf(a.game) - GAME_ORDER.indexOf(b.game) || a.name.localeCompare(b.name));
+  const byGame = (a: ServerView, b: ServerView): number => GAME_ORDER.indexOf(a.game) - GAME_ORDER.indexOf(b.game) || a.name.localeCompare(b.name);
+  const shown = (servers ?? [])
+    .filter((server) => filter === 'all' || isUp(statusFor(server).state) === (filter === 'running'))
+    .sort((a, b) => {
+      if (sort === 'name') return a.name.localeCompare(b.name) || byGame(a, b);
+      if (sort === 'players') return playerCount(statusFor(b)) - playerCount(statusFor(a)) || byGame(a, b);
+      if (sort === 'status') return STATE_RANK[statusFor(a).state] - STATE_RANK[statusFor(b).state] || byGame(a, b);
+      return byGame(a, b);
+    });
+  const statuses = (servers ?? []).map((server) => statusFor(server));
+  const running = statuses.filter((status) => status.state === 'online' || status.state === 'starting').length;
+  const players = statuses.reduce((sum, status) => sum + playerCount(status), 0);
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl">{t.overview.title}</h1>
-          {servers === null ? null : <Summary statuses={servers.map((server) => statusFor(server))} />}
-        </div>
-        <Button variant="primary" icon={Plus} onClick={() => navigate('/new')}>
-          {t.shell.newServer}
-        </Button>
-      </div>
+      <h1 className="text-2xl">{t.overview.title}</h1>
 
       {listError !== null && servers === null ? (
         <ErrorNotice error={new Error(listError)} title={t.overview.listLoadFailed} action={<Button size="sm" onClick={() => void refresh()}>{t.common.retry}</Button>} />
@@ -178,26 +182,53 @@ export function Overview(): ReactNode {
       ) : (
         <>
           {listError === null ? null : <Notice tone="warn">{t.overview.listStale(listError)}</Notice>}
-          <div className="panel overflow-x-auto p-0">
-            <table className="w-full min-w-[46rem] border-collapse text-left" aria-label={t.overview.serversLabel}>
-              <thead>
-                <tr className="text-xs text-faint">
-                  <th scope="col" className="px-4 py-2.5 font-medium">{t.overview.columns.server}</th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.status}</th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.players}</th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">{t.overview.columns.join}</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">
-                    <span className="sr-only">{t.overview.columns.actions}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((server) => (
-                  <ServerRow key={server.id} server={server} status={statusFor(server)} install={state.installs[server.id]} crash={state.crashes[server.id]} host={host} />
+          <dl className="m-0 flex flex-wrap gap-4">
+            <Metric label={t.overview.metrics.servers} value={servers.length} delay={0} />
+            <Metric label={t.overview.metrics.running} value={running} delay={60} />
+            <Metric label={t.overview.metrics.players} value={players} delay={120} />
+          </dl>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label={t.overview.filters.label} className="flex flex-wrap gap-2">
+              {FILTERS.map((key) => (
+                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cx('btn btn-sm', filter === key ? 'btn-primary' : 'bg-transparent')}>
+                  {t.overview.filters[key]}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-dim">
+              {t.overview.sort.label}
+              <select className="input w-auto rounded-full py-0" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+                {SORT_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t.overview.sort[key]}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </label>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button icon={RefreshCw} className="bg-transparent" onClick={() => void refresh()}>
+                {t.overview.refresh}
+              </Button>
+              <Button icon={Upload} className="bg-transparent" onClick={() => navigate('/new/world')}>
+                {t.overview.importWorld}
+              </Button>
+              <Button variant="primary" icon={Plus} onClick={() => navigate('/new')}>
+                {t.shell.newServer}
+              </Button>
+            </div>
           </div>
+
+          {shown.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-line-strong p-8 text-center text-dim">{t.overview.noMatch}</p>
+          ) : (
+            <ul aria-label={t.overview.serversLabel} className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-4 p-0">
+              {shown.map((server, index) => (
+                <ServerCard key={server.id} server={server} status={statusFor(server)} install={state.installs[server.id]} crash={state.crashes[server.id]} host={host} delay={Math.min(index, 8) * 60} />
+              ))}
+            </ul>
+          )}
+          <p className="num text-sm text-dim">{t.overview.shown(shown.length, servers.length)}</p>
         </>
       )}
     </div>

@@ -117,8 +117,8 @@ describe('new server', () => {
 describe('servers and their game', () => {
   it('shows the game of each server in the overview and groups the menu by game', async () => {
     open('/');
-    const table = await screen.findByRole('table', { name: 'Servers' });
-    const row = within(table).getByRole('link', { name: /Survival/ }).closest('tr') as HTMLElement;
+    const list = await screen.findByRole('list', { name: 'Servers' });
+    const row = within(list).getByRole('link', { name: /Survival/ }).closest('li') as HTMLElement;
     expect(within(row).getByText(/Minecraft 1\.21/)).toBeInTheDocument();
     expect(within(row).getByTestId('game-tile')).toBeInTheDocument();
     // the menu groups the servers by game as well, so servers with the same name stay apart

@@ -201,8 +201,8 @@ describe('Project Zomboid server page', () => {
     mockApi(baseRoutes(zomboidServer()));
     window.history.replaceState(null, '', '/');
     render(<App />);
-    const table = await screen.findByRole('table', { name: 'Servers' });
-    const row = within(table).getByRole('link', { name: /Survival/ }).closest('tr') as HTMLElement;
+    const list = await screen.findByRole('list', { name: 'Servers' });
+    const row = within(list).getByRole('link', { name: /Survival/ }).closest('li') as HTMLElement;
     expect(within(row).getByText('Project Zomboid')).toBeInTheDocument();
     expect(within(row).queryByText(/Minecraft/)).not.toBeInTheDocument();
   });

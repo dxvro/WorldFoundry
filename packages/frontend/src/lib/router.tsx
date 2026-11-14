@@ -2,6 +2,9 @@ import type { GameId } from '@worldfoundry/backend/contract';
 import { isGameId } from '../games/look';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
+// id of the element that scrolls the page content (set by the app shell)
+export const SCROLL_ID = 'app-scroll';
+
 export const SERVER_TABS = ['overview', 'console', 'config', 'files', 'workshop', 'ficsit', 'world', 'players', 'mods', 'store', 'backups'] as const;
 export type ServerTab = (typeof SERVER_TABS)[number];
 
@@ -64,6 +67,9 @@ export function RouterProvider({ children }: { children: ReactNode }): ReactNode
     else window.history.pushState(null, '', to);
     setPathname(window.location.pathname);
     setVisit((value) => value + 1);
+    // the page scrolls inside the shell's content column, not in the window
+    const scroller = document.getElementById(SCROLL_ID);
+    if (scroller !== null) scroller.scrollTop = 0;
     window.scrollTo(0, 0);
   }, []);
 

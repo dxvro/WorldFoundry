@@ -42,6 +42,13 @@ export const overview = {
   running: (count: number) => `${count} running`,
   playersOnline: (count: number) => (count === 1 ? '1 player online' : `${count} players online`),
   noPlayers: '–',
+  metrics: { servers: 'Servers', running: 'Running', players: 'Players online' },
+  refresh: 'Refresh',
+  importWorld: 'Import a world',
+  filters: { label: 'Filter servers', all: 'All', running: 'Running', stopped: 'Stopped' },
+  sort: { label: 'Sort by', game: 'Game', name: 'Name', status: 'Status', players: 'Players' },
+  shown: (count: number, total: number) => `Showing ${count} of ${total} servers`,
+  noMatch: 'No server matches this filter.',
   install: {
     phases: {
       resolve: 'Determining the version',

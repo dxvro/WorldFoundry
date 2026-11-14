@@ -1,17 +1,24 @@
-import { MoreHorizontal } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { MoreHorizontal, type LucideIcon } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { cx } from './ui';
 
 export interface MoreMenuItem {
   label: string;
+  icon?: LucideIcon;
   onSelect: () => void;
   disabled?: boolean;
   danger?: boolean;
 }
 
-// A "…" button with a short list of rarely used actions. Closes on a choice, Escape or a click outside.
-export function MoreMenu({ label, items, size = 'md' }: { label: string; items: MoreMenuItem[]; size?: 'sm' | 'md' }): ReactNode {
+// height of one entry and the padding of the list, to decide whether the list fits below the button
+const ITEM_PX = 38;
+const FRAME_PX = 18;
+
+// A "…" button with a short list of rarely used actions. Closes on a choice, Escape, a click outside or when the
+// page moves. The list is placed against the window, so a scrolling table around the button cannot cut it off.
+export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[]; size?: 'sm' | 'md' }): ReactNode {
   const [open, setOpen] = useState(false);
+  const [place, setPlace] = useState<CSSProperties>({});
   const root = useRef<HTMLDivElement | null>(null);
   const button = useRef<HTMLButtonElement | null>(null);
   const menuId = useId();
@@ -27,13 +34,28 @@ export function MoreMenu({ label, items, size = 'md' }: { label: string; items: 
         button.current?.focus();
       }
     };
+    const onMove = (): void => setOpen(false);
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onMove);
+    window.addEventListener('scroll', onMove, true);
     return () => {
       document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onMove);
+      window.removeEventListener('scroll', onMove, true);
     };
   }, [open]);
+
+  const toggle = (): void => {
+    if (!open && button.current !== null) {
+      const rect = button.current.getBoundingClientRect();
+      const right = Math.max(8, window.innerWidth - rect.right);
+      const fitsBelow = rect.bottom + 4 + items.length * ITEM_PX + FRAME_PX <= window.innerHeight;
+      setPlace(fitsBelow || rect.top < window.innerHeight / 2 ? { top: rect.bottom + 4, right } : { bottom: window.innerHeight - rect.top + 4, right });
+    }
+    setOpen(!open);
+  };
 
   if (items.length === 0) return null;
   return (
@@ -45,13 +67,13 @@ export function MoreMenu({ label, items, size = 'md' }: { label: string; items: 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((value) => !value)}
-        className={cx('btn', size === 'sm' ? 'btn-sm' : null, 'px-2.5')}
+        onClick={toggle}
+        className="grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-dim hover:bg-hover hover:text-ink aria-expanded:bg-hover aria-expanded:text-ink"
       >
         <MoreHorizontal aria-hidden className="size-4" />
       </button>
       {open ? (
-        <div id={menuId} role="menu" aria-label={label} className="panel absolute right-0 z-30 mt-1 min-w-44 p-1 shadow-lg">
+        <div id={menuId} role="menu" aria-label={label} style={place} className="fixed z-40 flex min-w-44 flex-col rounded-xl border border-line bg-raised p-2 shadow-lg">
           {items.map((item) => (
             <button
               key={item.label}
@@ -62,8 +84,12 @@ export function MoreMenu({ label, items, size = 'md' }: { label: string; items: 
                 setOpen(false);
                 item.onSelect();
               }}
-              className={cx('flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-raised disabled:opacity-50', item.danger ? 'text-bad' : 'text-ink')}
+              className={cx(
+                'inline-flex w-full cursor-pointer items-center gap-2 rounded-xl border-0 bg-transparent p-2 text-left text-sm font-medium hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50',
+                item.danger ? 'text-bad' : 'text-dim hover:text-ink',
+              )}
             >
+              {item.icon === undefined ? null : <item.icon aria-hidden className="size-4 shrink-0" />}
               {item.label}
             </button>
           ))}

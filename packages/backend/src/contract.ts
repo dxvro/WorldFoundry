@@ -98,6 +98,15 @@ export interface SystemInfo {
   javaInstalls: JavaInstallState[];
 }
 
+// GET /api/system/disk: the volume that holds the data folder, and what the backups of each server take on it
+export interface DiskInfo {
+  // null when the platform cannot tell
+  totalBytes: number | null;
+  freeBytes: number | null;
+  // finished and failed backups per server, largest first; servers without backups are left out
+  backups: Array<{ serverId: string; bytes: number; count: number }>;
+}
+
 export interface ManagedJavaDto {
   major: number;
   version: string;

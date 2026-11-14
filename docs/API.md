@@ -28,6 +28,7 @@ Login, host and origin checks are described in [CONFIGURATION.md](CONFIGURATION.
 - `GET /api/system/network` (addresses: `lan`, `virtual`, `hostnameUrl`; `active`, `settings`, `defaults`, `pending`, `restartRequired`, `warnings`), `PUT /api/system/network` with `{ bindHost?, port?, allowedHosts?, publicAddress? }` (`null` = value of the configuration file; errors `422 NETWORK_ADDRESS_UNKNOWN | NETWORK_PORT_IN_USE | NETWORK_PORT_DENIED | NETWORK_HOST_INVALID | NETWORK_PUBLIC_INVALID`), `POST /api/system/restart` with `{ "confirm": true }` (`422` without), answers `202` and ends WorldFoundry with exit code 75
 - `GET /api/system/update`, `POST /api/system/update/check | apply | cancel | dismiss`, `PATCH /api/system/update/settings`: self-update, see [Updates](UPDATES.md#api)
 - `GET /api/system?rescan`: memory, CPU count, platform, Java installations
+- `GET /api/system/disk`: `totalBytes` and `freeBytes` of the volume that holds the data folder (`null` when the platform cannot tell), and `backups` as `{ serverId, bytes, count }` per server, largest first
 - `GET /api/loaders`: available loaders
 - `GET /api/loaders/:loader/mc-versions?snapshots=true`: Minecraft versions of the loader
 - `GET /api/loaders/:loader/versions?mcVersion=`: loader versions (with `stable` and `recommended`)

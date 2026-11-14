@@ -8,5 +8,6 @@ export const login = {
   passwordLabel: 'Password',
   tokenLabel: 'Access token',
   retryIn: (seconds: number) => `You can try again in ${seconds} s.`,
+  required: 'required',
   submit: 'Sign in',
 };

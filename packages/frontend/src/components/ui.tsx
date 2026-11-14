@@ -295,7 +295,7 @@ export function ProgressBar({ percent, label }: { percent: number | null; label:
       aria-valuemin={0}
       aria-valuemax={100}
       {...(percent === null ? {} : { 'aria-valuenow': Math.round(percent) })}
-      className="relative h-2 overflow-hidden rounded-full bg-raised"
+      className="relative h-2 overflow-hidden rounded-full bg-line"
     >
       {percent === null ? (
         <span className="absolute inset-y-0 left-0 w-1/3 animate-slide rounded-full bg-accent" />
