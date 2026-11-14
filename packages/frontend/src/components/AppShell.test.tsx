@@ -149,10 +149,10 @@ describe('Overview cards', () => {
     expect(names()[0]).toContain('Creative');
 
     const filters = screen.getByRole('group', { name: 'Filter servers' });
-    await user.click(within(filters).getByRole('button', { name: 'Running' }));
-    expect(within(filters).getByRole('button', { name: 'Running' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(filters).getByRole('button', { name: /^Running/ }));
+    expect(within(filters).getByRole('button', { name: /^Running/ })).toHaveAttribute('aria-pressed', 'true');
     const running = screen.queryAllByTestId('server-card').length;
-    await user.click(within(filters).getByRole('button', { name: 'Stopped' }));
+    await user.click(within(filters).getByRole('button', { name: /^Stopped/ }));
     expect(running + screen.queryAllByTestId('server-card').length).toBe(2);
   });
 });

@@ -6,7 +6,7 @@ import { InstallPanel } from '../components/InstallPanel';
 import { JavaProgress } from '../components/JavaProgress';
 import { ActionBar, ActionFeedback, useServerActions } from '../components/ServerActions';
 import { LOADER_LABEL, StatusChip } from '../components/status';
-import { Button, EmptyState, ErrorNotice, LoadingBlock, Notice, cx } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, LoadingBlock, Notice } from '../components/ui';
 import { renderOptionalRef, useI18n } from '../i18n';
 import { preparingMajor } from '../lib/java';
 import { Link, serverPath, useRouter, type ServerTab } from '../lib/router';
@@ -199,8 +199,8 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         </section>
       )}
 
-      <nav aria-label={t.server.sectionsLabel} className="-mx-4 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
-        <ul className="flex min-w-max gap-1">
+      <nav aria-label={t.server.sectionsLabel} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <ul className="tabs min-w-max">
           {groups.map((group) => {
             const active = group.id === activeGroup;
             return (
@@ -208,10 +208,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
                 <Link
                   to={serverPath(server.id, group.first)}
                   aria-current={active ? 'page' : undefined}
-                  className={cx(
-                    'flex min-h-11 items-center border-b-2 px-2.5 text-sm font-medium no-underline sm:px-3.5 sm:text-base',
-                    active ? 'border-accent text-ink' : 'border-transparent text-dim hover:text-ink',
-                  )}
+                  className="tab"
                 >
                   {group.label}
                 </Link>
@@ -222,13 +219,13 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
       </nav>
       {subParts.length > 1 ? (
         <nav aria-label={t.server.partsLabel(t.server.groups[activeGroup])}>
-          <ul className="flex flex-wrap gap-1.5">
+          <ul className="tabs tabs-soft flex-wrap">
             {subParts.map((part) => (
               <li key={part}>
                 <Link
                   to={serverPath(server.id, part)}
                   aria-current={part === tab ? 'page' : undefined}
-                  className={cx('chip min-h-9 px-3 text-sm no-underline', part === tab ? 'chip-accent' : 'text-dim hover:text-ink')}
+                  className="tab"
                 >
                   {partLabel[part]}
                 </Link>

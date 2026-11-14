@@ -157,10 +157,12 @@ export function Overview(): ReactNode {
     });
   const statuses = (servers ?? []).map((server) => statusFor(server));
   const running = statuses.filter((status) => status.state === 'online' || status.state === 'starting').length;
+  const up = statuses.filter((status) => isUp(status.state)).length;
+  const counts: Record<Filter, number> = { all: statuses.length, running: up, stopped: statuses.length - up };
   const players = statuses.reduce((sum, status) => sum + playerCount(status), 0);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <h1 className="text-2xl">{t.overview.title}</h1>
 
       {listError !== null && servers === null ? (
@@ -188,11 +190,12 @@ export function Overview(): ReactNode {
             <Metric label={t.overview.metrics.players} value={players} delay={120} />
           </dl>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div role="group" aria-label={t.overview.filters.label} className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div role="group" aria-label={t.overview.filters.label} className="tabs">
               {FILTERS.map((key) => (
-                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cx('btn btn-sm', filter === key ? 'btn-primary' : 'bg-transparent')}>
+                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className="tab">
                   {t.overview.filters[key]}
+                  <span className="tab-count num">{counts[key]}</span>
                 </button>
               ))}
             </div>
