@@ -685,3 +685,98 @@ tbody tr {
     min-height: 2.75rem;
   }
 }
+
+/* Pop-up lists (the "…" menu and the list of a select) open with a short fade and carry a soft shadow. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.menu-pop {
+  box-shadow: 0 22px 44px -18px rgb(0 0 0 / 0.75);
+  animation: pop-in 140ms ease-out both;
+}
+
+/* Selects: our own arrow, and a list in the colours of the interface instead of the system's blue and white.
+   Browsers without customisable selects keep their own list, at least in matching colours. */
+select.input {
+  appearance: none;
+  padding-right: 2.4rem;
+  cursor: pointer;
+  background-image: url('/chevron-down.svg');
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.9rem;
+}
+select option {
+  background: var(--color-raised);
+  color: var(--color-ink);
+}
+@supports (appearance: base-select) {
+  select.input {
+    appearance: base-select;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-right: 0.9rem;
+    background-image: none;
+  }
+  select.input::picker-icon {
+    color: var(--color-faint);
+    transition: rotate 180ms ease;
+  }
+  select.input:open::picker-icon {
+    rotate: 180deg;
+  }
+  select.input:open {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+  select.input::picker(select) {
+    appearance: base-select;
+    margin-top: 0.4rem;
+    padding: 0.35rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 1rem;
+    background: var(--color-raised);
+    color: var(--color-ink);
+    box-shadow: 0 22px 44px -18px rgb(0 0 0 / 0.75);
+    animation: pop-in 140ms ease-out both;
+  }
+  select.input option {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 2.4rem;
+    padding: 0 0.8rem;
+    border-radius: 0.7rem;
+    background: transparent;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+  select.input option:hover,
+  select.input option:focus-visible {
+    background: var(--color-hover);
+    outline: none;
+  }
+  select.input option:checked {
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    color: var(--color-accent);
+    font-weight: 800;
+  }
+  select.input option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--color-accent);
+  }
+  select.input option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

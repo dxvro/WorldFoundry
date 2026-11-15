@@ -1,5 +1,6 @@
 import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cx } from './ui';
 
 export interface MoreMenuItem {
@@ -15,18 +16,21 @@ const ITEM_PX = 38;
 const FRAME_PX = 18;
 
 // A "…" button with a short list of rarely used actions. Closes on a choice, Escape, a click outside or when the
-// page moves. The list is placed against the window, so a scrolling table around the button cannot cut it off.
+// page moves. The list is rendered at the end of the document and placed against the window: inside a card it would
+// be cut off by a scrolling box, and a card that is moved with a transform would shift it away from the button.
 export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[]; size?: 'sm' | 'md' }): ReactNode {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<CSSProperties>({});
   const root = useRef<HTMLDivElement | null>(null);
   const button = useRef<HTMLButtonElement | null>(null);
+  const menu = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
   useEffect(() => {
     if (!open) return;
     const onDown = (event: PointerEvent): void => {
-      if (root.current !== null && !root.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (root.current?.contains(target) !== true && menu.current?.contains(target) !== true) setOpen(false);
     };
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -72,29 +76,32 @@ export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[
       >
         <MoreHorizontal aria-hidden className="size-4" />
       </button>
-      {open ? (
-        <div id={menuId} role="menu" aria-label={label} style={place} className="fixed z-40 flex min-w-44 flex-col rounded-xl border border-line bg-raised p-2 shadow-lg">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-              className={cx(
-                'inline-flex w-full cursor-pointer items-center gap-2 rounded-xl border-0 bg-transparent p-2 text-left text-sm font-medium hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50',
-                item.danger ? 'text-bad' : 'text-dim hover:text-ink',
-              )}
-            >
-              {item.icon === undefined ? null : <item.icon aria-hidden className="size-4 shrink-0" />}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <div ref={menu} id={menuId} role="menu" aria-label={label} style={place} className="menu-pop fixed z-40 flex min-w-44 flex-col gap-0.5 rounded-2xl border border-line-strong bg-raised p-1.5">
+              {items.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  disabled={item.disabled}
+                  onClick={() => {
+                    setOpen(false);
+                    item.onSelect();
+                  }}
+                  className={cx(
+                    'inline-flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-xl border-0 bg-transparent px-3 text-left text-sm font-bold transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50',
+                    item.danger ? 'text-bad' : 'text-dim hover:text-ink',
+                  )}
+                >
+                  {item.icon === undefined ? null : <item.icon aria-hidden className="size-4 shrink-0" />}
+                  {item.label}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

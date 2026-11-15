@@ -51,10 +51,11 @@ describe('the overview of a server', () => {
     expect(within(header).getByRole('button', { name: 'Stop' })).toBeInTheDocument();
     expect(within(header).queryByRole('button', { name: 'Restart' })).not.toBeInTheDocument();
     await user.click(within(header).getByRole('button', { name: 'More actions' }));
-    const menu = within(header).getByRole('menu', { name: 'More actions' });
+    // the list is rendered at the end of the document, not inside the header
+    const menu = screen.getByRole('menu', { name: 'More actions' });
     expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Restart', 'Force stop']);
     await user.click(within(menu).getByRole('menuitem', { name: 'Restart' }));
     await waitFor(() => expect(api.callsTo('POST /api/servers/srv-1/restart')).toHaveLength(1));
-    expect(within(header).queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });
