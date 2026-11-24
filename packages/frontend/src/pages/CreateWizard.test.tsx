@@ -33,6 +33,20 @@ function installFetch(system: { totalMemoryMb: number; javaRuntimes: unknown[]; 
         posts.push(JSON.parse(String(init.body)));
         return json(201, { server: created });
       }
+      if (url.startsWith('/api/modpacks/search')) {
+        return json(200, {
+          totalHits: 1,
+          hits: [{ projectId: 'COBB', slug: 'cobblemon', title: 'Cobblemon Pack', description: 'Pokémon-like creatures', author: 'team', downloads: 120000, iconUrl: null, categories: [] }],
+        });
+      }
+      if (url === '/api/modpacks/COBB/versions') {
+        return json(200, {
+          versions: [
+            { id: 'q1', name: 'Quilt build', versionNumber: '2.0-q', versionType: 'release', datePublished: '2024-03-01', gameVersions: ['1.21.1'], loaders: ['quilt'], supported: false },
+            { id: 'v2', name: '1.6.1', versionNumber: '1.6.1', versionType: 'release', datePublished: '2024-02-01', gameVersions: ['1.21.1'], loaders: ['fabric'], supported: true },
+          ],
+        });
+      }
       if (url.includes('/install-log')) return json(200, { lines: [], totalLines: 0, truncated: false });
       if (url.startsWith('/api/servers')) return json(200, { servers: [] });
       if (url.startsWith('/api/health')) return json(200, { status: 'ok', database: 'ok', lanUrls: [] });
@@ -63,7 +77,7 @@ describe('create wizard', () => {
 
   async function toReview(user: ReturnType<typeof userEvent.setup>): Promise<void> {
     await user.type(await screen.findByLabelText('Server name'), 'Survival');
-    await user.click(screen.getByRole('radio', { name: /Fabric/ }));
+    await user.click(screen.getByRole('radio', { name: /^Fabric/ }));
     await user.click(screen.getByRole('button', { name: 'Next' }));
     const version = await screen.findByLabelText('Minecraft version');
     await waitFor(() => expect(within(version).getAllByRole('option').length).toBeGreaterThan(1));
@@ -89,7 +103,7 @@ describe('create wizard', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(await screen.findByLabelText('Server name'), 'Survival');
-    await user.click(screen.getByRole('radio', { name: /Fabric/ }));
+    await user.click(screen.getByRole('radio', { name: /^Fabric/ }));
     await user.click(screen.getByRole('button', { name: 'Next' }));
     const version = await screen.findByLabelText('Minecraft version');
     await waitFor(() => expect(within(version).getAllByRole('option').length).toBeGreaterThan(1));
@@ -105,7 +119,7 @@ describe('create wizard', () => {
 
   async function toResources(user: ReturnType<typeof userEvent.setup>): Promise<void> {
     await user.type(await screen.findByLabelText('Server name'), 'Survival');
-    await user.click(screen.getByRole('radio', { name: /Fabric/ }));
+    await user.click(screen.getByRole('radio', { name: /^Fabric/ }));
     await user.click(screen.getByRole('button', { name: 'Next' }));
     const version = await screen.findByLabelText('Minecraft version');
     await waitFor(() => expect(within(version).getAllByRole('option').length).toBeGreaterThan(1));
@@ -168,5 +182,42 @@ describe('create wizard', () => {
     await user.click(screen.getByRole('button', { name: 'Create server' }));
     await screen.findByRole('heading', { name: /is being installed/ });
     expect(posts[0]).toMatchObject({ eulaAccepted: true });
+  });
+
+  it('creates a server from a Modrinth modpack with more memory', async () => {
+    const { posts } = installFetch({ totalMemoryMb: 16384, javaRuntimes: [] });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(await screen.findByLabelText('Server name'), 'Cobblemon');
+    await user.click(screen.getByRole('radio', { name: /Modpack from Modrinth/ }));
+    expect(screen.queryByRole('radio', { name: /^Fabric/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await user.click(await screen.findByRole('radio', { name: /Cobblemon Pack/ }));
+    const version = await screen.findByLabelText('Version of the pack');
+    // the Quilt build is listed but cannot be chosen; the newest supported release is preselected
+    await waitFor(() => expect(version).toHaveValue('v2'));
+    expect(within(version).getByRole('option', { name: /2\.0-q/ })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await screen.findByLabelText('Server port');
+    expect(screen.getByText(/Modpacks usually need 6 to 8 GB/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText(/Cobblemon Pack 1\.6\.1/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Create server' }));
+    await screen.findByRole('heading', { name: /is being installed/ });
+    expect(posts).toEqual([{ name: 'Cobblemon', modpack: { projectId: 'COBB', versionId: 'v2' }, port: 25565, minRamMb: 2048, maxRamMb: 6144, eulaAccepted: false }]);
+  });
+
+  it('asks for a pack before going on', async () => {
+    installFetch({ totalMemoryMb: 16384, javaRuntimes: [] });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(await screen.findByLabelText('Server name'), 'Packed');
+    await user.click(screen.getByRole('radio', { name: /Modpack from Modrinth/ }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('radio', { name: /Cobblemon Pack/ });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText('Please choose a modpack.')).toBeInTheDocument();
   });
 });

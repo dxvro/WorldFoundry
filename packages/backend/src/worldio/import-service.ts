@@ -23,7 +23,7 @@ import type { ModService } from '../mods/service.js';
 import type { ModrinthApi } from '../modrinth/types.js';
 import type { ProcessManager } from '../process/manager.js';
 import { loadProperties, saveProperties } from '../properties/store.js';
-import type { CreateServerInput } from '../servers/schemas.js';
+import type { CreateServerInput, ManualServerInput } from '../servers/schemas.js';
 import type { ServerService } from '../servers/service.js';
 import { errorMsg } from '../http/errors.js';
 import { buildAnalysis, gatherFacts, proposeLoader, type FactMod, type ImportFacts } from './analyze.js';
@@ -73,7 +73,7 @@ interface Job {
 }
 
 export interface CreateFromImportInput {
-  server: Pick<CreateServerInput, 'name' | 'loader' | 'mcVersion'> & Partial<CreateServerInput>;
+  server: ManualServerInput;
   importConfig: boolean;
   selection: ModSelection;
   acknowledged: readonly string[];

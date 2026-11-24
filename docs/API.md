@@ -36,13 +36,25 @@ Login, host and origin checks are described in [CONFIGURATION.md](CONFIGURATION.
 ## Servers
 
 - `GET /api/servers`, `GET /api/servers/:id`: servers with runtime status (`status`: state, PID, players, CPU in percent of the whole machine, memory)
-- `POST /api/servers` with `{ name, loader, mcVersion, loaderVersion?, port?, minRamMb?, maxRamMb?, eulaAccepted? }`
+- `POST /api/servers` with `{ name, loader, mcVersion, loaderVersion?, port?, minRamMb?, maxRamMb?, eulaAccepted? }`, or with `{ name, modpack: { projectId, versionId }, port?, minRamMb?, maxRamMb?, eulaAccepted? }` for a [Modrinth modpack](#modpacks)
 - `PATCH /api/servers/:id` with `{ name, minRamMb, maxRamMb, javaPath, useAikarFlags, extraJvmArgs, eulaAccepted }` (all optional; the response contains `restartRequired`)
 - `DELETE /api/servers/:id?confirm=true`: not while the server is running or being installed; removes only `<SERVERS_DIR>/<UUID>`
 - `POST /api/servers/:id/install | start | stop | restart | kill`: `start` answers immediately even if the Java version is missing (state `preparing`)
 - `POST /api/servers/:id/command` with `{ command }` (at most 1024 characters, no line breaks)
 - `GET /api/servers/:id/console/history?limit=`: last console lines (buffer: 2000 lines)
+- `GET /api/servers/:id/icon`, `PUT /api/servers/:id/icon` (body: the PNG itself, `Content-Type: image/png`, exactly 64 × 64 pixels, at most 256 KB), `DELETE /api/servers/:id/icon`: `server-icon.png`, the picture in the Minecraft server list. Minecraft reads it at start, so `PUT` and `DELETE` answer `restartRequired: true` while the server runs. The web interface cuts any picture to a square and scales it to 64 × 64 before the upload.
 - `GET /api/servers/:id/properties`, `PATCH /api/servers/:id/properties`: `server.properties` (port, game mode, difficulty, whitelist, player count, view distance, online mode, MOTD). Comments, order and unknown entries remain unchanged; after writing, the port is also updated in the database.
+
+## Modpacks
+
+A Minecraft server can be created from a modpack on Modrinth (the `.mrpack` format):
+
+- `GET /api/modpacks/search?query=&offset=&limit=`: modpacks with a server side (without a query: the most downloaded)
+- `GET /api/modpacks/:projectId/versions`: the versions with their loaders and Minecraft versions; `supported: false` for versions WorldFoundry cannot run (Quilt)
+- `POST /api/servers` with `modpack: { projectId, versionId }`: downloads the pack (SHA-512 and size checked) and reads `modrinth.index.json`. Loader, Minecraft version and loader version come from the pack. The answer is `201` as usual; the installation installs the loader first, then every file the server needs (files marked `env.server: "unsupported"` are skipped, each one checked against its SHA-512 and size, downloads only from `cdn.modrinth.com`, `github.com`, `raw.githubusercontent.com` and `gitlab.com`), then copies `overrides/` and `server-overrides/` over the server folder. Paths that would leave the server folder are refused. Afterwards the mods are scanned, so the mod list knows them as Modrinth projects (updates, dependencies).
+- `server.modpack` in every server answer: `{ projectId, versionId, title, versionNumber, iconUrl }`, or `null`.
+
+Players need the same pack in their launcher, for example the Modrinth App.
 
 ## Mod management
 

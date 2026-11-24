@@ -36,8 +36,9 @@ export interface DownloadSpec {
   size?: number;
   allowedHosts?: readonly string[];
   requireZip?: boolean;
-  // 'archive' allows .zip and .tar.gz names instead of .jar (managed Java runtimes)
-  fileKind?: 'jar' | 'archive';
+  // 'archive' allows .zip and .tar.gz names instead of .jar (managed Java runtimes); 'any' any safe file name
+  // (files of a modpack: configs, resource packs, ...)
+  fileKind?: 'jar' | 'archive' | 'any';
   onProgress?: (receivedBytes: number, totalBytes: number | null) => void;
 }
 
@@ -73,6 +74,23 @@ function assertAllowedUrl(raw: string, allowedHosts: readonly string[]): URL {
     throw new AppError(502, 'DOWNLOAD_URL_REJECTED', `Downloads from "${url.hostname}" are not allowed.`, undefined, { host: url.hostname });
   }
   return url;
+}
+
+export function sanitizeFileName(name: string): string {
+  const stem = name.split('.')[0] ?? '';
+  const valid =
+    name.length > 0 &&
+    name.length <= 200 &&
+    !/[\\/:*?"<>|\u0000-\u001f]/.test(name) &&
+    name !== '.' &&
+    name !== '..' &&
+    path.posix.basename(name) === name &&
+    path.win32.basename(name) === name &&
+    !WINDOWS_RESERVED.test(stem) &&
+    !/[ .]$/.test(name) &&
+    !name.startsWith(' ');
+  if (!valid) throw unsafeName();
+  return name;
 }
 
 export function sanitizeArchiveName(name: string): string {
@@ -155,6 +173,7 @@ async function assertZipMagic(file: string): Promise<void> {
 
 export async function downloadToTmp(spec: DownloadSpec, tmpDir: string, options: DownloaderOptions): Promise<string> {
   if (spec.fileKind === 'archive') sanitizeArchiveName(spec.fileName);
+  else if (spec.fileKind === 'any') sanitizeFileName(spec.fileName);
   else sanitizeJarName(spec.fileName);
   await mkdir(tmpDir, { recursive: true });
   const response = await openStream(spec, options);

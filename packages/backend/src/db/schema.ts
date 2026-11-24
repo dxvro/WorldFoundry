@@ -14,6 +14,8 @@ export const servers = sqliteTable(
     loader: text('loader', { enum: LOADERS }).notNull(),
     mcVersion: text('mc_version').notNull(),
     loaderVersion: text('loader_version'),
+    // JSON of ModpackRef (Modrinth project and version the server was created from); null for a server without a pack
+    modpack: text('modpack'),
     installState: text('install_state', { enum: INSTALL_STATES }).notNull().default('pending'),
     installError: text('install_error'),
     // JSON of the MessageRef belonging to installError; null for rows written before references existed

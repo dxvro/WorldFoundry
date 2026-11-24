@@ -159,7 +159,11 @@ export class ModrinthClient implements ModrinthApi {
 
   listProjectVersions(projectId: string, loaders: readonly string[], gameVersions: readonly string[]): Promise<Version[]> {
     return this.request('GET', `/project/${encodeURIComponent(projectId)}/version`, z.array(VersionSchema), {
-      query: { loaders: JSON.stringify(loaders), game_versions: JSON.stringify(gameVersions) },
+      // an empty list means no filter (all versions of the project)
+      query: {
+        ...(loaders.length === 0 ? {} : { loaders: JSON.stringify(loaders) }),
+        ...(gameVersions.length === 0 ? {} : { game_versions: JSON.stringify(gameVersions) }),
+      },
     });
   }
 

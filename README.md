@@ -51,6 +51,8 @@ For Minecraft in addition:
 
 - **Loaders:** Vanilla, Fabric, Paper, NeoForge and Forge
 - **Mods and plugins** from Modrinth: install, enable and disable, update, with dependencies
+- **Modpacks** from Modrinth: create a server from a pack such as Cobblemon; loader, versions, server mods and settings are installed together, client-only mods are left out
+- **Server icon**: upload any picture; it is cut to 64 × 64 and saved as `server-icon.png`
 - **Whitelist, operators and ban lists**, and all values of `server.properties` in an editor
 - **Automatic Java installation** when the matching version is missing (Eclipse Temurin)
 

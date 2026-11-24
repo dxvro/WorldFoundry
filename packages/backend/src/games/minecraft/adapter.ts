@@ -21,6 +21,7 @@ import { classifyLine } from '../../process/patterns.js';
 import { loadProperties, saveProperties } from '../../properties/store.js';
 import { DEFAULT_PORT, readTyped } from '../../properties/typed.js';
 import { gameDefinition } from '../registry.js';
+import { parseModpackRef, type ModpackService } from '../../modpacks/service.js';
 import type { GameAdapter, InstallContext, StartPlan } from '../types.js';
 
 const INSTALLER_TIMEOUT_MS = 10 * 60_000;
@@ -35,6 +36,8 @@ export interface MinecraftAdapterOptions {
   installerTimeoutMs?: number;
   // saves a port found in server.properties into the server row
   savePort: (serverId: string, port: number) => Promise<void>;
+  // puts the files of a Modrinth modpack into the server after the loader is installed
+  modpacks?: Pick<ModpackService, 'install'>;
   logger?: Logger;
 }
 
@@ -153,6 +156,12 @@ export class MinecraftAdapter implements GameAdapter {
       }
     }
     log(`Start file: ${launch.kind === 'jar' ? launch.jar : launch.unixFile}`);
+    const pack = parseModpackRef(server.modpack);
+    if (pack !== null) {
+      if (this.options.modpacks === undefined) throw new AppError(500, 'INTERNAL_ERROR', 'Modpacks are not available.');
+      checkAborted();
+      await this.options.modpacks.install(server, pack, ctx);
+    }
     return { launchSpec: serializeLaunchSpec(launch), requiredJavaMajor: plan.requiredJavaMajor, loaderVersion: plan.loaderVersion };
   }
 

@@ -243,6 +243,8 @@ const TEMPLATES = {
   INSTALL_STEP_STEAM_VERIFY: (p: { game: string; done: string; total: string }) => `${p.game}: checking files (${p.done} of ${p.total})`,
   INSTALL_STEP_STEAM_COMMIT: (p: { game: string; done: string; total: string }) => `${p.game}: writing files (${p.done} of ${p.total})`,
   INSTALL_DONE: () => 'Installation finished',
+  MODPACK_STEP_FILES: (p: { done: number; total: number }) => `Modpack: ${p.done} of ${p.total} files`,
+  MODPACK_STEP_OVERRIDES: () => 'Modpack: copying settings and files',
   // ---- managed Java runtimes ----
   JAVA_ORIGIN_MANAGED: (p: { date: string; version: string; image: 'JRE' | 'JDK'; sha: string }) =>
     `Installed automatically by WorldFoundry on ${p.date}: Eclipse Temurin ${p.version} (${p.image}), downloaded from api.adoptium.net, SHA-256 ${p.sha} verified. Located in the data folder and not registered in the system, the PATH or the registry.`,
@@ -322,6 +324,9 @@ export interface ErrorParamsMap {
   DISK_FULL: { purpose: 'backup' | 'restore' | 'export' | 'upload' | 'world-replace' | 'archive-extract' | 'java'; neededMb: number; freeMb: number; major?: number };
   INSTALLER_FAILED: { reason: 'not-started' } | { reason: 'exit'; exitCode: number | string; output: string };
   INSTALLER_TIMEOUT: { minutes: number; output: string };
+  MODPACK_INVALID: { detail: string };
+  MODPACK_LOADER_UNSUPPORTED: { loader: string };
+  SERVER_ICON_INVALID: { reason: 'not-png' | 'size'; width?: number; height?: number };
 }
 type ParamsOf<K extends MessageKey> = Parameters<Templates[K]>[0];
 type Wire<T> = { [P in keyof T]: T[P] extends Msg ? MessageRef : T[P] };

@@ -217,6 +217,8 @@ export const messages: MessageTexts = {
   INSTALL_STEP_STEAM_COMMIT: (p) => `${p.game}: writing files (${p.done} of ${p.total})`,
   INSTALL_STEP_INSTALLER: 'Installer running',
   INSTALL_DONE: 'Installation finished',
+  MODPACK_STEP_FILES: (p) => `Modpack: ${p.done} of ${p.total} files`,
+  MODPACK_STEP_OVERRIDES: 'Modpack: copying settings and files',
   // ---- managed Java runtimes ----
   JAVA_ORIGIN_MANAGED: (p) =>
     `Installed automatically by WorldFoundry on ${p.date}: Eclipse Temurin ${p.version} (${p.image}), downloaded from api.adoptium.net, SHA-256 ${p.sha} verified. Located in the data folder and not registered in the system, the PATH or the registry.`,

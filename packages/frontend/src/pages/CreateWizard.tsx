@@ -1,7 +1,8 @@
 import { GameDisclaimer } from '../games/GameDisclaimer';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ExternalLink, Rocket, Upload } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Boxes, Check, ExternalLink, Rocket, SlidersHorizontal, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { InstallPanel } from '../components/InstallPanel';
+import { ModpackPicker } from '../components/ModpackPicker';
 import { LOADER_LABEL } from '../components/status';
 import { Button, ErrorNotice, Field, LoadingBlock, Notice, Range, Toggle, cx } from '../components/ui';
 import { useI18n } from '../i18n';
@@ -14,13 +15,13 @@ import { defaultRam, isRamTight, ramBounds, withMax, withMin } from '../lib/ram'
 import { Link, serverPath, useRouter } from '../lib/router';
 import type { Loader, LoaderInfo, ServerView } from '../lib/types';
 import { useQuery } from '../lib/useQuery';
-import { NAME_MAX, WIZARD_STEPS, buildRequest, firstInvalidStep, nextFreePort, validateStep, type WizardDraft, type WizardErrors, type WizardStep } from '../lib/wizard';
+import { NAME_MAX, buildRequest, firstInvalidStep, modpackRam, nextFreePort, stepsFor, validateStep, type WizardDraft, type WizardErrors, type WizardSource, type WizardStep } from '../lib/wizard';
 
-function StepIndicator({ current, reached }: { current: WizardStep; reached: number }): ReactNode {
+function StepIndicator({ steps, current, reached }: { steps: readonly WizardStep[]; current: WizardStep; reached: number }): ReactNode {
   const { t } = useI18n();
   return (
     <ol className="flex flex-wrap gap-x-2 gap-y-1" aria-label={t.wizard.stepsLabel}>
-      {WIZARD_STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const active = step === current;
         const done = index < reached && !active;
         return (
@@ -63,6 +64,36 @@ function LoaderChoice({ loaders, value, onChange, error }: { loaders: LoaderInfo
   );
 }
 
+function SourceChoice({ value, onChange }: { value: WizardSource; onChange: (source: WizardSource) => void }): ReactNode {
+  const { t } = useI18n();
+  const options: Array<{ id: WizardSource; icon: typeof Boxes }> = [
+    { id: 'manual', icon: SlidersHorizontal },
+    { id: 'modpack', icon: Boxes },
+  ];
+  return (
+    <fieldset className="space-y-2">
+      <legend className="label mb-1.5">{t.wizard.sourceLabel}</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map(({ id, icon: Icon }) => {
+          const selected = value === id;
+          return (
+            <label key={id} className={cx('relative flex cursor-pointer gap-3 rounded-lg border p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent', selected ? 'border-accent bg-accent/8' : 'border-line-strong bg-canvas hover:border-faint')}>
+              <input type="radio" name="source" value={id} checked={selected} onChange={() => onChange(id)} className="mt-0.5 size-5 accent-[var(--color-accent)]" />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Icon aria-hidden className="size-4" />
+                  {t.wizard.sources[id].title}
+                </span>
+                <span className="hint block">{t.wizard.sources[id].hint}</span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function EulaLabel(): ReactNode {
   const { t } = useI18n();
   return (
@@ -100,6 +131,9 @@ export function CreateWizard(): ReactNode {
     minRamMb: 1024,
     maxRamMb: 2048,
     eulaAccepted: false,
+    source: 'manual',
+    pack: null,
+    packVersion: null,
   });
   const [portTouched, setPortTouched] = useState(false);
   const [ramTouched, setRamTouched] = useState(false);
@@ -116,11 +150,13 @@ export function CreateWizard(): ReactNode {
     if (!portTouched && state.servers !== null) setDraft((current) => ({ ...current, port: String(nextFreePort(state.servers ?? [])) }));
   }, [portTouched, state.servers]);
   useEffect(() => {
-    if (!ramTouched && total > 0) setDraft((current) => ({ ...current, ...defaultRam(total) }));
-  }, [ramTouched, total]);
+    if (!ramTouched && total > 0) setDraft((current) => ({ ...current, ...(current.source === 'modpack' ? modpackRam(total) : defaultRam(total)) }));
+  }, [ramTouched, total, draft.source]);
 
-  const mcVersions = useQuery((signal) => systemApi.mcVersions(draft.loader as Loader, snapshots, signal), [draft.loader, snapshots], draft.loader !== null);
-  const needsLoaderVersion = draft.loader !== null && draft.loader !== 'vanilla';
+  const fromPack = draft.source === 'modpack';
+  const steps = stepsFor(draft);
+  const mcVersions = useQuery((signal) => systemApi.mcVersions(draft.loader as Loader, snapshots, signal), [draft.loader, snapshots], draft.loader !== null && !fromPack);
+  const needsLoaderVersion = !fromPack && draft.loader !== null && draft.loader !== 'vanilla';
   const loaderVersions = useQuery(
     (signal) => systemApi.loaderVersions(draft.loader as Loader, draft.mcVersion, signal),
     [draft.loader, draft.mcVersion],
@@ -150,7 +186,7 @@ export function CreateWizard(): ReactNode {
   const errors: WizardErrors = validateStep(step, draft, context);
   const visibleErrors: WizardErrors = showErrors ? errors : {};
   const bounds = ramBounds(total > 0 ? total : 2048);
-  const stepIndex = WIZARD_STEPS.indexOf(step);
+  const stepIndex = Math.max(0, steps.indexOf(step));
 
   const update = (patch: Partial<WizardDraft>): void => setDraft((current) => ({ ...current, ...patch }));
 
@@ -160,7 +196,7 @@ export function CreateWizard(): ReactNode {
       return;
     }
     setShowErrors(false);
-    const next = WIZARD_STEPS[stepIndex + 1];
+    const next = steps[stepIndex + 1];
     if (next !== undefined) {
       setStep(next);
       setReached((value) => Math.max(value, stepIndex + 1));
@@ -168,7 +204,7 @@ export function CreateWizard(): ReactNode {
   };
   const goBack = (): void => {
     setShowErrors(false);
-    const previous = WIZARD_STEPS[stepIndex - 1];
+    const previous = steps[stepIndex - 1];
     if (previous !== undefined) setStep(previous);
   };
 
@@ -230,7 +266,7 @@ export function CreateWizard(): ReactNode {
           </Link>
         </div>
         <GameDisclaimer game="minecraft" />
-        <StepIndicator current={step} reached={reached} />
+        <StepIndicator steps={steps} current={step} reached={reached} />
       </div>
 
       {loaders.loading || system.loading ? (
@@ -254,8 +290,26 @@ export function CreateWizard(): ReactNode {
               <Field label={t.wizard.nameLabel} error={visibleErrors.name} hint={t.wizard.nameHint(NAME_MAX)}>
                 {(props) => <input {...props} className="input" value={draft.name} maxLength={NAME_MAX + 20} autoFocus autoComplete="off" onChange={(event) => update({ name: event.target.value })} />}
               </Field>
-              <LoaderChoice loaders={loaders.data} value={draft.loader} error={visibleErrors.loader} onChange={(loader) => update({ loader, mcVersion: '', loaderVersion: '' })} />
+              <SourceChoice
+                value={draft.source ?? 'manual'}
+                onChange={(source) => {
+                  // the later steps differ, so what was reached before no longer counts
+                  setReached(0);
+                  update({ source });
+                }}
+              />
+              {fromPack ? null : <LoaderChoice loaders={loaders.data} value={draft.loader} error={visibleErrors.loader} onChange={(loader) => update({ loader, mcVersion: '', loaderVersion: '' })} />}
             </>
+          ) : null}
+
+          {step === 'modpack' ? (
+            <ModpackPicker
+              pack={draft.pack ?? null}
+              version={draft.packVersion ?? null}
+              errors={visibleErrors}
+              onPack={(pack) => update({ pack, packVersion: null })}
+              onVersion={(packVersion) => update({ packVersion })}
+            />
           ) : null}
 
           {step === 'version' ? (
@@ -344,6 +398,7 @@ export function CreateWizard(): ReactNode {
                   />
                   <p className="hint">{t.wizard.machineMemory(formatMb(total))}</p>
                   {isRamTight(draft, total) ? <Notice tone="warn">{t.wizard.ramTight}</Notice> : null}
+                  {fromPack && !ramTouched ? <Notice tone="info">{t.wizard.modpack.ramHint}</Notice> : null}
                 </div>
               )}
               {autoJava && javaMissing ? (
@@ -367,10 +422,25 @@ export function CreateWizard(): ReactNode {
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
                 <dt className="text-dim">{t.wizard.fields.name}</dt>
                 <dd className="font-medium">{draft.name.trim()}</dd>
-                <dt className="text-dim">{t.wizard.fields.loader}</dt>
-                <dd>{draft.loader === null ? '–' : LOADER_LABEL[draft.loader]}{draft.loaderVersion === '' ? '' : ` ${draft.loaderVersion}`}</dd>
-                <dt className="text-dim">{t.wizard.fields.minecraft}</dt>
-                <dd className="num">{draft.mcVersion}</dd>
+                {fromPack ? (
+                  <>
+                    <dt className="text-dim">{t.wizard.fields.modpack}</dt>
+                    <dd className="font-medium">
+                      {draft.pack?.title ?? '–'} {draft.packVersion?.versionNumber ?? ''}
+                    </dd>
+                    <dt className="text-dim">{t.wizard.fields.loader}</dt>
+                    <dd>{(draft.packVersion?.loaders ?? []).map((loader) => (loader in LOADER_LABEL ? LOADER_LABEL[loader as Loader] : loader)).join(', ') || '–'}</dd>
+                    <dt className="text-dim">{t.wizard.fields.minecraft}</dt>
+                    <dd className="num">{(draft.packVersion?.gameVersions ?? []).join(', ')}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt className="text-dim">{t.wizard.fields.loader}</dt>
+                    <dd>{draft.loader === null ? '–' : LOADER_LABEL[draft.loader]}{draft.loaderVersion === '' ? '' : ` ${draft.loaderVersion}`}</dd>
+                    <dt className="text-dim">{t.wizard.fields.minecraft}</dt>
+                    <dd className="num">{draft.mcVersion}</dd>
+                  </>
+                )}
                 <dt className="text-dim">{t.wizard.fields.port}</dt>
                 <dd className="num">{draft.port}</dd>
                 <dt className="text-dim">{t.wizard.fields.memory}</dt>
@@ -385,6 +455,7 @@ export function CreateWizard(): ReactNode {
                 </label>
                 <p className="hint mt-2 pl-8">{t.wizard.eulaNotAccepted}</p>
               </div>
+              {creating && fromPack ? <p className="hint">{t.wizard.modpack.creating}</p> : null}
               {createError === null ? null : <ErrorNotice error={createError} title={t.wizard.createFailed} />}
             </>
           ) : null}

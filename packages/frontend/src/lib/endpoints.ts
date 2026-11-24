@@ -17,6 +17,8 @@ import type {
   LoaderVersion,
   McVersion,
   ModBackupListView,
+  ModpackSearchResponse,
+  ModpackVersionDto,
   ModLogEntry,
   ModView,
   NetworkInput,
@@ -120,6 +122,17 @@ export const serversApi = {
     request(`${server(id)}/properties`, signal === undefined ? {} : { signal }),
   patchProperties: (id: string, patch: PropertiesPatch): Promise<PropertiesView & { restartRequired: boolean }> =>
     request(`${server(id)}/properties`, { method: 'PATCH', body: patch }),
+  // server-icon.png; `version` changes the address after an upload so the browser does not show the old picture
+  iconUrl: (id: string, version: number | string = 0): string => `${server(id)}/icon?v=${enc(String(version))}`,
+  setIcon: (id: string, png: Blob): Promise<{ restartRequired: boolean }> => request(`${server(id)}/icon`, { method: 'PUT', raw: { data: png, type: 'image/png' } }),
+  removeIcon: (id: string): Promise<{ restartRequired: boolean }> => request(`${server(id)}/icon`, { method: 'DELETE' }),
+};
+
+export const modpacksApi = {
+  search: (query: string, offset = 0, signal?: AbortSignal): Promise<ModpackSearchResponse> =>
+    request('/api/modpacks/search', { query: { query, offset, limit: 20 }, ...(signal === undefined ? {} : { signal }) }),
+  versions: async (projectId: string, signal?: AbortSignal): Promise<ModpackVersionDto[]> =>
+    (await request<{ versions: ModpackVersionDto[] }>(`/api/modpacks/${enc(projectId)}/versions`, signal === undefined ? {} : { signal })).versions,
 };
 
 export interface SearchParams {

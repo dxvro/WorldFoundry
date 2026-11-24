@@ -12,6 +12,7 @@ import { registerMinecraftOnlyGuard } from './http/minecraft-only.js';
 import { registerHealthRoutes } from './http/routes/health.js';
 import { registerJavaRoutes } from './http/routes/java.js';
 import { registerModRoutes } from './http/routes/mods.js';
+import { registerModpackRoutes } from './http/routes/modpacks.js';
 import { registerCurseForgeRoutes } from './http/routes/curseforge.js';
 import { registerConfigFileRoutes } from './http/routes/config-files.js';
 import { registerWorkshopRoutes } from './http/routes/workshop.js';
@@ -102,6 +103,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   registerServerRoutes(app, context);
   registerPlayerRoutes(app, context);
   registerModRoutes(app, services.mods);
+  registerModpackRoutes(app, services.modpacks);
   registerCurseForgeRoutes(app, services.curseforge, services.mods);
   registerConfigFileRoutes(app, services.configFiles);
   registerWorkshopRoutes(app, services.workshop);

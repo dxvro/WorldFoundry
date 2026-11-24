@@ -57,6 +57,13 @@
       "when": 1794521440427,
       "tag": "0007_backup_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795551947462,
+      "tag": "0008_modpack",
+      "breakpoints": true
     }
   ]
 }

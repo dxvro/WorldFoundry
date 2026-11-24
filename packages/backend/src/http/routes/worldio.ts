@@ -3,7 +3,7 @@ import type { Readable } from 'node:stream';
 import { z } from 'zod';
 import type { AppContext } from '../../app.js';
 import { LOADERS } from '../../db/enums.js';
-import { CreateServerSchema } from '../../servers/schemas.js';
+import { ManualServerSchema } from '../../servers/schemas.js';
 import { AppError } from '../errors.js';
 
 const serverParams = z.object({ serverId: z.string().min(1).max(100) });
@@ -34,7 +34,7 @@ const selectionBody = z
   .strict();
 const createBody = z
   .object({
-    server: CreateServerSchema,
+    server: ManualServerSchema,
     importConfig: z.boolean().default(false),
     selection: selectionBody.default({ jars: [], install: [] }),
     acknowledged,

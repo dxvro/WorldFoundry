@@ -6,6 +6,7 @@ import { DEFAULT_TAIL, MAX_TAIL, readInstallLog } from '../../installer/install-
 import { PROPERTY_CATALOG, PropertiesEntriesPatchSchema } from '../../properties/catalog.js';
 import { PropertiesPatchSchema } from '../../properties/typed.js';
 import { CreateServerSchema, UpdateServerSchema } from '../../servers/service.js';
+import { MAX_ICON_BYTES } from '../../servers/icon.js';
 import { AppError } from '../errors.js';
 
 const serverParams = z.object({ serverId: z.string().min(1).max(100) });
@@ -115,6 +116,30 @@ export function registerServerRoutes(app: FastifyInstance, { services, config }:
   app.put('/api/servers/:serverId/properties/entries', async (request) => {
     const { serverId } = serverParams.parse(request.params);
     return properties.setEntries(serverId, PropertiesEntriesPatchSchema.parse(request.body));
+  });
+
+  // server-icon.png: the raw PNG as the body (the interface scales the picture to 64 x 64 before the upload)
+  app.get('/api/servers/:serverId/icon', async (request, reply) => {
+    const { serverId } = serverParams.parse(request.params);
+    const icon = await servers.icon(serverId);
+    if (icon === null) throw new AppError(404, 'SERVER_ICON_NOT_FOUND', 'This server has no icon.');
+    return reply.header('Content-Type', 'image/png').header('Cache-Control', 'no-cache').send(icon);
+  });
+
+  void app.register(async (scope) => {
+    scope.addContentTypeParser('image/png', { parseAs: 'buffer', bodyLimit: MAX_ICON_BYTES }, (_request, body, done) => {
+      done(null, body);
+    });
+    scope.put('/api/servers/:serverId/icon', { bodyLimit: MAX_ICON_BYTES }, async (request) => {
+      const { serverId } = serverParams.parse(request.params);
+      if (!Buffer.isBuffer(request.body)) throw new AppError(422, 'SERVER_ICON_INVALID', 'The server icon must be a PNG image.', undefined, { reason: 'not-png' });
+      return servers.setIcon(serverId, request.body);
+    });
+  });
+
+  app.delete('/api/servers/:serverId/icon', async (request) => {
+    const { serverId } = serverParams.parse(request.params);
+    return servers.removeIcon(serverId);
   });
 
   app.get('/api/properties/catalog', async () => ({ catalog: PROPERTY_CATALOG }));

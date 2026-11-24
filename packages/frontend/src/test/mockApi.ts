@@ -123,7 +123,7 @@ export function mockApi(routes: Record<string, Handler>): MockApi {
       const method = init?.method ?? 'GET';
       const url = String(input);
       const path = url.split('?')[0] ?? url;
-      const call: Call = { method, url, body: init?.body === undefined ? undefined : JSON.parse(String(init.body)) };
+      const call: Call = { method, url, body: init?.body === undefined ? undefined : init.body instanceof Blob ? init.body : JSON.parse(String(init.body)) };
       calls.push(call);
       const key = [...table.keys()]
         .filter((candidate) => {

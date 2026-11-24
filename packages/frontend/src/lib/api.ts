@@ -24,6 +24,8 @@ type QueryValue = string | number | boolean | undefined | readonly string[];
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
+  // a file sent as it is (not as JSON), with its media type
+  raw?: { data: Blob; type: string };
   query?: Record<string, QueryValue>;
   signal?: AbortSignal;
   // login answers 401 for a wrong token; that is not a lost session
@@ -74,14 +76,17 @@ export function errorFromResponse(status: number, text: string): ApiError {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, signal, ignoreUnauthorized = false } = options;
+  const { method = 'GET', body, raw, query, signal, ignoreUnauthorized = false } = options;
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (raw !== undefined) headers['Content-Type'] = raw.type;
+  else if (body !== undefined) headers['Content-Type'] = 'application/json';
   let response: Response;
   try {
     response = await fetch(`${path}${buildQuery(query)}`, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? { Accept: 'application/json' } : { Accept: 'application/json', 'Content-Type': 'application/json' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      headers,
+      ...(raw !== undefined ? { body: raw.data } : body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(signal === undefined ? {} : { signal }),
     });
   } catch (error) {

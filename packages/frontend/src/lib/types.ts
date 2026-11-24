@@ -103,6 +103,7 @@ export type {
 export type { InstallMode, LatestRelease, SelfUpdateResult, UpdateHistoryEntry, UpdatePhase, UpdateProgress } from '@worldfoundry/backend/contract';
 export type { BackupKind, BackupStatus, ConsoleStream, DependencyType, InstallState, Loader, ServerState, UpdateStatus } from '@worldfoundry/backend/contract';
 // Translatable texts: a message reference sits next to each English text (see contract.ts)
+export type { ModpackHit, ModpackRef, ModpackSearchResponse, ModpackVersionDto } from '@worldfoundry/backend/contract';
 export type { ErrorParamsMap, MessageKey, MessageParams, MessageParamsMap, MessageRef } from '@worldfoundry/backend/contract';
 
 // What the types of the backend look like after JSON.stringify: dates become ISO strings.

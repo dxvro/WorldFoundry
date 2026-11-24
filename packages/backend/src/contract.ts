@@ -24,8 +24,10 @@ import type { Category, SearchIndex, VersionType } from './modrinth/types.js';
 import type { ConsoleLine, RuntimeStatus } from './process/types.js';
 import type { PropertiesPatch, TypedProperties } from './properties/typed.js';
 import type { CreateServerInput, UpdateServerInput } from './servers/schemas.js';
+import type { ModpackHit, ModpackRef, ModpackSearchResponse, ModpackVersionDto } from './modpacks/types.js';
 import type { InstallMode, LatestRelease, SystemUpdateState, UpdateHistoryEntry, UpdatePhase, UpdateProgress } from './update/types.js';
 
+export type { ModpackHit, ModpackRef, ModpackSearchResponse, ModpackVersionDto };
 export type {
   AppEvent,
   BackupKind,
@@ -66,8 +68,10 @@ export interface ErrorBody {
 // One row of the mod update log; errorRef belongs to `error`
 export type ModUpdateLogEntry = Omit<ModUpdateLogRow, 'errorRef'> & { errorRef: MessageRef | null };
 
-export interface ServerDto extends Omit<Server, 'launchSpec' | 'installErrorRef'> {
+export interface ServerDto extends Omit<Server, 'launchSpec' | 'installErrorRef' | 'modpack'> {
   launchSpec: LaunchSpec | null;
+  // the Modrinth modpack the server was created from
+  modpack: ModpackRef | null;
   // key and params for `installError`; null for errors stored before references existed
   installErrorRef: MessageRef | null;
   status: RuntimeStatus;

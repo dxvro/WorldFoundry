@@ -42,6 +42,7 @@ export const ProjectSchema = z.object({
   project_type: z.string(),
   client_side: z.string().nullish(),
   server_side: z.string().nullish(),
+  icon_url: z.string().nullish(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 

@@ -21,6 +21,8 @@ import { rethrowFsError } from '../mods/fs-errors.js';
 import { withdrawEulaFile } from '../process/eula.js';
 import type { ProcessManager } from '../process/manager.js';
 import { tokenizeArgs } from '../process/tokenize.js';
+import { readIcon, removeIcon, writeIcon } from './icon.js';
+import { parseModpackRef, type ModpackService, type PreparedPack } from '../modpacks/service.js';
 import { CreateServerSchema, MIN_RAM_MB, UpdateServerSchema, type CreateServerInput, type UpdateServerInput } from './schemas.js';
 
 export { CreateServerSchema, MIN_RAM_MB, UpdateServerSchema };
@@ -40,6 +42,8 @@ export interface ServerServiceOptions {
   manager: ProcessManager;
   backups: BackupService;
   games: GameAdapters;
+  // Modrinth modpacks; without it a server cannot be created from a pack
+  modpacks?: ModpackService;
   totalMemoryMb?: () => number;
 }
 
@@ -50,7 +54,13 @@ export class ServerService {
 
   private toDto(row: Server): ServerDto {
     const { installErrorRef, ...rest } = row;
-    return { ...rest, installErrorRef: parseRef(installErrorRef), launchSpec: parseLaunchSpec(row.launchSpec), status: this.options.manager.status(row.id) };
+    return {
+      ...rest,
+      installErrorRef: parseRef(installErrorRef),
+      launchSpec: parseLaunchSpec(row.launchSpec),
+      modpack: parseModpackRef(row.modpack),
+      status: this.options.manager.status(row.id),
+    };
   }
 
   async list(): Promise<ServerDto[]> {
@@ -119,28 +129,48 @@ export class ServerService {
     const maxRamMb = input.maxRamMb ?? Math.max(2048, minRamMb);
     this.assertRam(minRamMb, maxRamMb);
 
-    const plan = await this.options.catalog.resolve(input.loader, input.mcVersion, input.loaderVersion ?? null);
-    const port = input.port ?? (await this.nextFreePort());
-    const now = new Date();
     const id = randomUUID();
-    await this.options.db.transaction((tx) =>
-      tx.insert(servers).values({
-        id,
-        name: input.name,
-        game: game.id,
-        loader: input.loader,
-        mcVersion: input.mcVersion,
-        loaderVersion: plan.loaderVersion,
-        requiredJavaMajor: plan.requiredJavaMajor,
-        port,
-        minRamMb,
-        maxRamMb,
-        eulaAccepted: input.eulaAccepted ?? false,
-        createdAt: now,
-        updatedAt: now,
-      }),
-    );
-    await mkdir(path.join(this.options.serversDir, id), { recursive: true });
+    const dir = path.join(this.options.serversDir, id);
+    let inserted = false;
+    try {
+      // a modpack decides the loader and versions; its archive is downloaded now and stays in the folder for the installation
+      let pack: PreparedPack | null = null;
+      if (input.modpack !== undefined) {
+        if (this.options.modpacks === undefined) throw new AppError(422, 'GAME_FEATURE_UNSUPPORTED', 'Modpacks are not available.');
+        await mkdir(dir, { recursive: true });
+        pack = await this.options.modpacks.prepare(input.modpack.projectId, input.modpack.versionId, dir);
+      }
+      const loader = pack?.target.loader ?? input.loader;
+      const mcVersion = pack?.target.mcVersion ?? input.mcVersion;
+      if (loader === undefined || mcVersion === undefined) throw new AppError(400, 'VALIDATION_ERROR', 'A loader and a Minecraft version, or a modpack, are required.');
+      const requestedLoaderVersion = pack === null ? (input.loaderVersion ?? null) : pack.target.loaderVersion;
+
+      const plan = await this.options.catalog.resolve(loader, mcVersion, requestedLoaderVersion);
+      const port = input.port ?? (await this.nextFreePort());
+      const now = new Date();
+      await this.options.db.transaction((tx) =>
+        tx.insert(servers).values({
+          id,
+          name: input.name,
+          game: game.id,
+          loader,
+          mcVersion,
+          loaderVersion: plan.loaderVersion,
+          requiredJavaMajor: plan.requiredJavaMajor,
+          modpack: pack === null ? null : JSON.stringify(pack.ref),
+          port,
+          minRamMb,
+          maxRamMb,
+          eulaAccepted: input.eulaAccepted ?? false,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      );
+      inserted = true;
+    } finally {
+      if (!inserted) await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    }
+    await mkdir(dir, { recursive: true });
     this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'created' });
     await this.options.install.enqueue(id, { checkJava: false });
     return this.get(id);
@@ -204,6 +234,37 @@ export class ServerService {
     });
     this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'updated' });
     return this.get(id);
+  }
+
+  // ---- server-icon.png (Minecraft): read when the server starts ----
+
+  async icon(id: string): Promise<Buffer | null> {
+    await this.row(id);
+    return readIcon(path.join(this.options.serversDir, id));
+  }
+
+  async setIcon(id: string, data: Buffer): Promise<{ restartRequired: boolean }> {
+    await this.row(id);
+    // no server lock: the file is replaced in one step, and an installation must not hold the upload up
+    try {
+      await writeIcon(path.join(this.options.serversDir, id), data);
+    } catch (error) {
+      rethrowFsError(error, 'server-icon.png');
+    }
+    this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'updated' });
+    return { restartRequired: this.options.manager.isRunning(id) };
+  }
+
+  async removeIcon(id: string): Promise<{ restartRequired: boolean }> {
+    await this.row(id);
+    // no server lock: the file is replaced in one step, and an installation must not hold the upload up
+    try {
+      await removeIcon(path.join(this.options.serversDir, id));
+    } catch (error) {
+      rethrowFsError(error, 'server-icon.png');
+    }
+    this.options.bus.emit({ type: 'server.changed', serverId: id, reason: 'updated' });
+    return { restartRequired: this.options.manager.isRunning(id) };
   }
 
   // `backups` says what happens to the server's backup archives; it must be given when there are any

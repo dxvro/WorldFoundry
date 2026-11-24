@@ -39,6 +39,8 @@ import { ModService } from './mods/service.js';
 import type { ServerRuntimeGuard } from './mods/runtime-guard.js';
 import type { ModrinthApi } from './modrinth/types.js';
 import { NetworkService } from './network/service.js';
+import { ModpackService } from './modpacks/service.js';
+import { defaultDownloaderOptions } from './mods/downloader.js';
 import type { NetworkDefaults } from './network/settings.js';
 import { RestartService } from './system/restart.js';
 import { ProcessManager } from './process/manager.js';
@@ -139,6 +141,7 @@ export interface Services {
   properties: PropertiesService;
   players: PlayersService;
   mods: ModService;
+  modpacks: ModpackService;
   backups: BackupService;
   backupScheduler: BackupScheduler;
   autostart: AutostartService;
@@ -181,7 +184,9 @@ export function createServices(options: ServiceOptions): Services {
   const spawner = options.spawner ?? realSpawner;
   const runner = options.installerRunner ?? createInstallerRunner(spawner);
 
+  const modpacks = new ModpackService({ db, modrinth: options.modrinth, downloader: options.downloader ?? defaultDownloaderOptions(), logger });
   const minecraft = new MinecraftAdapter({
+    modpacks,
     catalog,
     java,
     runner,
@@ -327,6 +332,7 @@ export function createServices(options: ServiceOptions): Services {
     manager,
     backups,
     games,
+    modpacks,
     ...(options.totalMemoryMb === undefined ? {} : { totalMemoryMb: options.totalMemoryMb }),
   });
   const properties = new PropertiesService({ db, serversDir: config.serversDir, lock, guard: manager });
@@ -456,5 +462,5 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, modpacks, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
 }

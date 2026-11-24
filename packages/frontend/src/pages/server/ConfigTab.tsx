@@ -14,6 +14,7 @@ import { useQuery } from '../../lib/useQuery';
 import { useLive } from '../../live/LiveProvider';
 import { DeleteServerSection } from './DeleteServerSection';
 import { JavaRuntimes } from './JavaRuntimes';
+import { ServerIconSection } from './ServerIconSection';
 
 type Gamemode = TypedProperties['gamemode'];
 type Difficulty = TypedProperties['difficulty'];
@@ -512,6 +513,7 @@ export function ConfigTab({ server, status }: { server: ServerView; status: Runt
       <JvmSection server={server} system={system.data} rescanning={rescanning} onRescan={rescan} onSaved={afterSave} />
       {system.data === undefined ? null : <JavaRuntimes server={server} system={system.data} serverNames={serverNames} onChanged={rescan} />}
       <GeneralSection server={server} onSaved={() => void refresh()} />
+      <ServerIconSection server={server} onSaved={afterSave} />
       <DeleteServerSection server={server} status={status} />
     </div>
   );

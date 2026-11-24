@@ -198,6 +198,16 @@ export const errors = {
     MODRINTH_UNREACHABLE: 'Modrinth cannot be reached.',
     MODS_NOT_SUPPORTED: 'Vanilla servers do not support mods or plugins.',
     MOD_NOT_FOUND: 'The project or version was not found on Modrinth.',
+    MODPACK_INVALID: (p: Details) => `The modpack is not a valid Modrinth modpack (${String(p.detail)}).`,
+    MODPACK_LOADER_UNSUPPORTED: (p: Details) => `The modpack needs the ${String(p.loader)} loader, which WorldFoundry does not support yet.`,
+    MODPACK_NOT_A_PACK: 'This Modrinth project is not a modpack.',
+    MODPACK_VERSION_MISMATCH: 'The version does not belong to this modpack.',
+    SERVER_ICON_INVALID: (p: Details) =>
+      p.reason === 'size'
+        ? `The server icon must be 64 × 64 pixels${num(p.width) === undefined ? '' : ` (this one is ${String(p.width)} × ${String(p.height)})`}.`
+        : 'The server icon must be a PNG image.',
+    SERVER_ICON_TOO_LARGE: 'The server icon is too large (at most 256 KB).',
+    SERVER_ICON_NOT_FOUND: 'This server has no icon.',
     MOD_ALREADY_INSTALLED: (p: Details) => (text(p.name) === undefined ? 'This mod is already installed.' : `The mod "${p.name}" is already installed.`),
     MOD_DISABLED: (p: Details) =>
       text(p.name) === undefined

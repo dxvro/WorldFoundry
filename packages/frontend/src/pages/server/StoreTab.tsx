@@ -29,7 +29,7 @@ export function safeIconUrl(value: string | null): string | null {
   }
 }
 
-function Icon({ url, title }: { url: string | null; title: string }): ReactNode {
+export function ProjectIcon({ url, title }: { url: string | null; title: string }): ReactNode {
   const [failed, setFailed] = useState(false);
   const safe = safeIconUrl(url);
   // the letter tile sits behind the image, so a slow or broken icon never leaves an empty box
@@ -43,7 +43,7 @@ function Icon({ url, title }: { url: string | null; title: string }): ReactNode 
   );
 }
 
-function useDebounced<T>(value: T, delayMs: number): T {
+export function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), delayMs);
@@ -217,7 +217,7 @@ export function StoreTab({ server, status }: { server: ServerView; status: Runti
                 const switchedOff = hit.installed && !hit.enabled && !enabledNow.has(hit.projectId) && hit.modId !== null;
                 return (
                   <li key={hit.projectId} className="panel flex flex-wrap gap-3 p-3 sm:flex-nowrap">
-                    <Icon url={hit.iconUrl} title={hit.title} />
+                    <ProjectIcon url={hit.iconUrl} title={hit.title} />
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="flex flex-wrap items-baseline gap-x-2">
                         <span className="font-semibold">{hit.title}</span>
