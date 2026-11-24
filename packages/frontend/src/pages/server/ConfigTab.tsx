@@ -14,7 +14,7 @@ import { useQuery } from '../../lib/useQuery';
 import { useLive } from '../../live/LiveProvider';
 import { DeleteServerSection } from './DeleteServerSection';
 import { JavaRuntimes } from './JavaRuntimes';
-import { MemoryRange } from '../../components/MemoryRange';
+import { MemoryPair } from '../../components/MemoryRange';
 import { ServerIconSection } from './ServerIconSection';
 
 type Gamemode = TypedProperties['gamemode'];
@@ -250,32 +250,23 @@ function JvmSection({ server, system, onRescan, rescanning, onSaved }: { server:
           void save();
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <MemoryRange
-            label={j.minRam}
-            value={ram.minRamMb}
-            min={bounds.min}
-            max={bounds.max}
-            step={bounds.step}
-            error={ramErrors.minRamMb}
-            onChange={(value, exact) => {
-              touch();
-              setRam((current) => withMin(current, value, exact ? exactBounds(bounds) : bounds));
-            }}
-          />
-          <MemoryRange
-            label={j.maxRam}
-            value={ram.maxRamMb}
-            min={bounds.min}
-            max={bounds.max}
-            step={bounds.step}
-            error={ramErrors.maxRamMb}
-            onChange={(value, exact) => {
-              touch();
-              setRam((current) => withMax(current, value, exact ? exactBounds(bounds) : bounds));
-            }}
-          />
-        </div>
+        <MemoryPair
+          minLabel={j.minRam}
+          maxLabel={j.maxRam}
+          minRamMb={ram.minRamMb}
+          maxRamMb={ram.maxRamMb}
+          limits={bounds}
+          totalMemoryMb={system?.totalMemoryMb ?? null}
+          errors={ramErrors}
+          onMin={(value, exact) => {
+            touch();
+            setRam((current) => withMin(current, value, exact ? exactBounds(bounds) : bounds));
+          }}
+          onMax={(value, exact) => {
+            touch();
+            setRam((current) => withMax(current, value, exact ? exactBounds(bounds) : bounds));
+          }}
+        />
         {system === undefined ? null : <p className="hint">{j.memoryInfo(formatMb(system.totalMemoryMb), formatMb(system.freeMemoryMb))}</p>}
 
         <Toggle

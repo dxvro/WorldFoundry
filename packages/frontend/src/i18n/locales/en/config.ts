@@ -37,8 +37,8 @@ export const config = {
   jvm: {
     title: 'Java and memory',
     description: 'Changes only take effect after the server is restarted.',
-    minRam: 'Minimum memory (-Xms)',
-    maxRam: 'Maximum memory (-Xmx)',
+    minRam: 'Minimum memory',
+    maxRam: 'Maximum memory',
     memoryInfo: (total: string, free: string) => `This computer has ${total} of memory, of which ${free} is free.`,
     aikar: 'Aikar flags',
     aikarHint: 'Proven garbage collector settings for servers with several players.',

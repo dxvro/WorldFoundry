@@ -18,8 +18,9 @@ export const common = {
     thousand: 'K',
   },
   memory: {
-    amount: (label: string) => `${label}: amount`,
     unit: (label: string) => `${label}: unit`,
+    unitBoth: 'Unit of the memory fields',
+    range: (min: string, max: string) => `${min} to ${max}`,
     invalid: 'Please enter a number, for example 6 or 6144.',
     outOfRange: (min: string, max: string) => `Please enter a value between ${min} and ${max}.`,
   },

@@ -2,7 +2,7 @@ import { GameDisclaimer } from '../games/GameDisclaimer';
 import { AlertTriangle, ArrowLeft, ArrowRight, Boxes, Check, ExternalLink, Rocket, SlidersHorizontal, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { InstallPanel } from '../components/InstallPanel';
-import { MemoryRange } from '../components/MemoryRange';
+import { MemoryPair } from '../components/MemoryRange';
 import { ModpackPicker } from '../components/ModpackPicker';
 import { LOADER_LABEL } from '../components/status';
 import { Button, ErrorNotice, Field, LoadingBlock, Notice, Toggle, cx } from '../components/ui';
@@ -371,26 +371,19 @@ export function CreateWizard(): ReactNode {
                 <Notice tone="warn">{t.wizard.memoryUnknown}</Notice>
               ) : (
                 <div className="space-y-4">
-                  <MemoryRange
-                    label={t.wizard.minMemory}
-                    value={draft.minRamMb}
-                    min={bounds.min}
-                    max={bounds.max}
-                    step={bounds.step}
-                    error={visibleErrors.minRamMb}
-                    onChange={(value, exact) => {
+                  <MemoryPair
+                    minLabel={t.wizard.minMemory}
+                    maxLabel={t.wizard.maxMemory}
+                    minRamMb={draft.minRamMb}
+                    maxRamMb={draft.maxRamMb}
+                    limits={bounds}
+                    totalMemoryMb={total}
+                    errors={visibleErrors}
+                    onMin={(value, exact) => {
                       setRamTouched(true);
                       update(withMin(draft, value, exact ? exactBounds(bounds) : bounds));
                     }}
-                  />
-                  <MemoryRange
-                    label={t.wizard.maxMemory}
-                    value={draft.maxRamMb}
-                    min={bounds.min}
-                    max={bounds.max}
-                    step={bounds.step}
-                    error={visibleErrors.maxRamMb}
-                    onChange={(value, exact) => {
+                    onMax={(value, exact) => {
                       setRamTouched(true);
                       update(withMax(draft, value, exact ? exactBounds(bounds) : bounds));
                     }}
