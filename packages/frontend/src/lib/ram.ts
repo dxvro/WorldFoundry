@@ -33,6 +33,9 @@ export function defaultRam(totalMemoryMb: number): RamPair {
   return { minRamMb: Math.min(DEFAULT_MIN_RAM_MB, maxRamMb), maxRamMb };
 }
 
+// a typed value is taken as it is, only kept inside the machine's limits
+export const exactBounds = (bounds: RamBounds): RamBounds => ({ ...bounds, step: 1 });
+
 // Moving one handle past the other drags the other one along, so min <= max always holds.
 export function withMin(pair: RamPair, value: number, bounds: RamBounds): RamPair {
   const minRamMb = snap(value, bounds);

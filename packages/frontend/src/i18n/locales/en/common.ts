@@ -17,6 +17,12 @@ export const common = {
     million: 'M',
     thousand: 'K',
   },
+  memory: {
+    amount: (label: string) => `${label}: amount`,
+    unit: (label: string) => `${label}: unit`,
+    invalid: 'Please enter a number, for example 6 or 6144.',
+    outOfRange: (min: string, max: string) => `Please enter a value between ${min} and ${max}.`,
+  },
   serverState: {
     offline: 'Offline',
     preparing: 'Preparing',

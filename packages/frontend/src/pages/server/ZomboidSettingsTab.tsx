@@ -1,12 +1,12 @@
 import { Eye, EyeOff, Save } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { Button, ErrorNotice, Notice, Range, Section, Toggle } from '../../components/ui';
+import { Button, ErrorNotice, Notice, Section, Toggle } from '../../components/ui';
+import { MemoryRange } from '../../components/MemoryRange';
 import { zomboidSettings } from '../../games/zomboid';
 import { useI18n } from '../../i18n';
 import { serversApi, systemApi } from '../../lib/endpoints';
 import type { RuntimeStatus, ServerView } from '../../lib/types';
 import { DeleteServerSection } from './DeleteServerSection';
-import { formatMb } from '../../lib/format';
 import { useQuery } from '../../lib/useQuery';
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }): ReactNode {
@@ -80,7 +80,7 @@ export function ZomboidSettingsTab({ server, status }: { server: ServerView; sta
       </Section>
       <Section title={z.memoryTitle}>
         <div className="space-y-4">
-          <Range label={t.zomboid.memory} value={Math.min(memory, max)} min={1024} max={max} step={512} onChange={setMemory} format={formatMb} />
+          <MemoryRange label={t.zomboid.memory} value={Math.min(memory, max)} min={1024} max={max} step={512} onChange={(value) => setMemory(value)} />
           <Toggle checked={autoStart} onChange={setAutoStart} label={z.autostart} description={z.autostartHint} />
           {error === null ? null : <ErrorNotice error={error} />}
           {saved ? <Notice tone="success">{z.saved}</Notice> : null}

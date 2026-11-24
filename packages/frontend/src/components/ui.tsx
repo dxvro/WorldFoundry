@@ -223,52 +223,6 @@ export function Switch({ checked, onChange, labelledBy, label, disabled = false,
   );
 }
 
-interface RangeProps {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-  format: (value: number) => string;
-  error?: string | undefined;
-  disabled?: boolean;
-}
-
-export function Range({ label, value, min, max, step, onChange, format, error, disabled = false }: RangeProps): ReactNode {
-  const id = useId();
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="label">
-          {label}
-        </label>
-        <output htmlFor={id} className="num font-medium">
-          {format(value)}
-        </output>
-      </div>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        aria-valuetext={format(value)}
-        aria-invalid={error === undefined ? undefined : true}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="block h-8 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-      />
-      {error === undefined ? null : (
-        <p role="alert" className="text-sm text-bad">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function Section({ title, description, children, action }: { title: string; description?: ReactNode; children: ReactNode; action?: ReactNode }): ReactNode {
   const id = useId();
   return (

@@ -1,19 +1,20 @@
 import { ExternalLink, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button, ErrorNotice, Field, LoadingBlock, Notice, Range, Section, Toggle } from '../../components/ui';
+import { Button, ErrorNotice, Field, LoadingBlock, Notice, Section, Toggle } from '../../components/ui';
 import { EULA_URL } from '../../lib/constants';
 import { systemApi, serversApi } from '../../lib/endpoints';
 import { useI18n } from '../../i18n';
 import { getCurrentDictionary } from '../../i18n/current';
 import { formatMb } from '../../lib/format';
 import { javaFit } from '../../lib/java';
-import { ramBounds, validateRam, withMax, withMin } from '../../lib/ram';
+import { exactBounds, ramBounds, validateRam, withMax, withMin } from '../../lib/ram';
 import { Link, serverPath } from '../../lib/router';
 import type { PropertiesPatch, PropertiesView, RuntimeStatus, ServerView, SystemInfo, TypedProperties, UpdateServerInput } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { useLive } from '../../live/LiveProvider';
 import { DeleteServerSection } from './DeleteServerSection';
 import { JavaRuntimes } from './JavaRuntimes';
+import { MemoryRange } from '../../components/MemoryRange';
 import { ServerIconSection } from './ServerIconSection';
 
 type Gamemode = TypedProperties['gamemode'];
@@ -250,30 +251,28 @@ function JvmSection({ server, system, onRescan, rescanning, onSaved }: { server:
         }}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Range
+          <MemoryRange
             label={j.minRam}
             value={ram.minRamMb}
             min={bounds.min}
             max={bounds.max}
             step={bounds.step}
-            format={formatMb}
             error={ramErrors.minRamMb}
-            onChange={(value) => {
+            onChange={(value, exact) => {
               touch();
-              setRam((current) => withMin(current, value, bounds));
+              setRam((current) => withMin(current, value, exact ? exactBounds(bounds) : bounds));
             }}
           />
-          <Range
+          <MemoryRange
             label={j.maxRam}
             value={ram.maxRamMb}
             min={bounds.min}
             max={bounds.max}
             step={bounds.step}
-            format={formatMb}
             error={ramErrors.maxRamMb}
-            onChange={(value) => {
+            onChange={(value, exact) => {
               touch();
-              setRam((current) => withMax(current, value, bounds));
+              setRam((current) => withMax(current, value, exact ? exactBounds(bounds) : bounds));
             }}
           />
         </div>

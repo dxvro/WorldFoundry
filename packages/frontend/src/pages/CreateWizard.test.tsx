@@ -111,7 +111,7 @@ describe('create wizard', () => {
     await waitFor(() => expect(screen.getByLabelText('Fabric version')).toHaveValue('0.16.0'));
     await user.click(screen.getByRole('button', { name: 'Next' }));
 
-    const max = await screen.findByLabelText(/Maximum memory/);
+    const max = await screen.findByRole('slider', { name: /Maximum memory/ });
     expect(max).toHaveAttribute('max', '4096');
     expect(max).toHaveAttribute('min', '256');
     expect(await screen.findByText('No Java installation found')).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('create wizard', () => {
     await user.selectOptions(version, '1.21.1');
     await waitFor(() => expect(screen.getByLabelText('Fabric version')).toHaveValue('0.16.0'));
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByLabelText(/Maximum memory/);
+    await screen.findByRole('slider', { name: /Maximum memory/ });
   }
 
   it('drops the missing-Java warning when Java is installed automatically and says so instead', async () => {

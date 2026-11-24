@@ -1,13 +1,13 @@
 import { Rocket } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { InstallPanel } from '../components/InstallPanel';
-import { Button, ErrorNotice, Field, Notice, Range } from '../components/ui';
+import { Button, ErrorNotice, Field, Notice } from '../components/ui';
+import { MemoryRange } from '../components/MemoryRange';
 import { GameDisclaimer } from '../games/GameDisclaimer';
 import { useI18n } from '../i18n';
 import { useLive } from '../live/LiveProvider';
 import { serversApi, systemApi } from '../lib/endpoints';
 import type { ServerView } from '../lib/types';
-import { formatMb } from '../lib/format';
 import { serverPath, useRouter } from '../lib/router';
 import { useQuery } from '../lib/useQuery';
 
@@ -92,7 +92,7 @@ export function ZomboidWizard(): ReactNode {
         <Field label={z.branch} hint={z.branchHint} error={errors.branch}>
           {(props) => <input {...props} className="input num" value={branch} maxLength={80} onChange={(event) => setBranch(event.target.value)} />}
         </Field>
-        <Range label={z.memory} value={Math.min(memory, max)} min={1024} max={max} step={512} onChange={setMemory} format={formatMb} />
+        <MemoryRange label={z.memory} value={Math.min(memory, max)} min={1024} max={max} step={512} onChange={(value) => setMemory(value)} />
         {error === null ? null : <ErrorNotice error={error} />}
         <Button type="submit" variant="primary" icon={Rocket} loading={busy} disabled={!valid}>
           {busy ? z.creating : z.create}
