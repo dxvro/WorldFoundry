@@ -77,7 +77,7 @@ export function ServerIconSection({ server, onSaved }: { server: ServerView; onS
             />
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="relative flex flex-wrap gap-2">
           <input
             ref={input}
             type="file"

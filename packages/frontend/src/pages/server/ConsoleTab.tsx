@@ -210,7 +210,7 @@ export function ConsoleTab({ server, status }: { server: ServerView; status: Run
           role="log"
           aria-label={t.console.log.label(server.name)}
           tabIndex={0}
-          className="console-body h-[55dvh] min-h-72 overflow-y-auto rounded-lg border border-line bg-canvas py-2"
+          className="console-body relative h-[55dvh] min-h-72 overflow-y-auto rounded-lg border border-line bg-canvas py-2"
         >
           {model.rows.length === 0 ? (
             <p className="px-3 text-faint">{connection === 'open' ? t.console.log.empty : t.console.log.waiting}</p>

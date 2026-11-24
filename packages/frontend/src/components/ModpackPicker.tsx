@@ -71,14 +71,14 @@ export function ModpackPicker({
         <fieldset className="space-y-2">
           <legend className="hint mb-1">{query === '' ? m.popular : m.results(results.data?.totalHits ?? 0)}</legend>
           {hits.length === 0 ? <p className="hint">{m.noResults}</p> : null}
-          <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+          <div className="relative max-h-[26rem] space-y-2 overflow-y-auto pr-1">
             {hits.map((hit) => {
               const selected = pack?.projectId === hit.projectId;
               return (
                 <label
                   key={hit.projectId}
                   className={cx(
-                    'flex cursor-pointer gap-3 rounded-lg border p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent',
+                    'relative flex cursor-pointer gap-3 rounded-lg border p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent',
                     selected ? 'border-accent bg-accent/8' : 'border-line-strong bg-canvas hover:border-faint',
                   )}
                 >
