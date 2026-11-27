@@ -2,8 +2,8 @@ import type { GameId, ServerDto } from '@worldfoundry/backend/contract';
 
 // The fields of the newer games: what the create wizard asks and what the settings page lets change later.
 // The labels are in i18n/locales/en/hosted.ts under the same keys; the backend checks every value again.
-export type HostedGame = 'asa' | 'valheim' | 'sevendays' | 'palworld' | 'terraria';
-export const HOSTED_GAMES: readonly HostedGame[] = ['asa', 'valheim', 'sevendays', 'palworld', 'terraria'];
+export type HostedGame = 'asa' | 'valheim' | 'sevendays' | 'palworld' | 'terraria' | 'vrising';
+export const HOSTED_GAMES: readonly HostedGame[] = ['asa', 'valheim', 'sevendays', 'palworld', 'terraria', 'vrising'];
 export const isHosted = (game: GameId): game is HostedGame => (HOSTED_GAMES as readonly string[]).includes(game);
 
 export type FieldValue = string | number | boolean;
@@ -13,7 +13,7 @@ export interface HostedField {
   kind: 'text' | 'password' | 'number' | 'select' | 'toggle';
   // select: the values in order; the labels come from hosted.options[optionsKey]
   options?: readonly (string | number)[];
-  optionsKey?: 'size' | 'difficulty' | 'sevendaysWorld' | 'worldSize' | 'asaMap';
+  optionsKey?: 'size' | 'difficulty' | 'sevendaysWorld' | 'worldSize' | 'asaMap' | 'vrisingMode' | 'vrisingDifficulty';
   min?: number;
   max?: number;
   default: FieldValue;
@@ -54,6 +54,14 @@ export const HOSTED_FIELDS: Record<HostedGame, readonly HostedField[]> = {
     { key: 'difficulty', kind: 'select', options: [0, 1, 2, 3], optionsKey: 'difficulty', default: 0, create: true, edit: true },
     players(8, 255),
     password(),
+  ],
+  vrising: [
+    { key: 'saveName', kind: 'text', default: 'world1', create: true, edit: true },
+    { key: 'mode', kind: 'select', options: ['StandardPvP', 'StandardPvE', 'custom'], optionsKey: 'vrisingMode', default: 'StandardPvP', create: true, edit: true },
+    { key: 'difficulty', kind: 'select', options: ['Difficulty_Easy', 'Difficulty_Normal', 'Difficulty_Brutal'], optionsKey: 'vrisingDifficulty', default: 'Difficulty_Normal', create: true, edit: true },
+    players(40, 128),
+    password(),
+    { key: 'public', kind: 'toggle', default: false, create: true, edit: true },
   ],
 };
 

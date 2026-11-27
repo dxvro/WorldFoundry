@@ -214,6 +214,33 @@ export const GAMES: readonly GameDefinition[] = [
       },
     ],
   },
+  {
+    id: 'vrising',
+    name: 'V Rising',
+    summary: 'Vampire survival: build a castle, hunt for blood and fight V Blood bosses alone or in clans. Windows server; on Linux it runs through Proton.',
+    diskGb: 3,
+    ramGb: 8,
+    availability: 'available',
+    rightsHolders: ['Stunlock Studios'],
+    disclaimer: notA('V Rising', 'Stunlock Studios'),
+    eula: { name: 'Steam Subscriber Agreement', url: 'https://store.steampowered.com/subscriber_agreement/' },
+    delivery: { kind: 'steamcmd', appId: 1829350, anonymous: true },
+    platforms: ['win32', 'linux'],
+    ports: [
+      { purpose: 'Game', port: 9876, protocol: 'udp' },
+      { purpose: 'Steam query', port: 9877, protocol: 'udp' },
+    ],
+    modSources: [
+      {
+        id: 'thunderstore',
+        name: 'Thunderstore (BepInEx)',
+        url: 'https://thunderstore.io/c/v-rising/',
+        requiresKey: false,
+        inProgress: true,
+        note: 'In progress. V Rising server mods use BepInEx from Thunderstore, which WorldFoundry does not set up for V Rising yet.',
+      },
+    ],
+  },
 ];
 
 const BY_ID = new Map<GameId, GameDefinition>(GAMES.map((game) => [game.id, game]));

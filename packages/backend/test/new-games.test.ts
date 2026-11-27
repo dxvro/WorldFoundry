@@ -305,6 +305,60 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
     expect(args.slice(1)).toEqual(['-WinLiveMaxPlayers=20', '-NoBattlEye', '-log', '-mods=928793,900062']);
   }, 60_000);
 
+  it('V Rising: Windows files from SteamCMD, started through Proton with every setting, RCON for readiness', async () => {
+    // a Proton that is already in place, so nothing is downloaded from GitHub
+    const protonDir = path.join(t.dir, 'data', 'runtimes', 'proton', 'GE-Proton10-1');
+    await mkdir(protonDir, { recursive: true });
+    await writeFile(path.join(protonDir, 'proton'), `#!/bin/bash\nexec "${process.execPath}" "${path.join(HERE, 'fake-vrising.mjs')}" "$@"\n`, { mode: 0o755 });
+    await writeFile(path.join(protonDir, 'version'), 'GE-Proton10-1');
+
+    const created = await create({ game: 'vrising', name: 'Castle Dracul', saveName: 'night1', mode: 'StandardPvE', difficulty: 'Difficulty_Brutal', password: 'blood123', public: true });
+    expect(created.port).toBe(9876);
+    const settings = JSON.parse(created.gameSettings) as Record<string, unknown>;
+    expect(settings).toMatchObject({ saveName: 'night1', queryPort: 9877, rconPort: 9900, mode: 'StandardPvE' });
+    expect(await readFile(dir(created.id, 'platform-type.txt'), 'utf8')).toBe('windows');
+    // the custom game settings start as the defaults of the server
+    expect(await readFile(dir(created.id, 'data', 'Settings', 'ServerGameSettings.json'), 'utf8')).toBe('{"GameModeType":"PvP"}');
+    // a second server takes the next pair of ports and the next RCON port
+    const second = await create({ game: 'vrising', name: 'Second' });
+    expect([second.port, (JSON.parse(second.gameSettings) as { rconPort: number }).rconPort]).toEqual([9878, 9901]);
+
+    const rconPort = await freePort();
+    await t.db.update(servers).set({ gameSettings: JSON.stringify({ ...settings, rconPort }) }).where(eq(servers.id, created.id));
+    await runOnce(created.id, async () => {
+      const history = (await call<{ lines: Array<{ text: string }> }>('GET', `/api/servers/${created.id}/console/history`)).body.lines.map((line) => line.text);
+      expect(history.some((line) => line.includes('blood123'))).toBe(false);
+      expect((await call<{ lines: string[] }>('POST', `/api/servers/${created.id}/command`, { command: 'version' })).status).toBe(200);
+    });
+    const started = JSON.parse(await readFile(dir(created.id, 'data', 'fake-vrising-start.json'), 'utf8')) as { proton: boolean; exe: string; args: string[]; env: Record<string, string> };
+    expect(started.proton).toBe(true);
+    expect(started.exe).toBe(dir(created.id, 'server', 'VRisingServer.exe'));
+    expect(started.env['STEAM_COMPAT_DATA_PATH']).toBe(dir(created.id, 'proton-prefix'));
+    expect(started.args).toEqual([
+      '-persistentDataPath', dir(created.id, 'data'),
+      '-logFile', dir(created.id, 'data', 'VRisingServer.log'),
+      '-serverName', 'Castle Dracul',
+      '-saveName', 'night1',
+      '-gamePort', '9876',
+      '-queryPort', '9877',
+      '-maxUsers', '40',
+      '-password', 'blood123',
+      '-preset', 'StandardPvE',
+      '-difficultyPreset', 'Difficulty_Brutal',
+      '-listOnSteam', 'true',
+      '-listOnEOS', 'true',
+      '-rconEnabled', 'true',
+      '-rconPort', String(rconPort),
+      '-rconPassword', String(settings['rconPassword']),
+    ]);
+    // SIGINT: the fake writes its save, which the backup takes along
+    expect(await readFile(dir(created.id, 'data', 'Saves', 'v4', 'night1', 'AutoSave_1', 'SaveGame.save'), 'utf8')).toBe('world');
+    const changed = await call<{ server: ServerBody }>('PATCH', `/api/servers/${created.id}/game-settings`, { mode: 'custom', maxPlayers: 10 });
+    expect(JSON.parse(changed.body.server.gameSettings)).toMatchObject({ mode: 'custom', maxPlayers: 10, password: 'blood123' });
+    expect((await call('POST', `/api/servers/${created.id}/backups`, {})).status).toBe(202);
+    await waitFor(async () => (await call<{ backups: Array<{ status: string }> }>('GET', `/api/servers/${created.id}/backups`)).body.backups[0]?.status === 'ok' || undefined, 10_000);
+  }, 60_000);
+
   it('Terraria: newest server from terraria.org, config written on start, joins and leaves, "exit" saves', async () => {
     const created = await create({ game: 'terraria', name: 'Underground', world: 'Deep Caves', size: 1, maxPlayers: 4 });
     expect(requested).toEqual([TERRARIA_LIST_URL, terrariaDownloadUrl('terraria-server-1458.zip')]);

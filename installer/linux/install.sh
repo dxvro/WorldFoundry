@@ -26,7 +26,7 @@ SERVICE_USER=worldfoundry
 # 7 Days to Die on TCP; Satisfactory, ARK, ARK: Survival Ascended, Valheim, Palworld, Project Zomboid, 7 Days to Die and
 # the Steam query ports on UDP. RCON, telnet and REST stay closed.
 GAME_TCP_RANGES="25565-25575 7777-7790 8888-8899 26900-26910"
-GAME_UDP_RANGES="2456-2470 7777-7790 8211-8221 16261-16280 26900-26910 27015-27030"
+GAME_UDP_RANGES="2456-2470 7777-7790 8211-8221 9876-9890 16261-16280 26900-26910 27015-27030"
 
 PORT=3000
 OPEN_FIREWALL=0
@@ -44,7 +44,7 @@ Install or update WorldFoundry
   --port <port>      Web port on first installation (default 3000). On an update the configuration is kept.
   --open-firewall    Open the web port and the default game server ports in ufw or firewalld
                      (TCP 25565-25575, 7777-7790, 8888-8899, 26900-26910;
-                      UDP 2456-2470, 7777-7790, 8211-8221, 16261-16280, 26900-26910, 27015-27030)
+                      UDP 2456-2470, 7777-7790, 8211-8221, 9876-9890, 16261-16280, 26900-26910, 27015-27030)
   --no-start         Set up the service but do not start it
   --upgrade          Update an existing installation (used by the update service): no port, firewall or credentials
   -h, --help         this help

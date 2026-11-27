@@ -103,6 +103,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     sevendays: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     palworld: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     terraria: ['overview', 'console', 'players', 'backups', 'config', 'files'],
+    vrising: ['overview', 'console', 'players', 'backups', 'config', 'files'],
   };
   const parts = PARTS[server.game] ?? PARTS.zomboid ?? [];
   const groupOf = (part: ServerTab): Group => GROUP_OF[part];

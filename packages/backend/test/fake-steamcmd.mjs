@@ -56,6 +56,13 @@ const extra = {
     launcher(path.join(dir, 'ShooterGame', 'Binaries', 'Linux', 'ArkAscendedServer'), 'fake-ark.mjs');
     writeFileSync(path.join(path.dirname(dir), 'platform-type.txt'), args.includes('+@sSteamCmdForcePlatformType') ? args[args.indexOf('+@sSteamCmdForcePlatformType') + 1] : 'native');
   },
+  // V Rising: only the Windows program; WorldFoundry starts it through Proton
+  1829350: () => {
+    writeFileSync(path.join(dir, 'VRisingServer.exe'), 'MZ');
+    mkdirSync(path.join(dir, 'VRisingServer_Data', 'StreamingAssets', 'Settings'), { recursive: true });
+    writeFileSync(path.join(dir, 'VRisingServer_Data', 'StreamingAssets', 'Settings', 'ServerGameSettings.json'), '{"GameModeType":"PvP"}');
+    writeFileSync(path.join(path.dirname(dir), 'platform-type.txt'), args.includes('+@sSteamCmdForcePlatformType') ? args[args.indexOf('+@sSteamCmdForcePlatformType') + 1] : 'native');
+  },
   // 7 Days to Die, with its config template
   294420: () => {
     launcher(path.join(dir, '7DaysToDieServer.x86_64'), 'fake-sevendays.mjs');

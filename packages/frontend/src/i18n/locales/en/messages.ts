@@ -219,6 +219,7 @@ export const messages: MessageTexts = {
   INSTALL_DONE: 'Installation finished',
   MODPACK_STEP_FILES: (p) => `Modpack: ${p.done} of ${p.total} files`,
   MODPACK_STEP_OVERRIDES: 'Modpack: copying settings and files',
+  VRISING_LOG_FILE: (p) => `The server writes its log to ${p.file}; the console shows the answers to RCON commands.`,
   VALHEIM_BEPINEX_ACTIVE: 'BepInEx is installed: the server starts with its Thunderstore mods.',
   // ---- managed Java runtimes ----
   JAVA_ORIGIN_MANAGED: (p) =>

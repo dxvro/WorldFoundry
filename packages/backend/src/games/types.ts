@@ -6,7 +6,7 @@ import type { LineEvent } from '../process/patterns.js';
 
 // Every game WorldFoundry knows. A game with availability 'planned' is listed with its disclaimer and facts, but no
 // server can be created for it yet.
-export const GAME_IDS = ['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria'] as const;
+export const GAME_IDS = ['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria', 'vrising'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export type GameAvailability = 'available' | 'planned';

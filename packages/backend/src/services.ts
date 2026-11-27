@@ -24,6 +24,7 @@ import { SatisfactoryAdapter } from './games/satisfactory/adapter.js';
 import { ArkAdapter, type Rcon } from './games/ark/adapter.js';
 import { ArkModsService } from './games/ark/mods.js';
 import { FicsitClient, FicsitService, type FicsitApi } from './games/satisfactory/ficsit.js';
+import { VRisingAdapter } from './games/vrising/adapter.js';
 import { ThunderstoreClient, ThunderstoreService, type ThunderstoreApi } from './games/valheim/thunderstore.js';
 import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
@@ -74,6 +75,7 @@ export interface ServiceOptions {
   steamCmd?: SteamCmd;
   // stand-ins for the channels of the newer games (tests)
   valheimPlayers?: (queryPort: number) => Promise<number | null>;
+  vrisingPlayers?: (queryPort: number) => Promise<number | null>;
   telnet?: Telnet;
   palRest?: PalRest;
   udpProbe?: (port: number) => Promise<boolean>;
@@ -239,7 +241,15 @@ export function createServices(options: ServiceOptions): Services {
   const sevendays = new SevenDaysAdapter({ steam, ...plat, ...(options.telnet === undefined ? {} : { telnet: options.telnet }) });
   const palworld = new PalworldAdapter({ steam, ...plat, ...(options.palRest === undefined ? {} : { rest: options.palRest }) });
   const terraria = new TerrariaAdapter({ tmpDir: path.join(config.dataDir, 'tmp', 'terraria'), ...plat, ...(options.fetch === undefined ? {} : { fetch: options.fetch }) });
-  const games = new GameAdapters([minecraft, zomboid, satisfactory, ark, asa, valheim, sevendays, palworld, terraria]);
+  const vrising = new VRisingAdapter({
+    steam,
+    protonRoot: path.join(config.dataDir, 'runtimes', 'proton'),
+    ...plat,
+    ...(options.rcon === undefined ? {} : { rcon: options.rcon }),
+    ...(options.vrisingPlayers === undefined ? {} : { playerCount: options.vrisingPlayers }),
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+  });
+  const games = new GameAdapters([minecraft, zomboid, satisfactory, ark, asa, valheim, sevendays, palworld, terraria, vrising]);
 
   // the hook is wired after the mod service exists; the manager only calls it once a server has started
   const hooks: { modService?: ModService } = {};

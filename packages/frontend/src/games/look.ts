@@ -1,5 +1,5 @@
 import type { GameId } from '@worldfoundry/backend/contract';
-import { Axe, Bone, Egg, Factory, Moon, PawPrint, Pickaxe, Skull, TreePine, type LucideIcon } from 'lucide-react';
+import { Axe, Bone, Castle, Egg, Factory, Moon, PawPrint, Pickaxe, Skull, TreePine, type LucideIcon } from 'lucide-react';
 
 // How a game looks in the interface. The icons are generic symbols and the colours are WorldFoundry's own: no logo,
 // cover or other artwork of any game is used. The short name is also what is shown while the list of games has not
@@ -14,8 +14,9 @@ export const GAME_LOOK: Record<GameId, { icon: LucideIcon; shortName: string; hu
   sevendays: { icon: Moon, shortName: '7 Days to Die', hue: 355 },
   palworld: { icon: PawPrint, shortName: 'Palworld', hue: 190 },
   terraria: { icon: TreePine, shortName: 'Terraria', hue: 110 },
+  vrising: { icon: Castle, shortName: 'V Rising', hue: 5 },
 };
 
-export const GAME_ORDER: readonly GameId[] = ['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria'];
+export const GAME_ORDER: readonly GameId[] = ['minecraft', 'zomboid', 'satisfactory', 'ark', 'asa', 'valheim', 'sevendays', 'palworld', 'terraria', 'vrising'];
 
 export const isGameId = (value: string): value is GameId => (GAME_ORDER as readonly string[]).includes(value);

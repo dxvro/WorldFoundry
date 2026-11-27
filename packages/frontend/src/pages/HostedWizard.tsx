@@ -73,6 +73,7 @@ export function HostedWizard({ game }: { game: HostedGame }): ReactNode {
         <GameDisclaimer game={game} />
       </div>
       {game === 'asa' && system.data?.platform === 'linux' ? <Notice tone="info">{t.hosted.asa.linuxNote}</Notice> : null}
+      {game === 'vrising' && system.data?.platform === 'linux' ? <Notice tone="info">{t.hosted.vrising.linuxNote}</Notice> : null}
       <form className="panel space-y-5 p-4 sm:p-5" onSubmit={(event) => void submit(event)} noValidate>
         <Field label={(h.fields as Record<string, { label: string; hint: string }>)['name']?.label ?? 'Name'} hint={(h.fields as Record<string, { label: string; hint: string }>)['name']?.hint}>
           {(props) => <input {...props} className="input" value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />}

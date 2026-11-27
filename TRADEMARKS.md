@@ -38,7 +38,7 @@ ARK: Survival Ascended is a trademark of Studio Wildcard and Snail Games USA. Th
 
 **Not an official Valheim product. Not approved by or associated with Iron Gate or Coffee Stain Publishing.**
 
-Valheim is a trademark of Iron Gate AB and Coffee Stain Publishing AB. The dedicated server is downloaded with SteamCMD.
+Valheim is a trademark of Iron Gate AB and Coffee Stain Publishing AB. The dedicated server is downloaded with SteamCMD. Mods and the BepInEx pack come from Thunderstore (<https://thunderstore.io>), which does not endorse WorldFoundry.
 
 ## 7 Days to Die
 
@@ -57,6 +57,12 @@ Palworld is a trademark of Pocketpair, Inc. The dedicated server is downloaded w
 **Not an official Terraria product. Not approved by or associated with Re-Logic.**
 
 Terraria is a trademark of Re-Logic. The dedicated server is downloaded from terraria.org on your machine.
+
+## V Rising
+
+**Not an official V Rising product. Not approved by or associated with Stunlock Studios.**
+
+V Rising is a trademark of Stunlock Studios. The dedicated server is downloaded with SteamCMD. On Linux it runs through GE-Proton, an open-source project (<https://github.com/GloriousEggroll/proton-ge-custom>) that does not endorse WorldFoundry.
 
 ## Steam
 

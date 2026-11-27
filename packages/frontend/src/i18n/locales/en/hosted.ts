@@ -81,11 +81,28 @@ export const hosted = {
       password,
     },
   },
+  vrising: {
+    title: 'New V Rising server',
+    documentTitle: 'New V Rising server · WorldFoundry',
+    intro: 'SteamCMD downloads the dedicated server (about 3 GB). The server saves on its own every two minutes.',
+    linuxNote: 'V Rising has only a Windows server. On Linux WorldFoundry runs it through GE-Proton (open source, downloaded once from GitHub, about 0.6 GB), the same way as ARK: Survival Ascended.',
+    fields: {
+      name,
+      saveName: { label: 'Save name', hint: 'The folder of the save game (letters, digits, _ and -). A new name starts a new world.' },
+      mode: { label: 'Game mode', hint: 'The rules preset of the game. "Custom" uses ServerGameSettings.json from the settings files.' },
+      difficulty: { label: 'Difficulty', hint: 'Strength of the enemies and V Blood bosses.' },
+      maxPlayers,
+      password,
+      public: { label: 'Show in the server list', hint: 'Off: players join through Direct Connect with the address.' },
+    },
+  },
   options: {
     size: { 1: 'Small', 2: 'Medium', 3: 'Large' } as Record<number, string>,
     difficulty: { 0: 'Classic', 1: 'Expert', 2: 'Master', 3: 'Journey' } as Record<number, string>,
     sevendaysWorld: { Navezgane: 'Navezgane (hand-made map)', RWG: 'Random world (RWG)' } as Record<string, string>,
     worldSize: { 6144: '6 km', 8192: '8 km', 10240: '10 km' } as Record<number, string>,
+    vrisingMode: { StandardPvP: 'PvP (standard)', StandardPvE: 'PvE (standard)', custom: 'Custom (ServerGameSettings.json)' } as Record<string, string>,
+    vrisingDifficulty: { Difficulty_Easy: 'Easy', Difficulty_Normal: 'Normal', Difficulty_Brutal: 'Brutal' } as Record<string, string>,
     asaMap: {
       TheIsland_WP: 'The Island',
       ScorchedEarth_WP: 'Scorched Earth',
