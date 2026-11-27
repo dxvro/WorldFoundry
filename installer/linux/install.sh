@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WorldFoundry - install and update (Linux with systemd)
 #
-#   sudo ./install.sh [--port 3000] [--open-firewall] [--no-start] [--upgrade]
+#   sudo ./install.sh [--port 3000] [--open-firewall] [--no-start] [--no-steam-libs] [--upgrade]
 #
 # Installs to /opt/worldfoundry, data to /var/lib/worldfoundry, configuration to
 # /etc/worldfoundry/worldfoundry.env. Running it again with a newer version is an update:
@@ -31,6 +31,7 @@ GAME_UDP_RANGES="2456-2470 7777-7790 8211-8221 9876-9890 16261-16280 26900-26910
 PORT=3000
 OPEN_FIREWALL=0
 START_SERVICE=1
+STEAM_LIBS=1
 UPGRADE=0
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,6 +47,7 @@ Install or update WorldFoundry
                      (TCP 25565-25575, 7777-7790, 8888-8899, 26900-26910;
                       UDP 2456-2470, 7777-7790, 8211-8221, 9876-9890, 16261-16280, 26900-26910, 27015-27030)
   --no-start         Set up the service but do not start it
+  --no-steam-libs    Do not install the 32-bit libraries SteamCMD needs (Steam game servers; x64 only)
   --upgrade          Update an existing installation (used by the update service): no port, firewall or credentials
   -h, --help         this help
 EOF
@@ -72,6 +74,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-start)
       START_SERVICE=0
+      shift
+      ;;
+    --no-steam-libs)
+      STEAM_LIBS=0
       shift
       ;;
     --upgrade)
@@ -128,6 +134,48 @@ if [ -n "$old_version" ]; then
 else
   info "Installing WorldFoundry $new_version ..."
 fi
+
+# SteamCMD (Valheim, V Rising, Project Zomboid, ARK, Palworld, 7 Days to Die, Satisfactory) is a 32-bit program on
+# Linux and does not start without the 32-bit C libraries, which a fresh server system often lacks. They are installed
+# with the package manager where WorldFoundry knows the names. This never stops the installation or the update: when
+# it fails, the summary says how to do it by hand.
+steam_note=""
+steam_libs_present() {
+  case "$1" in
+    apt) dpkg-query -W -f='${Status}' lib32gcc-s1 2>/dev/null | grep -q 'install ok installed' ;;
+    dnf) rpm -q glibc.i686 libstdc++.i686 >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+install_steam_libs() {
+  [ "$machine_target" = linux-x64 ] || return 0
+  if command -v apt-get >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then
+    steam_libs_present apt && return 0
+    info "Installing the 32-bit libraries for SteamCMD (lib32gcc-s1) ..."
+    # an empty package list (fresh system, container) needs one update first
+    if ! DEBIAN_FRONTEND=noninteractive timeout 600 apt-get install -y -q --no-install-recommends lib32gcc-s1 >/dev/null 2>&1; then
+      DEBIAN_FRONTEND=noninteractive timeout 600 apt-get update -q >/dev/null 2>&1 || true
+      DEBIAN_FRONTEND=noninteractive timeout 600 apt-get install -y -q --no-install-recommends lib32gcc-s1 >/dev/null 2>&1 || true
+    fi
+    if steam_libs_present apt; then
+      steam_note="32-bit libraries for SteamCMD installed (lib32gcc-s1)."
+    else
+      steam_note="The 32-bit libraries for SteamCMD could not be installed. Steam game servers need them: sudo apt install lib32gcc-s1"
+    fi
+  elif command -v dnf >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
+    steam_libs_present dnf && return 0
+    info "Installing the 32-bit libraries for SteamCMD (glibc.i686, libstdc++.i686) ..."
+    timeout 600 dnf install -y -q glibc.i686 libstdc++.i686 >/dev/null 2>&1 || true
+    if steam_libs_present dnf; then
+      steam_note="32-bit libraries for SteamCMD installed (glibc.i686, libstdc++.i686)."
+    else
+      steam_note="The 32-bit libraries for SteamCMD could not be installed. Steam game servers need them: sudo dnf install glibc.i686 libstdc++.i686"
+    fi
+  else
+    steam_note="Steam game servers need the 32-bit C libraries of your distribution for SteamCMD (on Debian and Ubuntu: lib32gcc-s1)."
+  fi
+}
+if [ "$STEAM_LIBS" -eq 1 ]; then install_steam_libs; fi
 
 # System user without login
 if ! getent group "$SERVICE_USER" >/dev/null 2>&1; then
@@ -322,6 +370,7 @@ info " Configuration:     $CONF_FILE"
 info " Log:               journalctl -u worldfoundry -f"
 info " Ports:             web TCP $web_port; each game server shows its ports on its page"
 [ -n "$firewall_note" ] && info " Firewall:          $firewall_note"
+[ -n "$steam_note" ] && info " SteamCMD:          $steam_note"
 if [ "$OPEN_FIREWALL" -eq 0 ] && [ "$UPGRADE" -eq 0 ]; then
   info " Firewall:          unchanged (use --open-firewall or open the ports by hand)"
 fi

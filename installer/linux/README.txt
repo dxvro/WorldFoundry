@@ -20,7 +20,8 @@ sets up the systemd service "worldfoundry", starts it and finally shows the addr
 Addresses: During installation and at startup (journalctl -u worldfoundry) the addresses on the home network are
 listed, e.g. http://192.168.178.20:3000. Port, address and further computer names can be changed in the web interface
 under "System > Network & access". Firewall: open the web port and the game server ports (--open-firewall). SteamCMD games
-(Project Zomboid, Satisfactory, ARK) need 32-bit libraries: sudo apt install lib32gcc-s1
+(Valheim, V Rising, Project Zomboid, ARK, Palworld, 7 Days to Die, Satisfactory) need 32-bit libraries; install.sh
+installs them on Debian, Ubuntu (lib32gcc-s1) and Fedora (glibc.i686, libstdc++.i686) unless --no-steam-libs is given.
 
 Password: The access token is the first password; you can set your own under "System". If you forget it:
 

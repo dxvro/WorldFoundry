@@ -177,3 +177,48 @@ test('Test machine deployment: valid bash, a target is required, the first insta
   // no address of any particular machine is written into the script
   assert.doesNotMatch(text, /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
 });
+
+// The part of install.sh that installs the 32-bit libraries of SteamCMD, run with a fake apt-get and dpkg-query
+test('install.sh: installs lib32gcc-s1 for SteamCMD once, retries after a package list update, never fails the install', { skip: process.platform === 'win32' }, async () => {
+  const script = await readFile(path.join(ROOT, 'installer', 'linux', 'install.sh'), 'utf8');
+  const start = script.indexOf('steam_note=""');
+  const end = script.indexOf('if [ "$STEAM_LIBS" -eq 1 ]; then install_steam_libs; fi');
+  assert.ok(start > 0 && end > start, 'the SteamCMD part is in install.sh');
+  assert.match(script, /--no-steam-libs/);
+  const part = script.slice(start, end);
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'wf-steamlibs-'));
+  try {
+    const bin = path.join(dir, 'bin');
+    await mkdir(bin);
+    // dpkg-query says "installed" once the marker exists; apt-get logs its calls and fails the first install (empty lists)
+    await writeFile(path.join(bin, 'dpkg-query'), `#!/bin/sh\n[ -f "${dir}/installed" ] && printf 'install ok installed' || exit 1\n`, { mode: 0o755 });
+    await writeFile(
+      path.join(bin, 'apt-get'),
+      `#!/bin/sh\necho "$*" >>"${dir}/calls"\ncase "$*" in *update*) touch "${dir}/updated"; exit 0;; esac\n[ "$FAKE_APT" = broken ] && exit 100\n[ -f "${dir}/updated" ] || exit 100\ntouch "${dir}/installed"\n`,
+      { mode: 0o755 },
+    );
+    const run = (env) =>
+      spawnSync('bash', ['-c', `set -euo pipefail\ninfo() { printf '%s\\n' "$*"; }\nmachine_target=linux-x64\n${part}\ninstall_steam_libs\nprintf 'NOTE:%s\\n' "$steam_note"`], {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}:/usr/bin:/bin`, ...env },
+      });
+    const first = run({});
+    assert.equal(first.status, 0, first.stderr);
+    assert.match(first.stdout, /NOTE:32-bit libraries for SteamCMD installed \(lib32gcc-s1\)\./);
+    const calls = (await readFile(path.join(dir, 'calls'), 'utf8')).trim().split('\n');
+    assert.equal(calls.length, 3, calls.join(' | '));
+    assert.match(calls[0] ?? '', /install -y -q --no-install-recommends lib32gcc-s1/);
+    assert.match(calls[1] ?? '', /update/);
+    // present: nothing to do, nothing to say
+    const again = run({});
+    assert.equal(again.status, 0);
+    assert.match(again.stdout, /^NOTE:$/m);
+    // apt cannot install it: the installation goes on and the summary names the command
+    await rm(path.join(dir, 'installed'));
+    const broken = run({ FAKE_APT: 'broken' });
+    assert.equal(broken.status, 0, broken.stderr);
+    assert.match(broken.stdout, /NOTE:The 32-bit libraries for SteamCMD could not be installed\. Steam game servers need them: sudo apt install lib32gcc-s1/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

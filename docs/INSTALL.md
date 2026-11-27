@@ -307,6 +307,7 @@ Options:
 | `--port 8080` | Web port for the **first** installation (default 3000). Ignored on updates. |
 | `--open-firewall` | Opens the web port and the default game server ports (see section 1.2) in `ufw` or `firewalld`, if one of them is active. |
 | `--no-start` | Sets up the service but does not start it. |
+| `--no-steam-libs` | Does not install the 32-bit libraries SteamCMD needs. Without this option `install.sh` installs them on x64 with apt (`lib32gcc-s1`, Debian, Ubuntu) or dnf (`glibc.i686`, `libstdc++.i686`, Fedora, RHEL); a failure only leaves a note in the summary. |
 
 The installer:
 

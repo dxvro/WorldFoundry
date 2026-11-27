@@ -61,7 +61,7 @@ For Minecraft in addition:
 
 ## Project Zomboid and other Steam games
 
-WorldFoundry downloads SteamCMD from Valve into its data folder on first use and always logs in anonymously; no Steam account is needed. To use an existing SteamCMD, set `STEAMCMD_PATH`. On 64-bit Linux SteamCMD needs 32-bit libraries: on Debian or Ubuntu `sudo apt install lib32gcc-s1`. Each Zomboid server keeps the program (`server/`) apart from its world and settings (`data/`). The in-game admin password is created by WorldFoundry and shown in the server's settings.
+WorldFoundry downloads SteamCMD from Valve into its data folder on first use and always logs in anonymously; no Steam account is needed. To use an existing SteamCMD, set `STEAMCMD_PATH`. On 64-bit Linux SteamCMD needs 32-bit libraries; `install.sh` installs them on Debian, Ubuntu and Fedora, by hand on Debian or Ubuntu it is `sudo apt install lib32gcc-s1`. Each Zomboid server keeps the program (`server/`) apart from its world and settings (`data/`). The in-game admin password is created by WorldFoundry and shown in the server's settings.
 
 ## Satisfactory
 
