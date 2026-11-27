@@ -201,7 +201,7 @@ export function Overview(): ReactNode {
             </div>
             <label className="flex items-center gap-2 text-sm text-dim">
               {t.overview.sort.label}
-              <select className="input w-auto py-0" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+              <select className="input w-auto rounded-full py-0" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
                 {SORT_KEYS.map((key) => (
                   <option key={key} value={key}>
                     {t.overview.sort[key]}

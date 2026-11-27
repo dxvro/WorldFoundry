@@ -78,7 +78,7 @@ test('Notices file: lists components and license texts', () => {
 
 test('Notices file: contains the bundled frontend dependencies', async () => {
   const names = (await collectFrontendPackages(ROOT)).map((item) => item.name);
-  for (const name of ['react', 'react-dom', 'scheduler', 'lucide-react', '@fontsource-variable/inter']) assert.ok(names.includes(name), name);
+  for (const name of ['react', 'react-dom', 'scheduler', 'lucide-react', '@fontsource-variable/nunito']) assert.ok(names.includes(name), name);
 });
 
 test('License: the repository ships the GPL-3.0 text', async () => {
