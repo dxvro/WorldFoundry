@@ -16,7 +16,7 @@ interface Limits {
 // KB | MB | GB as one segmented control
 function UnitSwitch({ unit, onChange, label, disabled }: { unit: MemoryUnit; onChange: (unit: MemoryUnit) => void; label: string; disabled: boolean }): ReactNode {
   return (
-    <div role="group" aria-label={label} className="inline-flex shrink-0 gap-0.5 rounded-full border border-line-strong bg-canvas p-1">
+    <div role="group" aria-label={label} className="inline-flex shrink-0 gap-0.5 rounded-lg border border-line-strong bg-raised p-1">
       {MEMORY_UNITS.map((entry) => {
         const active = entry === unit;
         return (
@@ -27,7 +27,7 @@ function UnitSwitch({ unit, onChange, label, disabled }: { unit: MemoryUnit; onC
             disabled={disabled}
             onClick={() => onChange(entry)}
             className={cx(
-              'min-h-8 min-w-11 rounded-full px-2.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-55',
+              'min-h-8 min-w-11 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55',
               active ? 'bg-accent text-on-accent' : 'text-faint hover:bg-hover hover:text-ink',
             )}
           >
@@ -95,7 +95,7 @@ function MemoryField({
       </label>
       <div
         className={cx(
-          'flex h-12 items-center gap-1.5 rounded-xl border bg-canvas px-3.5 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-accent)_18%,transparent)]',
+          'flex h-12 items-center gap-1.5 rounded-lg border bg-raised px-3.5 transition-[border-color,box-shadow] focus-within:border-accent focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_20%,transparent)]',
           invalid ? 'border-bad' : 'border-line-strong hover:border-accent-strong',
           disabled && 'opacity-55',
         )}
@@ -140,6 +140,7 @@ const percentOf = (value: number, limits: Limits): number => (limits.max === lim
 
 // Labels under the track: the ends and the whole gigabytes in between that fit
 function Scale({ limits, warnAt }: { limits: Limits; warnAt: number | null }): ReactNode {
+  const { t } = useI18n();
   const marks = [limits.min, limits.min + (limits.max - limits.min) / 2, limits.max].map((mb, index) => ({
     mb: index === 1 ? Math.round(mb / 1024) * 1024 : mb,
     index,
@@ -157,7 +158,7 @@ function Scale({ limits, warnAt }: { limits: Limits; warnAt: number | null }): R
       ))}
       {warnAt === null ? null : (
         <span className="absolute -translate-x-1/2 font-bold text-warn" style={{ left: `${percentOf(warnAt, limits)}%` }}>
-          75 %
+          {t.common.memory.tightMark}
         </span>
       )}
     </div>

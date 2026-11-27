@@ -21,6 +21,8 @@ export const common = {
     unit: (label: string) => `${label}: unit`,
     unitBoth: 'Unit of the memory fields',
     range: (min: string, max: string) => `${min} to ${max}`,
+    // the label at the mark where the server takes three quarters of the machine's memory
+    tightMark: '75 %',
     invalid: 'Please enter a number, for example 6 or 6144.',
     outOfRange: (min: string, max: string) => `Please enter a value between ${min} and ${max}.`,
   },
