@@ -102,6 +102,39 @@ export interface SystemInfo {
   javaInstalls: JavaInstallState[];
 }
 
+// GET /api/system/usage: the load of the machine and of every running server over the last minutes
+export interface UsagePoint {
+  at: number;
+  // busy share of all cores, 0 to 100; null for the very first reading
+  cpuPercent: number | null;
+  memoryUsedBytes: number;
+}
+
+export interface ServerUsagePoint {
+  at: number;
+  // percent of the whole machine, like status.cpuPercent
+  cpuPercent: number | null;
+  rssBytes: number | null;
+}
+
+export interface UsageResponse {
+  intervalMs: number;
+  host: {
+    cpuCount: number;
+    cpuModel: string | null;
+    // 1, 5 and 15 minutes; null on Windows, which has none
+    loadAverage: number[] | null;
+    uptimeSeconds: number;
+    totalMemoryBytes: number;
+    // the volume of the data folder
+    disk: { totalBytes: number; freeBytes: number } | null;
+    // WorldFoundry itself
+    appMemoryBytes: number;
+  };
+  samples: UsagePoint[];
+  servers: Array<{ serverId: string; samples: ServerUsagePoint[] }>;
+}
+
 // GET /api/system/disk: the volume that holds the data folder, and what the backups of each server take on it
 export interface DiskInfo {
   // null when the platform cannot tell

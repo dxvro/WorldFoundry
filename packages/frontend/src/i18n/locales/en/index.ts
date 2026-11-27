@@ -23,6 +23,7 @@ import { gamePlayers, workshop, zomboid, zomboidFiles } from './zomboid';
 import { ficsit, satisfactory } from './satisfactory';
 import { ark } from './ark';
 import { thunderstore } from './thunderstore';
+import { usage } from './usage';
 import { hosted } from './hosted';
 
 export const en = {
@@ -55,5 +56,6 @@ export const en = {
   hosted,
   ficsit,
   thunderstore,
+  usage,
   ark,
 };

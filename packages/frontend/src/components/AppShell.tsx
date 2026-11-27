@@ -1,4 +1,4 @@
-import { Bell, BookOpen, ChevronDown, Gamepad2, LayoutGrid, LifeBuoy, LogOut, Menu, Moon, Plus, Search, Server, Settings, Sun, Trash2, User, WifiOff, X } from 'lucide-react';
+import { Activity, Bell, BookOpen, ChevronDown, Gamepad2, LayoutGrid, LifeBuoy, LogOut, Menu, Moon, Plus, Search, Server, Settings, Sun, Trash2, User, WifiOff, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useGames } from '../games/GamesProvider';
@@ -123,6 +123,7 @@ function ShellSearch({ open, onClose }: { open: boolean; onClose: () => void }):
       { key: 'overview', label: t.shell.overview, detail: '', to: '/' },
       { key: 'new', label: t.shell.newServer, detail: '', to: '/new' },
       { key: 'games', label: t.games.nav, detail: '', to: '/games' },
+      { key: 'usage', label: t.usage.nav, detail: '', to: '/usage' },
       { key: 'system', label: t.shell.system, detail: '', to: '/system' },
     ];
     const servers = (state.servers ?? []).map((server) => ({ key: server.id, label: server.name, detail: nameOf(server.game), to: serverPath(server.id) }));
@@ -445,6 +446,10 @@ function Sidebar({ attention }: { attention: number }): ReactNode {
           <Link to="/games" className={navClass(route.name === 'games')} aria-current={route.name === 'games' ? 'page' : undefined}>
             <Gamepad2 aria-hidden className="size-4 shrink-0" />
             {t.games.nav}
+          </Link>
+          <Link to="/usage" className={navClass(route.name === 'usage')} aria-current={route.name === 'usage' ? 'page' : undefined}>
+            <Activity aria-hidden className="size-4 shrink-0" />
+            {t.usage.nav}
           </Link>
           <Link to="/system" className={navClass(route.name === 'system')} aria-current={route.name === 'system' ? 'page' : undefined}>
             <Settings aria-hidden className="size-4 shrink-0" />

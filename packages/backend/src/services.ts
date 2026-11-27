@@ -25,6 +25,7 @@ import { ArkAdapter, type Rcon } from './games/ark/adapter.js';
 import { ArkModsService } from './games/ark/mods.js';
 import { FicsitClient, FicsitService, type FicsitApi } from './games/satisfactory/ficsit.js';
 import { VRisingAdapter } from './games/vrising/adapter.js';
+import { UsageMonitor, defaultSources } from './system/usage.js';
 import { ThunderstoreClient, ThunderstoreService, type ThunderstoreApi } from './games/valheim/thunderstore.js';
 import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
@@ -122,6 +123,8 @@ export interface ServiceOptions {
     startWarningMs?: number;
     closeGraceMs?: number;
     metricsIntervalMs?: number;
+    // how often the usage page samples the machine
+    usageIntervalMs?: number;
     installerTimeoutMs?: number;
     loginFailureDelayMs?: number;
     // 0 switches the periodic backup check off (tests call it directly)
@@ -139,6 +142,7 @@ export interface Services {
   workshop: ZomboidWorkshopService;
   ficsit: FicsitService;
   thunderstore: ThunderstoreService;
+  usage: UsageMonitor;
   gamePlayers: GamePlayersService;
   arkMods: ArkModsService;
   java: JavaService;
@@ -484,6 +488,12 @@ export function createServices(options: ServiceOptions): Services {
     api: options.thunderstoreApi ?? new ThunderstoreClient(options.fetch ?? fetch, userAgent),
     ...(options.thunderstoreFetch === undefined ? {} : { fetch: options.thunderstoreFetch }),
   });
+  const usage = new UsageMonitor(
+    defaultSources(config.dataDir, () =>
+      manager.statuses().map(({ serverId, status }) => ({ serverId, cpuPercent: status.cpuPercent, rssBytes: status.rssBytes })),
+    ),
+    timings.usageIntervalMs,
+  );
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, thunderstore, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, modpacks, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, thunderstore, usage, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, modpacks, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
 }

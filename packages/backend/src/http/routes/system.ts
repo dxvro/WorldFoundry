@@ -4,7 +4,7 @@ import path from 'node:path';
 import { count, sum } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AppContext } from '../../app.js';
-import type { DiskInfo, ManagedJavaDto, SystemInfo } from '../../contract.js';
+import type { DiskInfo, ManagedJavaDto, SystemInfo, UsageResponse } from '../../contract.js';
 import { backups } from '../../db/schema.js';
 import { LOADERS } from '../../db/enums.js';
 import { describeOrigin, describeOriginMsg } from '../../java/managed.js';
@@ -51,6 +51,8 @@ export function registerSystemRoutes(app: FastifyInstance, { services, db, confi
       javaInstalls: java.activeInstalls(),
     };
   });
+
+  app.get('/api/system/usage', async (): Promise<UsageResponse> => services.usage.snapshot());
 
   app.get('/api/system/disk', async (): Promise<DiskInfo> => {
     const usage = await diskUsage(config.dataDir);

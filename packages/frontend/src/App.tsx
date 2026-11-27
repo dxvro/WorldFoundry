@@ -16,6 +16,7 @@ import { ImportWizard } from './pages/ImportWizard';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { SystemPage } from './pages/System';
+import { UsagePage } from './pages/Usage';
 import { ServerPage } from './pages/ServerPage';
 import { SearchX } from 'lucide-react';
 import { HostedWizard } from './pages/HostedWizard';
@@ -40,6 +41,8 @@ function Routes(): ReactNode {
       return <GamesPage />;
     case 'system':
       return <SystemPage />;
+    case 'usage':
+      return <UsagePage />;
     case 'new-world':
       return <ImportWizard key={visit} />;
     case 'server':

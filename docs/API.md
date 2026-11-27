@@ -33,6 +33,10 @@ Login, host and origin checks are described in [CONFIGURATION.md](CONFIGURATION.
 - `GET /api/loaders/:loader/mc-versions?snapshots=true`: Minecraft versions of the loader
 - `GET /api/loaders/:loader/versions?mcVersion=`: loader versions (with `stable` and `recommended`)
 
+## Usage
+
+- `GET /api/system/usage`: the load of the machine and of every running server, sampled every 5 seconds and kept for 10 minutes. `host`: cores, CPU model, load average (null on Windows), uptime, total memory, the disk of the data folder and the memory of WorldFoundry itself. `samples`: `{ at, cpuPercent, memoryUsedBytes }` of the machine (CPU is the busy share of all cores). `servers`: per server `{ serverId, samples: [{ at, cpuPercent, rssBytes }] }`, CPU in percent of the whole machine. A stopped server keeps its history until it is older than the window.
+
 ## Servers
 
 - `GET /api/servers`, `GET /api/servers/:id`: servers with runtime status (`status`: state, PID, players, CPU in percent of the whole machine, memory)

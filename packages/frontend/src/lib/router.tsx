@@ -14,6 +14,7 @@ export type Route =
   | { name: 'new-game'; game: GameId }
   | { name: 'games' }
   | { name: 'system' }
+  | { name: 'usage' }
   | { name: 'new-world' }
   | { name: 'server'; id: string; tab: ServerTab }
   | { name: 'not-found' };
@@ -25,6 +26,7 @@ export function parseRoute(pathname: string): Route {
   if (parts.length === 0) return { name: 'overview' };
   if (parts.length === 1 && parts[0] === 'new') return { name: 'new' };
   if (parts.length === 1 && parts[0] === 'system') return { name: 'system' };
+  if (parts.length === 1 && parts[0] === 'usage') return { name: 'usage' };
   if (parts.length === 1 && parts[0] === 'games') return { name: 'games' };
   if (parts.length === 2 && parts[0] === 'new' && parts[1] === 'world') return { name: 'new-world' };
   if (parts.length === 2 && parts[0] === 'new' && parts[1] !== undefined && isGameId(parts[1])) return { name: 'new-game', game: parts[1] };

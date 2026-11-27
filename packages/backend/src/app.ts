@@ -139,6 +139,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     services.exports.start();
     services.imports.start();
     services.backupScheduler.start();
+    services.usage.start();
     void services.update.start().catch((error: unknown) => app.log.error({ err: error }, 'Starting the update check failed'));
     // after a deliberate restart (network settings) the servers that ran before come back once the autostart is through
     void services.autostart
@@ -155,6 +156,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   // safety net for embedders: closing the app never leaves a server process behind
   app.addHook('onClose', async () => {
     services.backupScheduler.stop();
+    services.usage.stop();
     services.update.stop();
     await services.manager.shutdown(config.stopTimeoutMs + 15_000);
     await services.exports.shutdown();
