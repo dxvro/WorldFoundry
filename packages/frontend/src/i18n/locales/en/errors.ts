@@ -188,7 +188,7 @@ export const errors = {
         : `The file "${details.fileName}" is used by another program or is read-only. Please stop that program (e.g. the Minecraft server) and try again.`,
     DOWNLOAD_FAILED: (p: Details) => (num(p.status) === undefined ? 'The download could not be started.' : `The download could not be started (status ${p.status}).`),
     DOWNLOAD_HASH_MISMATCH: 'The downloaded file does not match the expected checksum.',
-    DOWNLOAD_INVALID_FILE: 'The downloaded file is not a valid Java archive.',
+    DOWNLOAD_INVALID_FILE: (p: Details) => (text(opt(p, 'name')) === undefined ? 'The downloaded file is not a valid Java archive.' : `The download of "${String(p.name)}" is not the expected package.`),
     DOWNLOAD_TIMEOUT: 'The download took too long.',
     DOWNLOAD_URL_REJECTED: (p: Details) => (text(p.host) === undefined ? 'The download address is invalid.' : `The download address ("${p.host}") is invalid.`),
     DEPENDENCY_UNRESOLVABLE: 'The version contains no downloadable .jar file.',
@@ -201,6 +201,11 @@ export const errors = {
     MODPACK_INVALID: (p: Details) => `The modpack is not a valid Modrinth modpack (${String(p.detail)}).`,
     MODPACK_LOADER_UNSUPPORTED: (p: Details) => `The modpack needs the ${String(p.loader)} loader, which WorldFoundry does not support yet.`,
     MODPACK_NOT_A_PACK: 'This Modrinth project is not a modpack.',
+    THUNDERSTORE_PACKAGE_INVALID: 'Invalid package name.',
+    THUNDERSTORE_PACKAGE_NOT_FOUND: (p: Details) => (text(p.name) === undefined ? 'The package was not found on Thunderstore.' : `The package "${String(p.name)}" was not found on Thunderstore.`),
+    THUNDERSTORE_NOT_A_MOD: 'This package is a program for players, not a server mod.',
+    THUNDERSTORE_TOO_MANY: 'The mod needs too many dependencies to install them at once.',
+    THUNDERSTORE_PAGE_NOT_FOUND: 'There are no more results.',
     MODPACK_VERSION_MISMATCH: 'The version does not belong to this modpack.',
     SERVER_ICON_INVALID: (p: Details) =>
       p.reason === 'size'

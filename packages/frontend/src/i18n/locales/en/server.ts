@@ -10,7 +10,7 @@ export const server = {
     body: 'This server does not exist (any more). It may have been deleted.',
   },
   back: 'Overview',
-  tabs: { overview: 'Overview', console: 'Console', config: 'General', files: 'Settings files', workshop: 'Steam Workshop', ficsit: 'ficsit.app', world: 'World settings', players: 'Players', backups: 'Backups' },
+  tabs: { overview: 'Overview', console: 'Console', config: 'General', files: 'Settings files', workshop: 'Steam Workshop', ficsit: 'ficsit.app', thunderstore: 'Thunderstore', world: 'World settings', players: 'Players', backups: 'Backups' },
   // the six areas of a server; mods and settings have parts of their own
   groups: { overview: 'Overview', console: 'Console', players: 'Players', mods: 'Mods', backups: 'World & backups', settings: 'Settings' },
   partsLabel: (area: string) => `Parts of ${area}`,

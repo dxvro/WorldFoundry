@@ -21,6 +21,7 @@ import { ZomboidSettingsTab } from './server/ZomboidSettingsTab';
 import { FilesTab } from './server/FilesTab';
 import { WorkshopTab } from './server/WorkshopTab';
 import { FicsitTab } from './server/FicsitTab';
+import { ThunderstoreTab } from './server/ThunderstoreTab';
 import { GamePlayersTab } from './server/GamePlayersTab';
 import { ArkModsTab } from './server/ArkModsTab';
 import { ArkSettingsTab } from './server/ArkSettingsTab';
@@ -46,6 +47,7 @@ const GROUP_OF: Record<ServerTab, Group> = {
   store: 'mods',
   workshop: 'mods',
   ficsit: 'mods',
+  thunderstore: 'mods',
   backups: 'backups',
   config: 'settings',
   files: 'settings',
@@ -97,7 +99,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     satisfactory: ['overview', 'console', 'players', 'ficsit', 'backups', 'config', 'files'],
     ark: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     asa: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
-    valheim: ['overview', 'console', 'players', 'backups', 'config', 'files'],
+    valheim: ['overview', 'console', 'players', 'thunderstore', 'backups', 'config', 'files'],
     sevendays: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     palworld: ['overview', 'console', 'players', 'workshop', 'backups', 'config', 'files'],
     terraria: ['overview', 'console', 'players', 'backups', 'config', 'files'],
@@ -112,6 +114,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
     store: names.store,
     workshop: t.server.tabs.workshop,
     ficsit: t.server.tabs.ficsit,
+    thunderstore: t.server.tabs.thunderstore,
     backups: t.server.tabs.backups,
     config: t.server.tabs.config,
     files: t.server.tabs.files,
@@ -256,6 +259,7 @@ export function ServerPage({ id, tab }: { id: string; tab: ServerTab }): ReactNo
         {!minecraft ? null : tab === 'store' ? <StoreTab key={server.id} server={server} status={status} /> : null}
         {tab === 'files' && !minecraft ? <FilesTab key={server.id} server={server} status={status} /> : null}
         {tab === 'ficsit' && server.game === 'satisfactory' ? <FicsitTab key={server.id} server={server} status={status} /> : null}
+        {tab === 'thunderstore' && server.game === 'valheim' ? <ThunderstoreTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'ark' ? <ArkModsTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'zomboid' ? <WorkshopTab key={server.id} server={server} status={status} /> : null}
         {tab === 'workshop' && server.game === 'asa' ? <AsaModsTab key={server.id} server={server} status={status} /> : null}

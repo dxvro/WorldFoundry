@@ -17,6 +17,7 @@ import { registerCurseForgeRoutes } from './http/routes/curseforge.js';
 import { registerConfigFileRoutes } from './http/routes/config-files.js';
 import { registerWorkshopRoutes } from './http/routes/workshop.js';
 import { registerFicsitRoutes } from './http/routes/ficsit.js';
+import { registerThunderstoreRoutes } from './http/routes/thunderstore.js';
 import { registerCustomModRoutes } from './http/routes/custom-mods.js';
 import { registerGamePlayerRoutes } from './http/routes/game-players.js';
 import { registerArkModRoutes } from './http/routes/ark-mods.js';
@@ -108,6 +109,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   registerConfigFileRoutes(app, services.configFiles);
   registerWorkshopRoutes(app, services.workshop);
   registerFicsitRoutes(app, services.ficsit);
+  registerThunderstoreRoutes(app, services.thunderstore);
   registerCustomModRoutes(app, services.customMods, services.imports.maxUploadBytes);
   registerGamePlayerRoutes(app, services.gamePlayers);
   registerArkModRoutes(app, services.arkMods);

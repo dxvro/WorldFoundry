@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -169,6 +170,19 @@ export class ValheimAdapter implements GameAdapter {
     await requireProgram(executable, 'start');
     await mkdir(saveDir(dir), { recursive: true });
     const linux = path.join(binaryDir(dir), 'linux64');
+    // With BepInEx (Thunderstore mods) Doorstop loads its preloader into the server: on Windows through winhttp.dll in
+    // the server folder, on Linux through these variables (the same as the pack's start_server_bepinex.sh).
+    const modded = existsSync(path.join(binaryDir(dir), 'BepInEx', 'core', 'BepInEx.Preloader.dll'));
+    const doorstop = path.join(binaryDir(dir), 'doorstop_libs');
+    const libraryPath = [...(modded ? [doorstop] : []), linux, ...(process.env['LD_LIBRARY_PATH'] === undefined ? [] : [process.env['LD_LIBRARY_PATH']])].join(':');
+    const bepinexEnv: Record<string, string> =
+      modded && this.platform !== 'win32'
+        ? {
+            DOORSTOP_ENABLED: '1',
+            DOORSTOP_TARGET_ASSEMBLY: path.join(binaryDir(dir), 'BepInEx', 'core', 'BepInEx.Preloader.dll'),
+            LD_PRELOAD: [path.join(doorstop, 'libdoorstop_x64.so'), ...(process.env['LD_PRELOAD'] === undefined ? [] : [process.env['LD_PRELOAD']])].join(':'),
+          }
+        : {};
     return {
       kind: 'launch',
       plan: {
@@ -193,11 +207,11 @@ export class ValheimAdapter implements GameAdapter {
         cwd: binaryDir(dir),
         port: server.port,
         startLine: msg('SERVER_STARTING_GAME', { game: 'Valheim', port: server.port }),
-        notes: [],
+        notes: modded ? [msg('VALHEIM_BEPINEX_ACTIVE')] : [],
         beforeSpawn: async () => undefined,
         javaPath: null,
         redact: [settings.password],
-        env: { SteamAppId: VALHEIM_GAME_APP_ID, ...(this.platform === 'win32' ? {} : { LD_LIBRARY_PATH: `${linux}${process.env['LD_LIBRARY_PATH'] === undefined ? '' : `:${process.env['LD_LIBRARY_PATH']}`}` }) },
+        env: { SteamAppId: VALHEIM_GAME_APP_ID, ...(this.platform === 'win32' ? {} : { LD_LIBRARY_PATH: libraryPath, ...bepinexEnv }) },
       },
     };
   }

@@ -1,5 +1,5 @@
 // Hosts the interface may load mod pictures from; the Content-Security-Policy (http/frontend.ts) allows exactly these.
-export const IMAGE_HOSTS = ['https://cdn.modrinth.com', 'https://storage.ficsit.app', 'https://images.steamusercontent.com', 'https://steamuserimages-a.akamaihd.net'] as const;
+export const IMAGE_HOSTS = ['https://cdn.modrinth.com', 'https://storage.ficsit.app', 'https://images.steamusercontent.com', 'https://steamuserimages-a.akamaihd.net', 'https://gcdn.thunderstore.io', 'https://ccdn.thunderstore.io'] as const;
 
 // A picture URL from a mod site is only passed on when the interface may load it: https on one of IMAGE_HOSTS.
 // Anything else (an empty string, another host) becomes null, so no broken image is shown.

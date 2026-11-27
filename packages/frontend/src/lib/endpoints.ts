@@ -232,6 +232,36 @@ export interface FicsitHit {
   installed: boolean;
 }
 
+export interface ThunderstoreMod {
+  fullName: string;
+  name: string;
+  version: string;
+  dependency: boolean;
+  requires: Record<string, string>;
+}
+
+export interface ThunderstoreHit {
+  fullName: string;
+  name: string;
+  owner: string;
+  summary: string;
+  icon: string | null;
+  downloads: number;
+  serverSide: boolean;
+  clientSide: boolean;
+  installed: boolean;
+}
+
+export type ThunderstoreOrdering = 'most-downloaded' | 'last-updated' | 'newest' | 'top-rated';
+
+export const thunderstoreApi = {
+  list: (id: string, signal?: AbortSignal): Promise<{ mods: ThunderstoreMod[]; bepinex: boolean }> => request(`${server(id)}/thunderstore/mods`, signal === undefined ? {} : { signal }),
+  search: (id: string, query: string, ordering: ThunderstoreOrdering, offset: number, signal?: AbortSignal): Promise<{ hits: ThunderstoreHit[]; total: number; offset: number; limit: number }> =>
+    request(`${server(id)}/thunderstore/search`, { query: { query, ordering, offset }, ...(signal === undefined ? {} : { signal }) }),
+  install: (id: string, fullName: string): Promise<{ installed: ThunderstoreMod[] }> => request(`${server(id)}/thunderstore/mods`, { method: 'POST', body: { fullName } }),
+  remove: (id: string, fullName: string): Promise<{ removed: string }> => request(`${server(id)}/thunderstore/mods/${enc(fullName)}`, { method: 'DELETE' }),
+};
+
 export interface ConsoleLineView {
   seq: number;
   time: number;

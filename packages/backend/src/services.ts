@@ -24,6 +24,7 @@ import { SatisfactoryAdapter } from './games/satisfactory/adapter.js';
 import { ArkAdapter, type Rcon } from './games/ark/adapter.js';
 import { ArkModsService } from './games/ark/mods.js';
 import { FicsitClient, FicsitService, type FicsitApi } from './games/satisfactory/ficsit.js';
+import { ThunderstoreClient, ThunderstoreService, type ThunderstoreApi } from './games/valheim/thunderstore.js';
 import { SteamCmd } from './steam/steamcmd.js';
 import { JavaDetector, type JavaProbe } from './java/detect.js';
 import { ManagedRuntimes } from './java/managed.js';
@@ -81,6 +82,9 @@ export interface ServiceOptions {
   satisfactoryPlayers?: (port: number) => Promise<number | null>;
   rcon?: Rcon;
   ficsitApi?: FicsitApi;
+  // tests pass a fake Thunderstore and the fetch its downloads come from
+  thunderstoreApi?: ThunderstoreApi;
+  thunderstoreFetch?: typeof fetch;
   // downloads of ficsit.app files in tests
   ficsitFetch?: typeof fetch;
   readinessIntervalMs?: number;
@@ -132,6 +136,7 @@ export interface Services {
   configFiles: ConfigFilesService;
   workshop: ZomboidWorkshopService;
   ficsit: FicsitService;
+  thunderstore: ThunderstoreService;
   gamePlayers: GamePlayersService;
   arkMods: ArkModsService;
   java: JavaService;
@@ -461,6 +466,14 @@ export function createServices(options: ServiceOptions): Services {
     ...(options.ficsitFetch === undefined ? {} : { fetch: options.ficsitFetch }),
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });
+  const thunderstore = new ThunderstoreService({
+    db,
+    serversDir: config.serversDir,
+    lock,
+    guard,
+    api: options.thunderstoreApi ?? new ThunderstoreClient(options.fetch ?? fetch, userAgent),
+    ...(options.thunderstoreFetch === undefined ? {} : { fetch: options.thunderstoreFetch }),
+  });
   const gamePlayers = new GamePlayersService({ db, games, manager });
-  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, modpacks, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
+  return { lock, bus, catalog, games, curseforge, configFiles, workshop, ficsit, thunderstore, gamePlayers, arkMods, java, manager, install, servers, properties, players, mods, modpacks, backups, backupScheduler, autostart, update, network, restart, auth, exports: exportsService, imports, gameWorlds, customMods };
 }

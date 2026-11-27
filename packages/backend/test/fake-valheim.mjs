@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
-writeFileSync('fake-valheim-args.json', JSON.stringify({ args, env: { SteamAppId: process.env.SteamAppId, LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH } }));
+writeFileSync('fake-valheim-args.json', JSON.stringify({ args, env: { SteamAppId: process.env.SteamAppId, LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH, LD_PRELOAD: process.env.LD_PRELOAD, DOORSTOP_ENABLED: process.env.DOORSTOP_ENABLED, DOORSTOP_TARGET_ASSEMBLY: process.env.DOORSTOP_TARGET_ASSEMBLY } }));
 const arg = (name) => args[args.indexOf(name) + 1];
 console.log('12/31/2026 00:00:00: Valheim version: l-0.219.16');
 setTimeout(() => console.log('12/31/2026 00:00:01: Game server connected'), 30);

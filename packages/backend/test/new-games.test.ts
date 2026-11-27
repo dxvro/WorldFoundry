@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
@@ -19,6 +19,7 @@ import { createInstallerRunner } from '../src/installer/runner.js';
 import { realSpawner } from '../src/process/spawner.js';
 import { buildAppUpdateArgs, SteamCmd } from '../src/steam/steamcmd.js';
 import { FakeModrinth } from './fake-modrinth.js';
+import { FakeThunderstore } from './fake-thunderstore.js';
 import { createTestDb, testConfig, type TestDb } from './helpers.js';
 import { freePort, waitFor } from './server-env.js';
 
@@ -73,6 +74,7 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
   let app: FastifyInstance;
   let terrariaZip: Buffer;
   const requested: string[] = [];
+  let thunderstore: FakeThunderstore;
 
   beforeEach(async () => {
     t = await createTestDb();
@@ -90,6 +92,7 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
     await writeZip(zipFile, sources);
     terrariaZip = await readFile(zipFile);
     requested.length = 0;
+    thunderstore = new FakeThunderstore();
     const fakeFetch = (async (input: string | URL | Request) => {
       const url = String(input);
       requested.push(url);
@@ -107,6 +110,8 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
       readinessIntervalMs: 50,
       fetch: fakeFetch,
       valheimPlayers: async () => 1,
+      thunderstoreApi: thunderstore.api,
+      thunderstoreFetch: thunderstore.fetch,
       steamCmd: new SteamCmd({ dir: path.join(t.dir, 'steamcmd'), runner: createInstallerRunner(realSpawner), configuredPath: steamScript }),
     });
     await app.ready();
@@ -117,7 +122,7 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
   });
 
   type ServerBody = { id: string; port: number; gameSettings: string; installState: string; status: { state: string; players: string[]; playerCount: number | null } };
-  const call = async <T = Record<string, unknown>>(method: 'GET' | 'POST' | 'PATCH', url: string, body?: unknown) => {
+  const call = async <T = Record<string, unknown>>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => {
     const res = await app.inject({ method, url, ...(body === undefined ? {} : { payload: body as object }) });
     return { status: res.statusCode, body: res.json<T>() };
   };
@@ -165,6 +170,76 @@ describe.runIf(process.platform === 'linux')('servers of the newer games', () =>
     expect((await call('PATCH', `/api/servers/${created.id}/game-settings`, { queryPort: 1 })).status).toBe(400);
     expect((await call('POST', `/api/servers/${created.id}/backups`, { includeConfig: true })).status).toBe(202);
     await waitFor(async () => (await call<{ backups: Array<{ status: string }> }>('GET', `/api/servers/${created.id}/backups`)).body.backups[0]?.status === 'ok' || undefined, 10_000);
+  }, 60_000);
+
+  it('Valheim: Thunderstore mods with BepInEx, dependencies, a modpack and the start through Doorstop', async () => {
+    thunderstore.addBepInEx();
+    thunderstore.add({ namespace: 'ValheimModding', name: 'Jotunn', version: '2.30.2', dependencies: ['denikson-BepInExPack_Valheim-5.4.2300'], files: [{ name: 'plugins/Jotunn.dll', content: 'jotunn' }] });
+    thunderstore.add({
+      namespace: 'RandyKnapp',
+      name: 'EpicLoot',
+      version: '0.16.0',
+      categories: ['server-side', 'client-side'],
+      dependencies: ['ValheimModding-Jotunn-2.30.0', 'denikson-BepInExPack_Valheim-5.4.2360'],
+      files: [
+        { name: 'plugins/EpicLoot.dll', content: 'epic' },
+        { name: 'plugins/Assets/loot.json', content: '{}' },
+        { name: 'config/randyknapp.mods.epicloot.cfg', content: 'from the package' },
+        { name: 'Translations/German.json', content: '{}' },
+      ],
+    });
+    thunderstore.add({ namespace: 'Someone', name: 'Pack', version: '1.0.0', dependencies: ['RandyKnapp-EpicLoot-0.16.0'], files: [] });
+    thunderstore.add({ namespace: 'Bad', name: 'Liar', version: '1.0.0', manifestName: 'SomethingElse', files: [{ name: 'plugins/x.dll', content: 'x' }] });
+
+    const created = await create({ game: 'valheim', name: 'Midgard', password: 'odin-rules' });
+    const root = (...parts: string[]): string => dir(created.id, 'server', ...parts);
+    const search = await call<{ hits: Array<{ fullName: string; serverSide: boolean; icon: string | null; installed: boolean }> }>('GET', `/api/servers/${created.id}/thunderstore/search?query=epic`);
+    expect(search.body.hits).toEqual([expect.objectContaining({ fullName: 'RandyKnapp-EpicLoot', serverSide: true, installed: false, icon: expect.stringContaining('gcdn.thunderstore.io') })]);
+
+    // a user config that exists already survives the installation
+    await mkdir(root('BepInEx', 'config'), { recursive: true });
+    await writeFile(root('BepInEx', 'config', 'randyknapp.mods.epicloot.cfg'), 'edited by hand');
+
+    const installed = await call<{ installed: Array<{ fullName: string; version: string; dependency: boolean }> }>('POST', `/api/servers/${created.id}/thunderstore/mods`, { fullName: 'RandyKnapp-EpicLoot' });
+    expect(installed.status).toBe(201);
+    expect(installed.body.installed.map((mod) => [mod.fullName, mod.dependency]).sort()).toEqual([
+      ['RandyKnapp-EpicLoot', false],
+      ['ValheimModding-Jotunn', true],
+      ['denikson-BepInExPack_Valheim', true],
+    ]);
+    expect(await readFile(root('BepInEx', 'core', 'BepInEx.Preloader.dll'), 'utf8')).toBe('preloader 5.4.2360');
+    expect(await readFile(root('winhttp.dll'), 'utf8')).toBe('dll');
+    expect(await readFile(root('BepInEx', 'plugins', 'RandyKnapp-EpicLoot', 'EpicLoot.dll'), 'utf8')).toBe('epic');
+    expect(await readFile(root('BepInEx', 'plugins', 'RandyKnapp-EpicLoot', 'Assets', 'loot.json'), 'utf8')).toBe('{}');
+    expect(await readFile(root('BepInEx', 'plugins', 'RandyKnapp-EpicLoot', 'Translations', 'German.json'), 'utf8')).toBe('{}');
+    expect(await readFile(root('BepInEx', 'plugins', 'ValheimModding-Jotunn', 'Jotunn.dll'), 'utf8')).toBe('jotunn');
+    expect(await readFile(root('BepInEx', 'config', 'randyknapp.mods.epicloot.cfg'), 'utf8')).toBe('edited by hand');
+    expect(await readFile(root('BepInEx', 'config', 'BepInEx.cfg'), 'utf8')).toBe('pack config');
+
+    const view = await call<{ bepinex: boolean; mods: Array<{ fullName: string }> }>('GET', `/api/servers/${created.id}/thunderstore/mods`);
+    expect(view.body.bepinex).toBe(true);
+    expect((await call('POST', `/api/servers/${created.id}/thunderstore/mods`, { fullName: 'RandyKnapp-EpicLoot' })).body).toMatchObject({ error: { code: 'MOD_ALREADY_INSTALLED' } });
+    expect((await call('POST', `/api/servers/${created.id}/thunderstore/mods`, { fullName: 'Bad-Liar' })).body).toMatchObject({ error: { code: 'DOWNLOAD_INVALID_FILE' } });
+    expect((await call('POST', `/api/servers/${created.id}/thunderstore/mods`, { fullName: '../evil' })).status).toBe(422);
+    // a modpack only brings dependencies; the ones in place are kept
+    const pack = await call<{ installed: Array<{ fullName: string }> }>('POST', `/api/servers/${created.id}/thunderstore/mods`, { fullName: 'Someone-Pack' });
+    expect(pack.body.installed.map((mod) => mod.fullName)).toEqual(['Someone-Pack']);
+
+    await runOnce(created.id, async () => {
+      const history = (await call<{ lines: Array<{ text: string }> }>('GET', `/api/servers/${created.id}/console/history`)).body.lines.map((line) => line.text);
+      expect(history.some((line) => line.includes('BepInEx is installed'))).toBe(true);
+    });
+    const launched = JSON.parse(await readFile(root('fake-valheim-args.json'), 'utf8')) as { env: Record<string, string> };
+    expect(launched.env).toMatchObject({ DOORSTOP_ENABLED: '1', DOORSTOP_TARGET_ASSEMBLY: root('BepInEx', 'core', 'BepInEx.Preloader.dll') });
+    expect(launched.env['LD_PRELOAD']?.startsWith(root('doorstop_libs', 'libdoorstop_x64.so'))).toBe(true);
+    expect(launched.env['LD_LIBRARY_PATH']?.startsWith(`${root('doorstop_libs')}:${root('linux64')}`)).toBe(true);
+
+    expect((await call('DELETE', `/api/servers/${created.id}/thunderstore/mods/ValheimModding-Jotunn`)).body).toMatchObject({ error: { code: 'MOD_REQUIRED_BY_OTHERS' } });
+    expect((await call('DELETE', `/api/servers/${created.id}/thunderstore/mods/Someone-Pack`)).status).toBe(200);
+    expect((await call('DELETE', `/api/servers/${created.id}/thunderstore/mods/RandyKnapp-EpicLoot`)).status).toBe(200);
+    expect(await readdir(root('BepInEx', 'plugins'))).not.toContain('RandyKnapp-EpicLoot');
+    // configs stay for a later reinstall
+    expect(await readFile(root('BepInEx', 'config', 'randyknapp.mods.epicloot.cfg'), 'utf8')).toBe('edited by hand');
   }, 60_000);
 
   it('7 Days to Die: config from the template, telnet for players, commands and the clean stop', async () => {

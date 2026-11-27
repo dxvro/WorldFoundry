@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 // id of the element that scrolls the page content (set by the app shell)
 export const SCROLL_ID = 'app-scroll';
 
-export const SERVER_TABS = ['overview', 'console', 'config', 'files', 'workshop', 'ficsit', 'world', 'players', 'mods', 'store', 'backups'] as const;
+export const SERVER_TABS = ['overview', 'console', 'config', 'files', 'workshop', 'ficsit', 'thunderstore', 'world', 'players', 'mods', 'store', 'backups'] as const;
 export type ServerTab = (typeof SERVER_TABS)[number];
 
 export type Route =
