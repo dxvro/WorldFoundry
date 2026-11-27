@@ -14,6 +14,8 @@ import { useQuery } from '../lib/useQuery';
 
 const HIGH = 85;
 const MB = 1024 * 1024;
+// Only the Java servers get a memory limit (-Xmx). The other games have no such setting and take what they need.
+const LIMITED: ReadonlySet<string> = new Set(['minecraft', 'zomboid']);
 
 function HighBadge(): ReactNode {
   const { t } = useI18n();
@@ -98,8 +100,12 @@ function ServerRow({ server, data }: { server: ServerView; data: UsageResponse }
   const cpu: SparkPoint[] = history.map((point) => ({ at: point.at, value: point.cpuPercent }));
   const memory: SparkPoint[] = history.map((point) => ({ at: point.at, value: point.rssBytes }));
   const running = status.rssBytes !== null || status.cpuPercent !== null;
+  const limited = LIMITED.has(server.game);
   const maxBytes = server.maxRamMb * MB;
-  const memoryHigh = status.rssBytes !== null && status.rssBytes >= maxBytes * (HIGH / 100);
+  const hostBytes = data.host.totalMemoryBytes;
+  // near its own limit (Java servers); a server without a limit is measured against the machine only
+  const memoryHigh = limited && status.rssBytes !== null && status.rssBytes >= maxBytes * (HIGH / 100);
+  const share = status.rssBytes === null || hostBytes === 0 ? null : (status.rssBytes / hostBytes) * 100;
   return (
     <li className="grid gap-x-6 gap-y-3 rounded-xl border border-line p-4 lg:grid-cols-[minmax(12rem,1fr)_minmax(0,1.3fr)_minmax(0,1.3fr)]">
       <div className="min-w-0 space-y-1">
@@ -124,10 +130,15 @@ function ServerRow({ server, data }: { server: ServerView; data: UsageResponse }
               <span className="flex items-baseline gap-2">
                 {memoryHigh ? <HighBadge /> : null}
                 <span className="num font-semibold">{status.rssBytes === null ? '–' : formatBytes(status.rssBytes)}</span>
-                <span className="hint">{u.ofMax(formatBytes(maxBytes))}</span>
+                <span className="hint">{limited ? u.ofMax(formatBytes(maxBytes)) : share === null ? u.noLimit : u.ofMachine(formatPercent(share))}</span>
               </span>
             </p>
-            <Sparkline points={memory} max={maxBytes} warnAt={maxBytes * (HIGH / 100)} label={u.chartLabel(u.serverMemory, server.name)} format={formatBytes} />
+            {limited ? (
+              <Sparkline points={memory} max={maxBytes} warnAt={maxBytes * (HIGH / 100)} label={u.chartLabel(u.serverMemory, server.name)} format={formatBytes} />
+            ) : (
+              <Sparkline points={memory} max={hostBytes} label={u.chartLabel(u.serverMemory, server.name)} format={formatBytes} />
+            )}
+            {limited ? null : <p className="hint">{u.noLimitHint}</p>}
           </div>
         </>
       ) : (

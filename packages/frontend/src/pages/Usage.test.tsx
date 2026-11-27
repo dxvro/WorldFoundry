@@ -53,4 +53,19 @@ describe('usage page', () => {
     fireEvent.pointerMove(box, { clientX: 0 });
     expect(within(box).getByRole('status')).toHaveTextContent('1.9 GB');
   });
+
+  it('measures a game without a memory setting against the machine, not against a limit', async () => {
+    const valheim = serverFixture({ id: 'srv-2', name: 'Midgard', game: 'valheim', loader: 'vanilla', mcVersion: '', maxRamMb: 4096, gameSettings: '{}', status: { ...running, rssBytes: 3.9 * GB } });
+    mockApi({
+      ...baseRoutes(valheim),
+      'GET /api/system/usage': () => ({ body: { ...usage, servers: [{ serverId: 'srv-2', samples: [0, 1].map((i) => ({ at: at(i), cpuPercent: 5, rssBytes: 3.9 * GB })) }] } }),
+    });
+    render(<App />);
+    const servers = await screen.findByRole('list', { name: 'Servers' });
+    // 3.9 GB is close to the 4 GB stored for Valheim, but that is no limit: no "High", no "max."
+    expect(within(servers).getByText('24.4 % of the machine')).toBeInTheDocument();
+    expect(within(servers).queryByText('High')).not.toBeInTheDocument();
+    expect(within(servers).queryByText(/max\./)).not.toBeInTheDocument();
+    expect(within(servers).getByText(/takes what it needs/)).toBeInTheDocument();
+  });
 });

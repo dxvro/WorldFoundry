@@ -20,7 +20,7 @@ export const usage = {
   high: 'High',
   waiting: 'Measuring …',
   servers: 'Servers',
-  serversIntro: 'CPU is the share of the whole machine. Memory is what the server process holds, next to the most it may use.',
+  serversIntro: 'CPU is the share of the whole machine. Memory is what the server process holds right now. All servers share the memory of the machine; nothing is set aside for one of them.',
   share: 'Memory of the machine',
   shareServers: 'Game servers',
   shareOther: 'Everything else',
@@ -30,6 +30,9 @@ export const usage = {
   serverCpu: 'CPU',
   serverMemory: 'Memory',
   ofMax: (max: string) => `of ${max} max.`,
+  ofMachine: (percent: string) => `${percent} of the machine`,
+  noLimit: 'no limit',
+  noLimitHint: 'This game has no memory setting: it takes what it needs. The chart is scaled to the memory of the machine.',
   chartLabel: (what: string, server: string) => `${what} of ${server}, last minutes`,
   at: (time: string) => `at ${time}`,
 };
